@@ -49,6 +49,19 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .oauth-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center;max-width:360px;width:90%;}
 .oauth-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:16px auto;}
 @keyframes spin{to{transform:rotate(360deg);}}
+/* Profile dropdown */
+.profile-btn{position:relative;background:none;border:1px solid var(--border);border-radius:50%;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--text);transition:border-color .2s;}
+.profile-btn:hover{border-color:var(--accent);}
+.profile-btn.deriv-connected{border-color:var(--green);box-shadow:0 0 8px rgba(0,255,159,.3);}
+.profile-dropdown{display:none;position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.5);z-index:999;overflow:hidden;}
+.profile-dropdown.open{display:block;}
+.profile-dropdown-header{padding:16px;border-bottom:1px solid var(--border);background:var(--surface2);}
+.profile-dropdown-section{padding:12px 16px;}
+.pd-label{font-size:9px;letter-spacing:2px;color:var(--dim);margin-bottom:8px;}
+.deriv-status-badge{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);margin-bottom:8px;}
+.deriv-status-dot{width:8px;height:8px;border-radius:50%;background:var(--dim);}
+.deriv-status-dot.connected{background:var(--green);box-shadow:0 0 6px var(--green);}
+#profileDropdownWrap{position:relative;}
 .color-preview{width:28px;height:28px;border-radius:6px;border:2px solid var(--border);display:inline-block;vertical-align:middle;margin-left:8px;cursor:pointer;}
 .login-tabs{display:flex;gap:8px;margin-bottom:24px;}
 .login-tab{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-size:12px;font-weight:700;letter-spacing:1px;transition:all .2s;}
@@ -298,6 +311,40 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(2,11,20,.96);z-index:9999;display:flex;align-items:center;justify-content:center;}
 .overlay-box{background:#041020;border-radius:16px;padding:40px;max-width:480px;width:90%;text-align:center;}
 </style>
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ── Supabase config — replace with your project credentials ──
+  const SUPABASE_URL  = 'https://okxaphtpaveuxbykqdfh.supabase.co';
+  const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9reGFwaHRwYXZldXhieWtxZGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODgwODksImV4cCI6MjA4NzI2NDA4OX0.jzZaaXK200WQCqev9bZMG7nSlMot2eHD8TKjChDNNG0';
+
+  const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+  window._sb  = _supa;
+
+  // Watch auth state changes
+  _supa.auth.onAuthStateChange(async (event, session) => {
+    if(session?.user){
+      const user = session.user;
+      // Fetch profile from public.profiles table
+      const { data: profile } = await _supa
+        .from('profiles')
+        .select('name, plan')
+        .eq('id', user.id)
+        .single();
+
+      window._alphaUser = {
+        uid:   user.id,
+        email: user.email,
+        name:  profile?.name || user.email.split('@')[0],
+        plan:  profile?.plan || 'free',
+      };
+      window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
+    } else {
+      window._alphaUser = null;
+      window._onAlphaLogout && window._onAlphaLogout();
+    }
+  });
+</script>
 </head>
 <body>
 
@@ -305,7 +352,9 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
      SCREEN 1: LOGIN
 ════════════════════════════════════════════ -->
 <div id="screenLogin" class="screen active">
-  <div class="login-box">
+  <div class="login-box" style="max-width:420px;">
+
+    <!-- LOGO -->
     <div class="login-logo">
       <div id="loginLogoWrap" style="margin-bottom:8px;">
         <img id="loginLogoImg" style="display:none;" class="brand-logo-img">
@@ -316,93 +365,69 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       <div id="loginBrandWelcome" style="font-size:11px;color:var(--gold);margin-top:6px;display:none;"></div>
     </div>
 
-    <!-- TABS -->
-    <div class="login-tabs">
-      <button class="login-tab active" id="tabAdmin" onclick="switchLoginTab('admin')">🛠️ ADMINISTRADOR</button>
-      <button class="login-tab" id="tabTrader" onclick="switchLoginTab('trader')">📊 TRADER / DERIV</button>
-    </div>
+    <!-- ── STEP 1: ALPHA LOGIN / REGISTER ── -->
+    <div id="panelAlphaAuth">
 
-    <!-- ADMIN LOGIN -->
-    <div id="panelAdminLogin">
-      <div style="display:flex;flex-direction:column;gap:14px;">
-        <div class="field">
-          <label>Usuário</label>
-          <input type="text" id="adminUser" placeholder="admin" autocomplete="username">
-        </div>
-        <div class="field">
-          <label>Senha</label>
-          <input type="password" id="adminPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginAdmin()">
-        </div>
-        <button class="btn btn-primary" onclick="loginAdmin()" style="margin-top:4px;">🔐 ENTRAR COMO ADMIN</button>
-        <div id="adminLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+      <!-- Tabs: Login / Cadastro -->
+      <div class="login-tabs" style="margin-bottom:16px;">
+        <button class="login-tab active" id="tabAlphaLogin"  onclick="switchAlphaTab('login')">ENTRAR</button>
+        <button class="login-tab"        id="tabAlphaSignup" onclick="switchAlphaTab('signup')">CADASTRAR</button>
+        <button class="login-tab"        id="tabAlphaAdmin"  onclick="switchAlphaTab('admin')" style="font-size:10px;padding:6px 10px;">🛠️ ADMIN</button>
       </div>
-    </div>
 
-    <!-- DERIV OAUTH LOGIN -->
-    <div id="panelTraderLogin" style="display:none;">
-      <div style="display:flex;flex-direction:column;gap:14px;">
-
-        <!-- OAuth Button — primary method -->
-        <button class="btn btn-primary" onclick="loginWithDeriv()"
-          style="display:flex;align-items:center;justify-content:center;gap:12px;padding:14px;font-size:14px;letter-spacing:1px;">
-          <img src="https://deriv.com/static/images/header/deriv-logo.svg"
-            style="height:22px;filter:brightness(0) invert(1);"
-            onerror="this.style.display='none'">
-          <span>🔐 ENTRAR COM DERIV</span>
-        </button>
-
-        <!-- OAuth status -->
-        <div id="oauthStatus" style="display:none;text-align:center;padding:12px;border-radius:8px;
-          background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);">
-          <div style="font-size:12px;color:var(--accent);" id="oauthStatusMsg">Aguardando autorização...</div>
-        </div>
-
-        <!-- Divider -->
-        <div style="display:flex;align-items:center;gap:10px;margin:4px 0;">
-          <div style="flex:1;height:1px;background:var(--border);"></div>
-          <span style="font-size:10px;color:var(--dim);letter-spacing:1px;">OU TOKEN MANUAL</span>
-          <div style="flex:1;height:1px;background:var(--border);"></div>
-        </div>
-
-        <!-- Manual token fallback -->
-        <details style="cursor:pointer;">
-          <summary style="font-size:11px;color:var(--dim);letter-spacing:1px;list-style:none;display:flex;align-items:center;gap:6px;">
-            <span>🔑 Usar token manualmente</span>
-          </summary>
-          <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
-            <div class="field" style="margin:0;">
-              <label>Login ID</label>
-              <input type="text" id="derivLoginId" placeholder="Ex: VRTC1659209">
-            </div>
-            <div class="field" style="margin:0;">
-              <label>API Token (Read + Trade)</label>
-              <input type="password" id="derivToken" placeholder="Cole seu token aqui" oninput="showTokenHint(this)">
-              <span id="tokenHint" style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;display:block;"></span>
-            </div>
-            <div class="field" style="margin:0;">
-              <label>App ID</label>
-              <input type="text" id="derivAppId" placeholder="Ex: 1089" value="1089">
-            </div>
-            <div class="field" style="margin:0;">
-              <label>Tipo de Conta</label>
-              <select id="derivAccType">
-                <option value="demo">📊 Demo (Virtual)</option>
-                <option value="real">💰 Real</option>
-              </select>
-            </div>
-            <button class="btn btn-primary" onclick="loginTrader()" style="margin-top:4px;">▶ ENTRAR E OPERAR</button>
+      <!-- LOGIN -->
+      <div id="panelAlphaLogin">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="field"><label>E-mail</label>
+            <input type="email" id="alphaLoginEmail" placeholder="seu@email.com" autocomplete="email"
+              onkeydown="if(event.key==='Enter')alphaLogin()">
           </div>
-        </details>
+          <div class="field"><label>Senha</label>
+            <input type="password" id="alphaLoginPass" placeholder="••••••••"
+              onkeydown="if(event.key==='Enter')alphaLogin()">
+          </div>
+          <button class="btn btn-primary" onclick="alphaLogin()" style="margin-top:4px;">▶ ENTRAR</button>
+          <div id="alphaLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+        </div>
+      </div>
 
-        <div id="traderLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+      <!-- CADASTRO -->
+      <div id="panelAlphaSignup" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="field"><label>Nome</label>
+            <input type="text" id="alphaSignupName" placeholder="Seu nome">
+          </div>
+          <div class="field"><label>E-mail</label>
+            <input type="email" id="alphaSignupEmail" placeholder="seu@email.com" autocomplete="email">
+          </div>
+          <div class="field"><label>Senha</label>
+            <input type="password" id="alphaSignupPass" placeholder="Mínimo 6 caracteres">
+          </div>
+          <button class="btn btn-primary" onclick="alphaSignup()" style="margin-top:4px;">✅ CRIAR CONTA</button>
+          <div id="alphaSignupErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+        </div>
+      </div>
 
-        <div style="font-size:10px;color:var(--dim);text-align:center;line-height:1.6;">
-          Ao entrar, você autoriza este sistema a realizar operações<br>em seu nome na plataforma Deriv.
+      <!-- ADMIN (local) -->
+      <div id="panelAdminLogin" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="field"><label>Usuário</label>
+            <input type="text" id="adminUser" placeholder="admin" autocomplete="username">
+          </div>
+          <div class="field"><label>Senha</label>
+            <input type="password" id="adminPass" placeholder="••••••••"
+              onkeydown="if(event.key==='Enter')loginAdmin()">
+          </div>
+          <button class="btn btn-primary" onclick="loginAdmin()">🔐 ENTRAR COMO ADMIN</button>
+          <div id="adminLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
         </div>
       </div>
     </div>
+
+
   </div>
 </div>
+
 
 <!-- ════════════════════════════════════════════
      SCREEN 2: ADMIN PANEL
@@ -680,9 +705,57 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div class="ping-label">PING (ms)</div>
         </div>
       </div>
-      <span id="dashNavUser" style="font-size:12px;color:var(--dim);"></span>
       <button class="nav-pill" onclick="showScreen('screenAdmin')" id="btnAdminNav" style="display:none;">🛠️ Admin</button>
-      <button class="btn btn-danger btn-sm" onclick="logoutAll()">⏏ Sair</button>
+
+      <!-- Profile icon with dropdown -->
+      <div id="profileDropdownWrap">
+        <button class="profile-btn" id="profileBtn" onclick="toggleProfileDropdown()" title="Perfil e conta Deriv">
+          👤
+        </button>
+        <div class="profile-dropdown" id="profileDropdown">
+
+          <!-- User info -->
+          <div class="profile-dropdown-header">
+            <div style="font-size:13px;font-weight:700;" id="pdUserName">—</div>
+            <div style="font-size:11px;color:var(--dim);margin-top:2px;" id="pdUserEmail">—</div>
+            <div style="font-size:10px;color:var(--gold);margin-top:4px;" id="pdUserPlan">Plano Free</div>
+          </div>
+
+          <!-- Deriv connection -->
+          <div class="profile-dropdown-section">
+            <div class="pd-label">CONTA DERIV</div>
+            <div class="deriv-status-badge" id="pdDerivBadge">
+              <div class="deriv-status-dot" id="pdDerivDot"></div>
+              <div style="flex:1;">
+                <div style="font-size:12px;font-weight:700;" id="pdDerivId">Não conectada</div>
+                <div style="font-size:10px;color:var(--dim);" id="pdDerivType"></div>
+              </div>
+            </div>
+
+            <!-- Connect / Disconnect buttons -->
+            <div id="pdDerivConnect">
+              <button class="btn btn-primary" onclick="openDerivConnectModal()"
+                style="width:100%;padding:10px;font-size:12px;display:flex;align-items:center;justify-content:center;gap:8px;">
+                🔗 CONECTAR COM DERIV
+              </button>
+            </div>
+            <div id="pdDerivDisconnect" style="display:none;">
+              <button onclick="disconnectDeriv()"
+                style="width:100%;background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);font-size:11px;padding:8px;cursor:pointer;">
+                ✕ Desconectar conta Deriv
+              </button>
+            </div>
+          </div>
+
+          <!-- Logout -->
+          <div style="padding:0 16px 16px;">
+            <button onclick="alphaLogout()"
+              style="width:100%;background:rgba(255,59,107,.1);border:1px solid rgba(255,59,107,.3);border-radius:8px;color:var(--red);font-size:12px;padding:9px;cursor:pointer;letter-spacing:1px;">
+              ⏏ SAIR DO SISTEMA
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -970,6 +1043,65 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   </div><!-- /dash-wrapper -->
 </div><!-- /screenDashboard -->
 
+<!-- Deriv Connect Modal -->
+<div id="derivConnectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:360px;width:90%;position:relative;">
+    <button onclick="closeDerivConnectModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;">✕</button>
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="font-size:28px;margin-bottom:8px;">🔗</div>
+      <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent);">CONECTAR DERIV</div>
+      <div style="font-size:11px;color:var(--dim);margin-top:4px;">Autorize o acesso para operar com os robôs</div>
+    </div>
+
+    <!-- Token manual — padrão enquanto OAuth App ID não está registrado -->
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="field" style="margin:0;"><label>Login ID Deriv</label>
+        <input type="text" id="derivLoginId" placeholder="Ex: VRTC1659209 ou CR123456">
+      </div>
+      <div class="field" style="margin:0;"><label>API Token</label>
+        <input type="password" id="derivToken" placeholder="Cole seu token aqui" oninput="showTokenHint(this)">
+        <span id="tokenHint" style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;display:block;"></span>
+        <div style="font-size:10px;color:var(--dim);margin-top:4px;">
+          Gere em <a href="https://app.deriv.com/account/api-token" target="_blank"
+          style="color:var(--accent);">app.deriv.com → API Token</a> com permissões Read + Trade
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="field" style="margin:0;"><label>Tipo de Conta</label>
+          <select id="derivAccType">
+            <option value="demo">📊 Demo</option>
+            <option value="real">💰 Real</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;"><label>App ID</label>
+          <input type="text" id="derivAppId" value="1089">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="loginTrader()" style="padding:12px;font-size:13px;">
+        🔗 CONECTAR CONTA DERIV
+      </button>
+    </div>
+    <div id="traderLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;margin-top:8px;"></div>
+
+    <!-- OAuth — disponível quando App ID registrado -->
+    <details style="margin-top:12px;">
+      <summary style="font-size:10px;color:var(--dim);cursor:pointer;list-style:none;text-align:center;letter-spacing:1px;">
+        🔐 Usar OAuth (requer App ID registrado na Deriv)
+      </summary>
+      <div style="margin-top:10px;">
+        <button class="btn btn-sm" onclick="loginWithDeriv()"
+          style="width:100%;padding:10px;font-size:12px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:var(--accent);">
+          Entrar com Deriv (OAuth)
+        </button>
+        <div id="oauthStatus" style="display:none;text-align:center;padding:8px;border-radius:8px;margin-top:8px;
+          background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);">
+          <div style="font-size:12px;color:var(--accent);" id="oauthStatusMsg">Aguardando...</div>
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
+
 <!-- OAuth waiting overlay -->
 <div id="oauthOverlay">
   <div class="oauth-modal">
@@ -1117,11 +1249,197 @@ function showScreen(id){
 // ════════════════════════════════════════
 // LOGIN
 // ════════════════════════════════════════
+// ════════════════════════════════════════
+// ALPHA AUTH (Supabase)
+// ════════════════════════════════════════
+
+// ════════════════════════════════════════
+// PROFILE DROPDOWN
+// ════════════════════════════════════════
+function toggleProfileDropdown(){
+  const dd = document.getElementById('profileDropdown');
+  if(dd) dd.classList.toggle('open');
+}
+function closeProfileDropdown(){
+  const dd = document.getElementById('profileDropdown');
+  if(dd) dd.classList.remove('open');
+}
+// Close on outside click
+document.addEventListener('click', function(e){
+  const wrap = document.getElementById('profileDropdownWrap');
+  if(wrap && !wrap.contains(e.target)) closeProfileDropdown();
+});
+
+function updateProfileDropdown(){
+  const user = window._alphaUser;
+  if(!user) return;
+  // Header
+  const nameEl  = document.getElementById('pdUserName');
+  const emailEl = document.getElementById('pdUserEmail');
+  const planEl  = document.getElementById('pdUserPlan');
+  if(nameEl)  nameEl.textContent  = user.name || user.email;
+  if(emailEl) emailEl.textContent = user.email;
+  if(planEl)  planEl.textContent  = 'Plano ' + (user.plan === 'free' ? 'Free' : user.plan === 'pro' ? '⭐ Pro' : user.plan);
+
+  // Deriv status
+  const dot        = document.getElementById('pdDerivDot');
+  const derivIdEl  = document.getElementById('pdDerivId');
+  const derivType  = document.getElementById('pdDerivType');
+  const btnConnect = document.getElementById('pdDerivConnect');
+  const btnDisc    = document.getElementById('pdDerivDisconnect');
+  const profileBtn = document.getElementById('profileBtn');
+
+  if(derivAccount){
+    if(dot)        { dot.classList.add('connected'); }
+    if(derivIdEl)  derivIdEl.textContent = derivAccount.loginid;
+    if(derivType)  derivType.textContent = derivAccount.isVirtual ? '📊 Conta Demo' : '💰 Conta Real';
+    if(btnConnect) btnConnect.style.display='none';
+    if(btnDisc)    btnDisc.style.display='block';
+    if(profileBtn) profileBtn.classList.add('deriv-connected');
+    profileBtn.title = 'Deriv: ' + derivAccount.loginid;
+  } else {
+    if(dot)        { dot.classList.remove('connected'); }
+    if(derivIdEl)  derivIdEl.textContent = 'Não conectada';
+    if(derivType)  derivType.textContent = '';
+    if(btnConnect) btnConnect.style.display='block';
+    if(btnDisc)    btnDisc.style.display='none';
+    if(profileBtn) profileBtn.classList.remove('deriv-connected');
+    profileBtn.title = 'Conectar Deriv';
+  }
+}
+
+function openDerivConnectModal(){
+  closeProfileDropdown();
+  const m = document.getElementById('derivConnectModal');
+  if(m) m.style.display='flex';
+}
+function closeDerivConnectModal(){
+  const m = document.getElementById('derivConnectModal');
+  if(m) m.style.display='none';
+}
+
+function disconnectDeriv(){
+  if(!confirm('Desconectar conta Deriv? O robô será parado.')) return;
+  if(ws) disconnectDash();
+  derivAccount = null;
+  updateProfileDropdown();
+  closeProfileDropdown();
+  log('🔌 Conta Deriv desconectada.', 'warning');
+}
+
+function switchAlphaTab(tab){
+  ['login','signup','admin'].forEach(t=>{
+    const panel = document.getElementById('panelAlpha' + t.charAt(0).toUpperCase() + t.slice(1))
+               || document.getElementById('panelAdminLogin');
+    const btn   = document.getElementById('tabAlpha' + t.charAt(0).toUpperCase() + t.slice(1));
+    if(t==='admin'){
+      const p = document.getElementById('panelAdminLogin');
+      if(p) p.style.display = tab===t ? 'block' : 'none';
+    } else {
+      if(panel) panel.style.display = tab===t ? 'block' : 'none';
+    }
+    if(btn) btn.classList.toggle('active', tab===t);
+  });
+}
+
+async function alphaLogin(){
+  const email = document.getElementById('alphaLoginEmail')?.value.trim();
+  const pass  = document.getElementById('alphaLoginPass')?.value;
+  const err   = document.getElementById('alphaLoginErr');
+  if(!email||!pass){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
+  err.style.display='none';
+
+  if(!window._sb){ err.textContent='Supabase não inicializado — configure as credenciais.'; err.style.display='block'; return; }
+
+  const { error } = await window._sb.auth.signInWithPassword({ email, password: pass });
+  if(error){
+    const msgs = {
+      'Invalid login credentials':      'E-mail ou senha incorretos.',
+      'Email not confirmed':            'Confirme seu e-mail antes de entrar.',
+      'Too many requests':              'Muitas tentativas. Aguarde e tente novamente.',
+    };
+    err.textContent = msgs[error.message] || error.message;
+    err.style.display='block';
+  }
+  // onAuthStateChange handles navigation on success
+}
+
+async function alphaSignup(){
+  const name  = document.getElementById('alphaSignupName')?.value.trim();
+  const email = document.getElementById('alphaSignupEmail')?.value.trim();
+  const pass  = document.getElementById('alphaSignupPass')?.value;
+  const err   = document.getElementById('alphaSignupErr');
+  if(!name){  err.textContent='Informe seu nome.'; err.style.display='block'; return; }
+  if(!email){ err.textContent='Informe o e-mail.'; err.style.display='block'; return; }
+  if(!pass || pass.length < 6){ err.textContent='Senha deve ter mínimo 6 caracteres.'; err.style.display='block'; return; }
+  err.style.display='none';
+
+  if(!window._sb){ err.textContent='Supabase não inicializado — configure as credenciais.'; err.style.display='block'; return; }
+
+  // 1. Create auth user
+  const { data, error } = await window._sb.auth.signUp({ email, password: pass });
+  if(error){
+    const msgs = {
+      'User already registered': 'E-mail já cadastrado. Faça login.',
+      'Password should be at least 6 characters': 'Senha deve ter mínimo 6 caracteres.',
+    };
+    err.textContent = msgs[error.message] || error.message;
+    err.style.display='block';
+    return;
+  }
+
+  // 2. Insert profile into public.profiles table
+  if(data?.user){
+    await window._sb.from('profiles').upsert({
+      id:         data.user.id,
+      name:       name,
+      email:      email,
+      plan:       'free',
+      created_at: new Date().toISOString()
+    });
+  }
+
+  err.style.display='none';
+  // Show confirmation message if email confirmation required
+  const confirmMsg = document.getElementById('alphaSignupErr');
+  confirmMsg.style.color='var(--green)';
+  confirmMsg.textContent='✅ Conta criada! Verifique seu e-mail para confirmar o cadastro.';
+  confirmMsg.style.display='block';
+  // onAuthStateChange handles navigation if email confirmation is disabled
+}
+
+async function alphaLogout(){
+  if(ws) disconnectDash();
+  derivAccount = null; currentUser = null;
+  if(window._sb) await window._sb.auth.signOut();
+  window._alphaUser = null;
+  closeProfileDropdown();
+  document.getElementById('panelAlphaAuth').style.display='block';
+  showScreen('screenLogin');
+}
+
+// Called by Supabase onAuthStateChange when user logs in
+window._onAlphaLogin = function(user){
+  // Go straight to dashboard
+  updateProfileDropdown();
+  // If Deriv already connected keep it, otherwise show disconnected state
+  if(!derivAccount){
+    document.getElementById('pdDerivConnect').style.display='block';
+    document.getElementById('pdDerivDisconnect').style.display='none';
+  }
+  showScreen('screenDashboard');
+};
+
+window._onAlphaLogout = function(){
+  document.getElementById('panelAlphaAuth').style.display='block';
+  showScreen('screenLogin');
+};
+
+// ════════════════════════════════════════
+// LEGACY — keep for admin tab
+// ════════════════════════════════════════
 function switchLoginTab(tab){
-  document.getElementById('panelAdminLogin').style.display = tab === 'admin' ? 'block' : 'none';
-  document.getElementById('panelTraderLogin').style.display = tab === 'trader' ? 'block' : 'none';
-  document.getElementById('tabAdmin').classList.toggle('active', tab === 'admin');
-  document.getElementById('tabTrader').classList.toggle('active', tab === 'trader');
+  // Kept for compatibility — Alpha system uses switchAlphaTab()
 }
 
 // ════════════════════════════════════════
@@ -1252,11 +1570,13 @@ function showAccountPicker(accounts){
   modal.appendChild(picker);
 }
 
-function finishOAuthLogin(acc){
+async function finishOAuthLogin(acc){
   document.getElementById('oauthOverlay').classList.remove('show');
 
   const appId = document.getElementById('derivAppId')?.value.trim() || DERIV_APP_ID;
-  currentUser = { user: acc.loginid, isAdmin: false };
+  const alphaUser = window._alphaUser;
+
+  currentUser = { user: alphaUser?.name || acc.loginid, isAdmin: false };
   derivAccount = {
     loginid:   acc.loginid,
     token:     acc.token,
@@ -1266,11 +1586,25 @@ function finishOAuthLogin(acc){
     currency:  acc.currency
   };
 
-  document.getElementById('dashNavUser').textContent = '📊 ' + acc.loginid;
-  document.getElementById('btnAdminNav').style.display = 'none';
+  // Save Deriv connection info to Supabase (token stays local only)
+  if(window._sb && alphaUser?.uid){
+    try{
+      await window._sb.from('profiles').update({
+        deriv_login_id:      acc.loginid,
+        deriv_acc_type:      acc.isVirtual ? 'demo' : 'real',
+        deriv_currency:      acc.currency,
+        deriv_connected_at:  new Date().toISOString()
+      }).eq('id', alphaUser.uid);
+    }catch(e){ console.warn('Supabase update failed', e); }
+  }
+
+  const displayName = alphaUser?.name || acc.loginid;
+  closeDerivConnectModal();
+  closeProfileDropdown();
+  updateProfileDropdown();
   renderRobotSelectorList();
   showScreen('screenDashboard');
-  log('✅ Login OAuth Deriv: ' + acc.loginid + ' (' + (acc.isVirtual?'DEMO':'REAL') + ') | ' + acc.currency, 'success');
+  log('✅ Deriv conectada: ' + acc.loginid + ' (' + (acc.isVirtual?'DEMO':'REAL') + ') | ' + acc.currency, 'success');
 }
 
 function cancelOAuth(){
@@ -1330,24 +1664,25 @@ function loginAdmin(){
 
 function loginTrader(){
   const loginId = document.getElementById('derivLoginId').value.trim().toUpperCase();
-  const token = document.getElementById('derivToken').value.replace(/[^a-zA-Z0-9\-_]/g,'').trim();
+  const token   = document.getElementById('derivToken').value.replace(/[^a-zA-Z0-9\-_]/g,'').trim();
   const accType = document.getElementById('derivAccType').value;
-  const appId = document.getElementById('derivAppId').value.trim();
-  const err = document.getElementById('traderLoginErr');
+  const appId   = document.getElementById('derivAppId').value.trim() || '1089';
+  const err     = document.getElementById('traderLoginErr');
 
   if(!loginId){ err.textContent='Informe o Login ID.'; err.style.display='block'; return; }
   if(token.length < 10){ err.textContent='Token inválido ou incompleto.'; err.style.display='block'; return; }
-  if(!appId){ err.textContent='Informe o App ID.'; err.style.display='block'; return; }
   err.style.display='none';
 
-  currentUser = { user: loginId, isAdmin: false };
-  // Create a temporary "manual" account for trader
-  derivAccount = { loginid: loginId, token, appId, accType, isVirtual: accType === 'demo' };
-  document.getElementById('dashNavUser').textContent = '📊 ' + loginId;
-  document.getElementById('btnAdminNav').style.display = 'none';
+  const alphaUser = window._alphaUser;
+  currentUser = { user: alphaUser?.name || loginId, isAdmin: false };
+  derivAccount  = { loginid: loginId, token, appId, accType, isVirtual: accType === 'demo' };
+
+  closeDerivConnectModal();
+  closeProfileDropdown();
+  updateProfileDropdown();
   renderRobotSelectorList();
   showScreen('screenDashboard');
-  log('✅ Login como trader: ' + loginId + ' (' + accType.toUpperCase() + ')', 'success');
+  log('✅ Deriv conectada: ' + loginId + ' (' + accType.toUpperCase() + ')', 'success');
 }
 
 function safeEl(id){ return document.getElementById(id); }
