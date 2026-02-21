@@ -1467,62 +1467,70 @@ async function alphaLogin(){
 }
 
 async function alphaSignup(){
-  const name  = document.getElementById('alphaSignupName')?.value.trim();
-  const email = document.getElementById('alphaSignupEmail')?.value.trim();
-  const pass  = document.getElementById('alphaSignupPass')?.value;
-  const code  = document.getElementById('alphaSignupCode')?.value.trim().toUpperCase();
-  const err   = document.getElementById('alphaSignupErr');
-  if(!name){  err.textContent='Informe seu nome.'; err.style.display='block'; return; }
-  if(!email){ err.textContent='Informe o e-mail.'; err.style.display='block'; return; }
-  if(!pass || pass.length < 6){ err.textContent='Senha deve ter mínimo 6 caracteres.'; err.style.display='block'; return; }
-  if(!code){ err.textContent='Informe o código de acesso.'; err.style.display='block'; return; }
-  err.style.display='none';
+  const name  = (document.getElementById('alphaSignupName')?.value  || '').trim();
+  const email = (document.getElementById('alphaSignupEmail')?.value || '').trim();
+  const pass  =  document.getElementById('alphaSignupPass')?.value  || '';
+  const code  = (document.getElementById('alphaSignupCode')?.value  || '').trim().toUpperCase();
+  const btn   =  document.querySelector('#panelAlphaSignup .btn-primary');
+  const err   =  document.getElementById('alphaSignupErr');
 
-  if(!window._sb){ err.textContent='Supabase não inicializado — configure as credenciais.'; err.style.display='block'; return; }
+  const showErr = msg => {
+    err.style.color = 'var(--red)';
+    err.textContent = msg;
+    err.style.display = 'block';
+    if(btn){ btn.textContent='✅ CRIAR CONTA'; btn.disabled=false; }
+  };
 
-  // 1. Validate invite code
-  const { data: codeData, error: codeErr } = await window._sb
-    .from('invite_codes')
-    .select('id, used')
-    .eq('code', code)
-    .single();
-  if(codeErr || !codeData){ err.textContent='Código de acesso inválido.'; err.style.display='block'; return; }
-  if(codeData.used){ err.textContent='Este código já foi utilizado.'; err.style.display='block'; return; }
+  if(!name)  return showErr('Informe seu nome.');
+  if(!email) return showErr('Informe o e-mail.');
+  if(!pass || pass.length < 6) return showErr('Senha deve ter mínimo 6 caracteres.');
+  if(!code)  return showErr('Informe o código de acesso.');
+  if(!window._sb) return showErr('Supabase não inicializado.');
 
-  // 2. Create auth user
-  const { data, error } = await window._sb.auth.signUp({ email, password: pass });
-  if(error){
-    const msgs = {
-      'User already registered': 'E-mail já cadastrado. Faça login.',
-      'Password should be at least 6 characters': 'Senha deve ter mínimo 6 caracteres.',
-    };
-    err.textContent = msgs[error.message] || error.message;
-    err.style.display='block';
-    return;
+  err.style.display = 'none';
+  if(btn){ btn.textContent='Aguarde...'; btn.disabled=true; }
+
+  try {
+    // 1. Validate invite code
+    const { data: codeData, error: codeErr } = await window._sb
+      .from('invite_codes')
+      .select('id, used')
+      .eq('code', code)
+      .maybeSingle();
+    if(codeErr) return showErr('Erro ao validar código: ' + codeErr.message);
+    if(!codeData) return showErr('Código de acesso inválido.');
+    if(codeData.used) return showErr('Este código já foi utilizado.');
+
+    // 2. Create auth user
+    const { data, error: signUpErr } = await window._sb.auth.signUp({ email, password: pass });
+    if(signUpErr){
+      const msgs = {
+        'User already registered': 'E-mail já cadastrado. Faça login.',
+        'Password should be at least 6 characters': 'Senha deve ter mínimo 6 caracteres.',
+      };
+      return showErr(msgs[signUpErr.message] || signUpErr.message);
+    }
+
+    // 3. Insert profile
+    if(data?.user){
+      await window._sb.from('profiles').upsert({
+        id: data.user.id, name, email, plan: 'free',
+        created_at: new Date().toISOString()
+      });
+      // 4. Mark code as used
+      await window._sb.from('invite_codes').update({
+        used: true, used_by: email, used_at: new Date().toISOString()
+      }).eq('id', codeData.id);
+    }
+
+    if(btn){ btn.textContent='✅ CRIAR CONTA'; btn.disabled=false; }
+    err.style.color = 'var(--green)';
+    err.textContent = '✅ Conta criada! Verifique seu e-mail para confirmar o cadastro.';
+    err.style.display = 'block';
+
+  } catch(e) {
+    showErr('Erro inesperado: ' + e.message);
   }
-
-  // 3. Insert profile into public.profiles table
-  if(data?.user){
-    await window._sb.from('profiles').upsert({
-      id:         data.user.id,
-      name:       name,
-      email:      email,
-      plan:       'free',
-      created_at: new Date().toISOString()
-    });
-    // 4. Mark code as used
-    await window._sb.from('invite_codes').update({
-      used:    true,
-      used_by: email,
-      used_at: new Date().toISOString()
-    }).eq('id', codeData.id);
-  }
-
-  err.style.display='none';
-  const confirmMsg = document.getElementById('alphaSignupErr');
-  confirmMsg.style.color='var(--green)';
-  confirmMsg.textContent='✅ Conta criada! Verifique seu e-mail para confirmar o cadastro.';
-  confirmMsg.style.display='block';
 }
 
 async function alphaLogout(){
