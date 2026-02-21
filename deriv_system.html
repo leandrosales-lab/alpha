@@ -358,12 +358,24 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         window._onAlphaLogout && window._onAlphaLogout();
       }
     });
-    // Restore session AFTER onAuthStateChange is registered so the event is caught
+    // Restore session via getUser (HTTP direto, sem Web Lock)
     const _saved = sessionStorage.getItem('alpha_session');
     if(_saved){
       try {
-        const { access_token, refresh_token } = JSON.parse(_saved);
-        _supa.auth.setSession({ access_token, refresh_token });
+        const { access_token } = JSON.parse(_saved);
+        _supa.auth.getUser(access_token).then(({ data, error }) => {
+          if(data?.user && !error){
+            window._alphaUser = {
+              uid:   data.user.id,
+              email: data.user.email,
+              name:  data.user.email.split('@')[0],
+              plan:  'free',
+            };
+            window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
+          } else {
+            sessionStorage.removeItem('alpha_session');
+          }
+        });
       } catch(e) {
         sessionStorage.removeItem('alpha_session');
       }
