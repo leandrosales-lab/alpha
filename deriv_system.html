@@ -314,36 +314,57 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-  // ── Supabase config — replace with your project credentials ──
+  // ── Supabase config ──
   const SUPABASE_URL  = 'https://okxaphtpaveuxbykqdfh.supabase.co';
   const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9reGFwaHRwYXZldXhieWtxZGZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2ODgwODksImV4cCI6MjA4NzI2NDA4OX0.jzZaaXK200WQCqev9bZMG7nSlMot2eHD8TKjChDNNG0';
 
-  const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  window._sb  = _supa;
-
-  // Watch auth state changes
-  _supa.auth.onAuthStateChange(async (event, session) => {
-    if(session?.user){
-      const user = session.user;
-      // Fetch profile from public.profiles table
-      const { data: profile } = await _supa
-        .from('profiles')
-        .select('name, plan')
-        .eq('id', user.id)
-        .single();
-
-      window._alphaUser = {
-        uid:   user.id,
-        email: user.email,
-        name:  profile?.name || user.email.split('@')[0],
-        plan:  profile?.plan || 'free',
-      };
-      window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
-    } else {
-      window._alphaUser = null;
-      window._onAlphaLogout && window._onAlphaLogout();
+  function initSupabase(){
+    if(typeof supabase === 'undefined'){
+      setTimeout(initSupabase, 100);
+      return;
     }
-  });
+    const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    window._sb  = _supa;
+
+    _supa.auth.onAuthStateChange(async (event, session) => {
+      if(session?.user){
+        const user = session.user;
+        try {
+          const { data: profile } = await _supa
+            .from('profiles')
+            .select('name, plan')
+            .eq('id', user.id)
+            .single();
+
+          window._alphaUser = {
+            uid:   user.id,
+            email: user.email,
+            name:  profile?.name || user.email.split('@')[0],
+            plan:  profile?.plan || 'free',
+          };
+        } catch(e) {
+          window._alphaUser = {
+            uid:   user.id,
+            email: user.email,
+            name:  user.email.split('@')[0],
+            plan:  'free',
+          };
+        }
+        window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
+      } else {
+        window._alphaUser = null;
+        window._onAlphaLogout && window._onAlphaLogout();
+      }
+    });
+    console.log('✅ Supabase inicializado');
+  }
+
+  // Start init after DOM ready
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initSupabase);
+  } else {
+    initSupabase();
+  }
 </script>
 </head>
 <body>
@@ -1349,9 +1370,26 @@ async function alphaLogin(){
   if(!email||!pass){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
   err.style.display='none';
 
-  if(!window._sb){ err.textContent='Supabase não inicializado — configure as credenciais.'; err.style.display='block'; return; }
+  // Wait for Supabase to initialize (max 3s)
+  let attempts = 0;
+  while(!window._sb && attempts < 30){
+    await new Promise(r => setTimeout(r, 100));
+    attempts++;
+  }
+  if(!window._sb){
+    err.textContent='Erro de conexão. Recarregue a página e tente novamente.';
+    err.style.display='block';
+    return;
+  }
+
+  // Show loading
+  const btn = document.querySelector('#panelAlphaLogin .btn-primary');
+  if(btn){ btn.textContent='Aguarde...'; btn.disabled=true; }
 
   const { error } = await window._sb.auth.signInWithPassword({ email, password: pass });
+
+  if(btn){ btn.textContent='▶ ENTRAR'; btn.disabled=false; }
+
   if(error){
     const msgs = {
       'Invalid login credentials':      'E-mail ou senha incorretos.',
@@ -1650,13 +1688,17 @@ function loginAdmin(){
   const u = document.getElementById('adminUser').value.trim();
   const p = document.getElementById('adminPass').value;
   const err = document.getElementById('adminLoginErr');
+  if(!err){ return; }
   const found = admins.find(a => a.user === u && a.pass === btoa(p));
   if(!found){ err.textContent='Usuário ou senha incorretos.'; err.style.display='block'; return; }
   err.style.display='none';
   currentUser = { user: u, isAdmin: true };
-  document.getElementById('adminNavUser').textContent = '👤 ' + u;
-  document.getElementById('dashNavUser').textContent = '👤 ' + u;
-  document.getElementById('btnAdminNav').style.display = 'inline-block';
+  window._alphaUser = { uid: null, email: u, name: u, plan: 'admin' };
+  safeSet('adminNavUser','textContent','👤 ' + u);
+  safeSet('btnAdminNav','style.display','inline-block');
+  const btnAdmin = document.getElementById('btnAdminNav');
+  if(btnAdmin) btnAdmin.style.display = 'inline-block';
+  updateProfileDropdown();
   renderRobotList();
   renderAdminList();
   showScreen('screenAdmin');
