@@ -356,6 +356,19 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         window._onAlphaLogout && window._onAlphaLogout();
       }
     });
+    // Test connection immediately
+    _supa.auth.getSession().then(({ data, error }) => {
+      if(error){
+        console.error('❌ Supabase connection error:', error.message);
+        const errEls = document.querySelectorAll('[id$="LoginErr"]');
+        errEls.forEach(el => {
+          el.textContent = 'Erro de conexão: ' + error.message;
+          el.style.display = 'block';
+        });
+      } else {
+        console.log('✅ Supabase conectado. Sessão:', data.session ? 'ativa' : 'nenhuma');
+      }
+    });
     console.log('✅ Supabase inicializado');
   }
 
@@ -1386,20 +1399,67 @@ async function alphaLogin(){
   const btn = document.querySelector('#panelAlphaLogin .btn-primary');
   if(btn){ btn.textContent='Aguarde...'; btn.disabled=true; }
 
-  const { error } = await window._sb.auth.signInWithPassword({ email, password: pass });
+  let loginResult;
+  try {
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 10000)
+    );
+    loginResult = await Promise.race([
+      window._sb.auth.signInWithPassword({ email, password: pass }),
+      timeout
+    ]);
+  } catch(e) {
+    if(btn){ btn.textContent='▶ ENTRAR'; btn.disabled=false; }
+    err.textContent = e.message === 'timeout'
+      ? 'Tempo esgotado. Verifique sua conexão e tente novamente.'
+      : 'Erro inesperado: ' + e.message;
+    err.style.display='block';
+    console.error('Login error:', e);
+    return;
+  }
 
   if(btn){ btn.textContent='▶ ENTRAR'; btn.disabled=false; }
 
+  const { data, error } = loginResult;
   if(error){
     const msgs = {
       'Invalid login credentials':      'E-mail ou senha incorretos.',
       'Email not confirmed':            'Confirme seu e-mail antes de entrar.',
-      'Too many requests':              'Muitas tentativas. Aguarde e tente novamente.',
+      'Too many requests':              'Muitas tentativas. Aguarde alguns minutos.',
+      'User not found':                 'E-mail não cadastrado.',
     };
-    err.textContent = msgs[error.message] || error.message;
+    err.textContent = msgs[error.message] || ('Erro: ' + error.message);
     err.style.display='block';
+    console.error('Supabase error:', error);
+    return;
   }
-  // onAuthStateChange handles navigation on success
+
+  // Login OK — manually navigate (don't rely solely on onAuthStateChange)
+  if(data?.user){
+    console.log('✅ Login OK:', data.user.email);
+    try {
+      const { data: profile } = await window._sb
+        .from('profiles')
+        .select('name, plan')
+        .eq('id', data.user.id)
+        .single();
+
+      window._alphaUser = {
+        uid:   data.user.id,
+        email: data.user.email,
+        name:  profile?.name || data.user.email.split('@')[0],
+        plan:  profile?.plan || 'free',
+      };
+    } catch(e) {
+      window._alphaUser = {
+        uid:   data.user.id,
+        email: data.user.email,
+        name:  data.user.email.split('@')[0],
+        plan:  'free',
+      };
+    }
+    window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
+  }
 }
 
 async function alphaSignup(){
