@@ -1,0 +1,3060 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DERIV · Sistema de Robôs</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#020b14; --surface:#041020; --surface2:#071828;
+  --border:#0d3a5c; --accent:#00d4ff; --accent2:#00ff9f;
+  --red:#ff3b6b; --green:#00ff9f; --gold:#ffb800;
+  --text:#c8e6f5; --dim:#4a7a99;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-height:100vh;}
+.screen{display:none;min-height:100vh;}
+.screen.active{display:flex;flex-direction:column;}
+
+/* ── INPUTS & BUTTONS ── */
+input,select,textarea{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'Exo 2',sans-serif;font-size:14px;outline:none;width:100%;transition:border-color .2s;}
+input:focus,select:focus{border-color:var(--accent);}
+label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;text-transform:uppercase;display:block;margin-bottom:5px;}
+.field{display:flex;flex-direction:column;gap:4px;}
+.btn{padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-weight:700;font-size:13px;letter-spacing:1px;transition:all .2s;font-family:'Exo 2',sans-serif;}
+.btn-primary{background:linear-gradient(135deg,var(--accent),#0099cc);color:#000;}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(0,212,255,.4);}
+.btn-danger{background:rgba(255,59,107,.15);color:var(--red);border:1px solid rgba(255,59,107,.4);}
+.btn-danger:hover{background:rgba(255,59,107,.25);}
+.btn-success{background:rgba(0,255,159,.15);color:var(--green);border:1px solid rgba(0,255,159,.4);}
+.btn-gold{background:rgba(255,184,0,.15);color:var(--gold);border:1px solid rgba(255,184,0,.4);}
+.btn-sm{padding:6px 14px;font-size:11px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);}
+.mono{font-family:'Share Tech Mono',monospace;}
+
+/* ── LOGIN SCREEN ── */
+#screenLogin{align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#041830 0%,var(--bg) 70%);}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px;position:relative;overflow:hidden;}
+.login-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2));}
+.login-logo{text-align:center;margin-bottom:28px;}
+.login-logo h1{font-size:22px;font-weight:900;letter-spacing:3px;color:var(--accent);}
+.login-logo p{font-size:11px;color:var(--dim);letter-spacing:2px;margin-top:4px;}
+/* Brand logo image */
+.brand-logo-img{width:72px;height:72px;object-fit:contain;border-radius:12px;margin-bottom:10px;}
+/* OAuth popup overlay */
+#oauthOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+#oauthOverlay.show{display:flex;}
+.oauth-modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:32px;text-align:center;max-width:360px;width:90%;}
+.oauth-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:16px auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.color-preview{width:28px;height:28px;border-radius:6px;border:2px solid var(--border);display:inline-block;vertical-align:middle;margin-left:8px;cursor:pointer;}
+.login-tabs{display:flex;gap:8px;margin-bottom:24px;}
+.login-tab{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-size:12px;font-weight:700;letter-spacing:1px;transition:all .2s;}
+.login-tab.active{background:rgba(0,212,255,.1);color:var(--accent);border-color:var(--accent);}
+
+/* ── TOP NAV ── */
+.topnav{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+/* ── PING ── */
+.ping-box{display:flex;align-items:center;gap:7px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;font-family:'Share Tech Mono',monospace;transition:border-color .3s;}
+.ping-box.good{border-color:rgba(0,255,159,.5);}
+.ping-box.warn{border-color:rgba(255,184,0,.5);}
+.ping-box.bad{border-color:rgba(255,59,107,.6);animation:ping-danger .8s infinite;}
+@keyframes ping-danger{0%,100%{box-shadow:0 0 0 rgba(255,59,107,0);}50%{box-shadow:0 0 10px rgba(255,59,107,.5);}}
+.ping-dot{width:9px;height:9px;border-radius:50%;background:var(--dim);flex-shrink:0;transition:background .3s;}
+.ping-dot.good{background:var(--green);box-shadow:0 0 6px var(--green);}
+.ping-dot.warn{background:var(--gold);box-shadow:0 0 6px var(--gold);}
+.ping-dot.bad{background:var(--red);box-shadow:0 0 6px var(--red);}
+.ping-val{font-size:13px;font-weight:700;color:var(--text);min-width:48px;}
+.ping-label{font-size:9px;color:var(--dim);letter-spacing:1px;}
+/* Ping alert overlay */
+#pingAlert{display:none;position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(255,59,107,.15);border:2px solid var(--red);border-radius:12px;padding:14px 24px;text-align:center;backdrop-filter:blur(8px);box-shadow:0 0 40px rgba(255,59,107,.3);min-width:320px;}
+#pingAlert.show{display:block;animation:slideDown .3s ease;}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-10px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+.topnav-brand{font-size:16px;font-weight:900;letter-spacing:2px;color:var(--accent);}
+.topnav-user{display:flex;align-items:center;gap:12px;}
+.nav-pill{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-size:11px;font-weight:700;letter-spacing:1px;transition:all .2s;}
+.nav-pill.active{background:rgba(0,212,255,.1);color:var(--accent);border-color:var(--accent);}
+.nav-pill:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── ADMIN SCREEN ── */
+#screenAdmin .content{padding:24px;max-width:1400px;margin:0 auto;width:100%;}
+.admin-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;}
+@media(max-width:900px){.admin-grid{grid-template-columns:1fr;}}
+.robot-list{display:flex;flex-direction:column;gap:12px;}
+.robot-card-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;transition:border-color .2s;}
+.robot-card-item:hover{border-color:var(--accent);}
+.robot-card-item.running{border-color:var(--green);box-shadow:0 0 12px rgba(0,255,159,.1);}
+.robot-status-dot{width:10px;height:10px;border-radius:50%;background:var(--dim);flex-shrink:0;}
+.robot-status-dot.running{background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+.robot-name{font-weight:700;font-size:15px;color:var(--text);}
+.robot-meta{font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;}
+.robot-actions{display:flex;gap:8px;}
+
+/* ── ROBOT FORM ── */
+.form-section{font-size:10px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin:16px 0 10px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+
+/* ── DASHBOARD SCREEN ── */
+#screenDashboard{flex-direction:column;}
+#screenDashboard .dash-wrapper{
+  display:grid;
+  grid-template-columns:300px 1fr 280px;
+  gap:0;
+  flex:1;
+  overflow:hidden;
+  height:calc(100vh - 50px);
+}
+/* LEFT panel */
+.dash-left{
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  overflow-y:auto;
+  padding:14px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+/* CENTER panel */
+.dash-center{
+  overflow-y:auto;
+  padding:14px 16px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+/* RIGHT panel — log column */
+.dash-right{
+  background:var(--surface);
+  border-left:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+.dash-right-header{
+  padding:12px 14px 8px;
+  font-size:10px;
+  letter-spacing:2px;
+  color:var(--accent);
+  font-family:'Share Tech Mono',monospace;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+.dash-right-log{
+  flex:1;
+  overflow-y:auto;
+  padding:10px 12px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:10.5px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+  background:var(--bg);
+}
+@media(max-width:1200px){
+  #screenDashboard .dash-wrapper{grid-template-columns:280px 1fr 240px;}
+}
+@media(max-width:900px){
+  #screenDashboard .dash-wrapper{grid-template-columns:1fr;height:auto;}
+  .dash-right{height:200px;}
+}
+
+/* Robot selector */
+.robot-selector{display:flex;flex-direction:column;gap:8px;}
+.robot-sel-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .2s;}
+.robot-sel-item:hover,.robot-sel-item.active{border-color:var(--accent);background:rgba(0,212,255,.06);}
+.robot-sel-item .rs-name{font-weight:700;font-size:13px;}
+.robot-sel-item .rs-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
+/* Robot dropdown */
+.robot-dropdown{position:relative;width:100%;}
+.robot-dropdown-btn{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:'Exo 2',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:border-color .2s;}
+.robot-dropdown-btn:hover,.robot-dropdown-btn.open{border-color:var(--accent);background:rgba(0,212,255,.05);}
+.robot-dropdown-btn .rdb-name{flex:1;text-align:left;}
+.robot-dropdown-btn .rdb-arrow{font-size:10px;color:var(--dim);transition:transform .2s;}
+.robot-dropdown-btn.open .rdb-arrow{transform:rotate(180deg);}
+.robot-dropdown-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-radius:8px;z-index:100;overflow:hidden;box-shadow:0 8px 32px rgba(0,0,0,.6);}
+.robot-dropdown-menu.open{display:block;}
+.robot-dropdown-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;}
+.robot-dropdown-item:last-child{border-bottom:none;}
+.robot-dropdown-item:hover{background:rgba(0,212,255,.08);}
+.robot-dropdown-item.active{background:rgba(0,212,255,.12);border-left:2px solid var(--accent);}
+.robot-dropdown-item.manual-mode{border-top:1px solid var(--border);background:rgba(255,184,0,.04);}
+.robot-dropdown-item.manual-mode:hover{background:rgba(255,184,0,.1);}
+.rdi-name{font-weight:700;font-size:12px;}
+.rdi-meta{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
+/* Manual mode fields */
+.manual-fields{display:none;flex-direction:column;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.manual-fields.active{display:flex;}
+
+/* Account bar */
+.acc-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;}
+.acc-info{display:flex;gap:20px;flex-wrap:wrap;align-items:center;}
+.acc-field{display:flex;flex-direction:column;gap:2px;}
+.acc-field-label{font-size:9px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
+.acc-field-val{font-size:15px;font-weight:700;}
+
+/* Boleta */
+.boleta{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
+.boleta-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+.boleta-mini{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px;}
+.boleta-stat{background:var(--surface2);border-radius:8px;padding:10px 12px;}
+.boleta-stat-label{font-size:9px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
+.boleta-stat-val{font-size:17px;font-weight:900;font-family:'Share Tech Mono',monospace;margin-top:3px;}
+.pnl-bar{height:6px;background:var(--surface2);border-radius:3px;margin-top:5px;overflow:hidden;}
+.pnl-fill{height:100%;border-radius:3px;transition:width .4s;}
+
+/* Robot signal */
+.signal-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.signal-main{display:flex;flex-direction:column;gap:4px;}
+.signal-val{font-size:26px;font-weight:900;letter-spacing:2px;font-family:'Share Tech Mono',monospace;}
+.signal-val.aguardando{color:var(--dim);}
+.signal-val.virtual{color:var(--gold);}
+.signal-val.entrar{color:var(--green);animation:glow 1s infinite alternate;}
+.signal-val.perigo{color:var(--red);}
+.signal-val.enviando{color:var(--accent);}
+@keyframes glow{from{text-shadow:0 0 10px rgba(0,255,159,.3);}to{text-shadow:0 0 30px rgba(0,255,159,.7);}}
+
+/* Vdots */
+.vdots{display:flex;gap:6px;flex-wrap:wrap;}
+.vdot{width:14px;height:14px;border-radius:3px;border:2px solid var(--border);transition:all .2s;}
+.vdot.active{background:var(--red);border-color:var(--red);box-shadow:0 0 8px rgba(255,59,107,.5);}
+
+/* Digit stream */
+.digit-stream{display:flex;flex-wrap:wrap;gap:3px;padding:10px;background:var(--bg);border-radius:8px;max-height:120px;overflow-y:auto;}
+.digit-chip{width:26px;height:26px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:'Share Tech Mono',monospace;}
+.digit-chip.win{background:rgba(0,255,159,.15);color:var(--green);}
+.digit-chip.loss{background:rgba(255,59,107,.15);color:var(--red);}
+.digit-chip.neutral{background:var(--surface2);color:var(--dim);}
+/* Virtual cycle chip colors */
+.digit-chip.virt-loss{background:rgba(255,59,107,.25);color:var(--red);border:1px solid rgba(255,59,107,.5);}
+.digit-chip.trigger-win{background:rgba(0,212,255,.25);color:var(--accent);border:2px solid var(--accent);box-shadow:0 0 8px rgba(0,212,255,.4);}
+.digit-chip.trigger-loss{background:rgba(255,59,107,.35);color:var(--red);border:2px solid var(--red);box-shadow:0 0 8px rgba(255,59,107,.4);}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-bottom:14px;}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(5,1fr);}}
+.freq-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 8px;text-align:center;}
+.freq-digit{font-size:18px;font-weight:900;font-family:'Share Tech Mono',monospace;}
+.freq-count{font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:2px;}
+.freq-bar-wrap{height:4px;background:var(--surface2);border-radius:2px;margin-top:4px;overflow:hidden;}
+.freq-bar{height:100%;border-radius:2px;background:var(--accent);transition:width .5s;}
+
+/* Diag grid */
+.diag-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+@media(max-width:900px){.diag-grid{grid-template-columns:repeat(3,1fr);}}
+.diag-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center;}
+.diag-name{font-size:11px;font-weight:700;font-family:'Share Tech Mono',monospace;}
+.diag-pct{font-size:18px;font-weight:900;font-family:'Share Tech Mono',monospace;margin-top:4px;}
+.diag-trend{font-size:9px;margin-top:3px;}
+.diag-exp{font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:1px;}
+
+/* Log */
+.log-area{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;height:140px;overflow-y:auto;font-family:'Share Tech Mono',monospace;font-size:11px;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+/* log inside right panel — no border/radius needed */
+.dash-right-log .log-line{margin-bottom:4px;line-height:1.5;word-break:break-word;}
+.log-line{margin-bottom:3px;line-height:1.4;}
+.log-line.info{color:var(--dim);}
+.log-line.success{color:var(--green);}
+.log-line.warning{color:var(--gold);}
+.log-line.error{color:var(--red);}
+
+/* Progress */
+.progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:8px 0;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .3s;}
+
+/* OU Table */
+.ou-table{width:100%;border-collapse:collapse;}
+/* Martingale reference table */
+.mart-ref-table{width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;}
+.mart-ref-table th{font-size:9px;letter-spacing:1.5px;color:var(--dim);padding:6px 8px;text-align:center;border-bottom:1px solid var(--border);background:var(--surface2);position:sticky;top:0;}
+.mart-ref-table th.strat-col{text-align:left;min-width:70px;}
+.mart-ref-table td{font-size:11px;padding:5px 8px;border-bottom:1px solid rgba(13,58,92,.2);text-align:center;transition:background .15s;}
+.mart-ref-table td.strat-cell{text-align:left;font-weight:700;}
+.mart-ref-table tr:hover td{background:rgba(0,212,255,.04);}
+.mart-ref-table tr.active-strat td{background:rgba(0,212,255,.08);}
+.mart-ref-table tr.active-strat td.strat-cell{color:var(--accent);}
+.mart-ref-table .profit{color:var(--green);}
+.mart-ref-table .net{color:var(--gold);font-size:10px;}
+.mart-ref-table .net.neg{color:var(--red);}
+.mart-ref-section{max-height:340px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.ou-table th{font-size:10px;letter-spacing:2px;color:var(--dim);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);font-family:'Share Tech Mono',monospace;}
+.ou-table td{font-size:12px;padding:7px 10px;border-bottom:1px solid rgba(13,58,92,.3);font-family:'Share Tech Mono',monospace;}
+.ou-table tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;}
+.badge-green{background:rgba(0,255,159,.15);color:var(--green);}
+.badge-red{background:rgba(255,59,107,.15);color:var(--red);}
+.badge-gold{background:rgba(255,184,0,.15);color:var(--gold);}
+
+/* Stop alert overlay */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(2,11,20,.96);z-index:9999;display:flex;align-items:center;justify-content:center;}
+.overlay-box{background:#041020;border-radius:16px;padding:40px;max-width:480px;width:90%;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 1: LOGIN
+════════════════════════════════════════════ -->
+<div id="screenLogin" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div id="loginLogoWrap" style="margin-bottom:8px;">
+        <img id="loginLogoImg" style="display:none;" class="brand-logo-img">
+        <div id="loginLogoEmoji" style="font-size:48px;">⚡</div>
+      </div>
+      <h1 id="loginBrandName">DERIV ROBO SYSTEM</h1>
+      <p id="loginBrandSlogan">PAINEL DE OPERAÇÕES AUTOMATIZADAS</p>
+      <div id="loginBrandWelcome" style="font-size:11px;color:var(--gold);margin-top:6px;display:none;"></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="login-tabs">
+      <button class="login-tab active" id="tabAdmin" onclick="switchLoginTab('admin')">🛠️ ADMINISTRADOR</button>
+      <button class="login-tab" id="tabTrader" onclick="switchLoginTab('trader')">📊 TRADER / DERIV</button>
+    </div>
+
+    <!-- ADMIN LOGIN -->
+    <div id="panelAdminLogin">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="field">
+          <label>Usuário</label>
+          <input type="text" id="adminUser" placeholder="admin" autocomplete="username">
+        </div>
+        <div class="field">
+          <label>Senha</label>
+          <input type="password" id="adminPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginAdmin()">
+        </div>
+        <button class="btn btn-primary" onclick="loginAdmin()" style="margin-top:4px;">🔐 ENTRAR COMO ADMIN</button>
+        <div id="adminLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+      </div>
+    </div>
+
+    <!-- DERIV OAUTH LOGIN -->
+    <div id="panelTraderLogin" style="display:none;">
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- OAuth Button — primary method -->
+        <button class="btn btn-primary" onclick="loginWithDeriv()"
+          style="display:flex;align-items:center;justify-content:center;gap:12px;padding:14px;font-size:14px;letter-spacing:1px;">
+          <img src="https://deriv.com/static/images/header/deriv-logo.svg"
+            style="height:22px;filter:brightness(0) invert(1);"
+            onerror="this.style.display='none'">
+          <span>🔐 ENTRAR COM DERIV</span>
+        </button>
+
+        <!-- OAuth status -->
+        <div id="oauthStatus" style="display:none;text-align:center;padding:12px;border-radius:8px;
+          background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);">
+          <div style="font-size:12px;color:var(--accent);" id="oauthStatusMsg">Aguardando autorização...</div>
+        </div>
+
+        <!-- Divider -->
+        <div style="display:flex;align-items:center;gap:10px;margin:4px 0;">
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <span style="font-size:10px;color:var(--dim);letter-spacing:1px;">OU TOKEN MANUAL</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+        </div>
+
+        <!-- Manual token fallback -->
+        <details style="cursor:pointer;">
+          <summary style="font-size:11px;color:var(--dim);letter-spacing:1px;list-style:none;display:flex;align-items:center;gap:6px;">
+            <span>🔑 Usar token manualmente</span>
+          </summary>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+            <div class="field" style="margin:0;">
+              <label>Login ID</label>
+              <input type="text" id="derivLoginId" placeholder="Ex: VRTC1659209">
+            </div>
+            <div class="field" style="margin:0;">
+              <label>API Token (Read + Trade)</label>
+              <input type="password" id="derivToken" placeholder="Cole seu token aqui" oninput="showTokenHint(this)">
+              <span id="tokenHint" style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;display:block;"></span>
+            </div>
+            <div class="field" style="margin:0;">
+              <label>App ID</label>
+              <input type="text" id="derivAppId" placeholder="Ex: 1089" value="1089">
+            </div>
+            <div class="field" style="margin:0;">
+              <label>Tipo de Conta</label>
+              <select id="derivAccType">
+                <option value="demo">📊 Demo (Virtual)</option>
+                <option value="real">💰 Real</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="loginTrader()" style="margin-top:4px;">▶ ENTRAR E OPERAR</button>
+          </div>
+        </details>
+
+        <div id="traderLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+
+        <div style="font-size:10px;color:var(--dim);text-align:center;line-height:1.6;">
+          Ao entrar, você autoriza este sistema a realizar operações<br>em seu nome na plataforma Deriv.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     SCREEN 2: ADMIN PANEL
+════════════════════════════════════════════ -->
+<div id="screenAdmin" class="screen">
+  <!-- TOP NAV -->
+  <div class="topnav">
+    <div class="topnav-brand" id="adminTopnavBrand">⚡ DERIV ROBO SYSTEM · ADMIN</div>
+    <div class="topnav-user" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="nav-pill active" id="adminTabBtnRobots" onclick="showAdminTab('robots')">🤖 Robôs</button>
+      <button class="nav-pill" id="adminTabBtnAdmins" onclick="showAdminTab('admins')">👥 Admins</button>
+      <button class="nav-pill" id="adminTabBtnBrand" onclick="showAdminTab('brand')">🎨 Marca</button>
+      <span style="font-size:12px;color:var(--dim);" id="adminNavUser"></span>
+      <button class="btn btn-gold btn-sm" onclick="goToDashboard()">📊 Trocar Conta</button>
+      <button class="btn btn-danger btn-sm" onclick="logoutAll()">⏏ Sair</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ROBOTS TAB -->
+    <div id="adminTabRobots">
+      <div class="admin-grid">
+
+        <!-- LEFT: Robot List -->
+        <div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h2 style="font-size:16px;font-weight:900;letter-spacing:1px;">🤖 Robôs Criados</h2>
+            <button class="btn btn-success btn-sm" onclick="openRobotForm()">+ Novo Robô</button>
+          </div>
+          <div class="robot-list" id="robotList">
+            <div style="color:var(--dim);font-size:13px;text-align:center;padding:40px;">
+              Nenhum robô criado ainda. Clique em "+ Novo Robô".
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Robot Form -->
+        <div class="card" id="robotFormCard">
+          <div style="font-size:13px;font-weight:900;letter-spacing:1px;margin-bottom:16px;" id="robotFormTitle">➕ NOVO ROBÔ</div>
+
+          <div class="form-section">IDENTIFICAÇÃO</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="field">
+              <label>Nome do Robô</label>
+              <input type="text" id="rfName" placeholder="Ex: Over 3 Conservador">
+            </div>
+            <div class="field">
+              <label>Descrição (opcional)</label>
+              <input type="text" id="rfDesc" placeholder="Ex: Estratégia para baixo risco">
+            </div>
+          </div>
+
+          <div class="form-section">ESTRATÉGIA</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="field">
+                <label>Estratégia</label>
+                <select id="rfStrategy">
+                  <option value="over0">Over 0 (1–9) · 90%</option>
+                  <option value="over1">Over 1 (2–9) · 80%</option>
+                  <option value="over2">Over 2 (3–9) · 70%</option>
+                  <option value="over3" selected>Over 3 (4–9) · 60%</option>
+                  <option value="over4">Over 4 (5–9) · 50%</option>
+                  <option value="over5">Over 5 (6–9) · 40%</option>
+                  <option value="over6">Over 6 (7–9) · 30%</option>
+                  <option value="over7">Over 7 (8–9) · 20%</option>
+                  <option value="over8">Over 8 (só 9) · 10%</option>
+                  <option value="under1">Under 1 (só 0) · 10%</option>
+                  <option value="under2">Under 2 (0–1) · 20%</option>
+                  <option value="under3">Under 3 (0–2) · 30%</option>
+                  <option value="under4">Under 4 (0–3) · 40%</option>
+                  <option value="under5">Under 5 (0–4) · 50%</option>
+                  <option value="under6">Under 6 (0–5) · 60%</option>
+                  <option value="under7">Under 7 (0–6) · 70%</option>
+                  <option value="under8">Under 8 (0–7) · 80%</option>
+                  <option value="under9">Under 9 (0–8) · 90%</option>
+                </select>
+            </div>
+            <div class="field">
+              <label>Losses Virtuais para Ativar</label>
+              <select id="rfVirtual">
+                <option value="2">2 losses</option>
+                <option value="3">3 losses</option>
+                <option value="4">4 losses</option>
+                <option value="5" selected>5 losses</option>
+                <option value="6">6 losses</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-section">MARTINGALE</div>
+          <div class="form-grid-3" style="gap:12px;">
+            <div class="field">
+              <label>Entrada Base ($)</label>
+              <input type="number" id="rfEntry" value="0.35" min="0.35" step="0.05">
+            </div>
+            <div class="field">
+              <label>Fator Martingale</label>
+              <input type="number" id="rfFactor" value="2.8" min="1.1" max="5" step="0.1">
+            </div>
+            <div class="field">
+              <label>Níveis Máx.</label>
+              <input type="number" id="rfLevels" value="5" min="1" max="8" step="1">
+            </div>
+          </div>
+
+          <!-- Martingale preview -->
+          <div style="background:var(--surface2);border-radius:8px;padding:12px;margin-top:14px;" id="martPreview"></div>
+
+          <div style="display:flex;gap:10px;margin-top:16px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="saveRobot()">💾 SALVAR ROBÔ</button>
+            <button class="btn btn-danger btn-sm" onclick="cancelRobotForm()">Cancelar</button>
+          </div>
+          <div id="robotFormErr" style="color:var(--red);font-size:12px;margin-top:8px;display:none;"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ADMINS TAB -->
+    <div id="adminTabAdmins" style="display:none;">
+      <div style="max-width:600px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="font-size:16px;font-weight:900;">👥 Administradores</h2>
+          <button class="btn btn-success btn-sm" onclick="openAdminForm()">+ Novo Admin</button>
+        </div>
+        <div id="adminList" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+        <div class="card" id="adminFormCard" style="display:none;margin-top:16px;">
+          <div style="font-size:13px;font-weight:900;margin-bottom:14px;">➕ NOVO ADMINISTRADOR</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="field"><label>Usuário</label><input type="text" id="afUser" placeholder="nome_usuario"></div>
+            <div class="field"><label>Senha</label><input type="password" id="afPass" placeholder="••••••••"></div>
+            <div class="field"><label>Confirmar Senha</label><input type="password" id="afPass2" placeholder="••••••••"></div>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-primary btn-sm" onclick="saveAdmin()">Salvar</button>
+              <button class="btn btn-danger btn-sm" onclick="document.getElementById('adminFormCard').style.display='none'">Cancelar</button>
+            </div>
+            <div id="adminFormErr" style="color:var(--red);font-size:12px;display:none;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- BRAND TAB -->
+    <div id="adminTabBrand" style="display:none;">
+      <div style="max-width:700px;">
+        <h2 style="font-size:16px;font-weight:900;margin-bottom:20px;">🎨 Personalização da Marca</h2>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:16px;">🏷️ IDENTIDADE</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="field" style="grid-column:1/-1;">
+              <label>Nome do Sistema</label>
+              <input type="text" id="brandName" placeholder="Ex: ALPHA TRADER SYSTEM" maxlength="40">
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <label>Slogan / Subtítulo</label>
+              <input type="text" id="brandSlogan" placeholder="Ex: OPERAÇÕES AUTOMATIZADAS DE ALTA PERFORMANCE" maxlength="60">
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <label>Ícone / Emoji da Marca</label>
+              <input type="text" id="brandIcon" placeholder="Ex: 🚀 ou ⚡ ou 💎" maxlength="4"
+                style="font-size:24px;width:80px;text-align:center;">
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:16px;">🖼️ LOGOTIPO</div>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div id="brandLogoPreview" style="width:80px;height:80px;border-radius:12px;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:32px;background:var(--surface2);">
+              <span id="brandLogoEmoji">⚡</span>
+              <img id="brandLogoImg" style="display:none;width:100%;height:100%;object-fit:contain;border-radius:10px;">
+            </div>
+            <div style="flex:1;">
+              <div class="field" style="margin-bottom:8px;">
+                <label>URL da imagem (PNG/JPG/SVG)</label>
+                <input type="text" id="brandLogoUrl" placeholder="https://..." oninput="previewLogo()">
+              </div>
+              <div style="font-size:10px;color:var(--dim);">Cole a URL de uma imagem hospedada (Imgur, Google Drive público, etc)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:16px;">🎨 CORES</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="field">
+              <label>Cor de Destaque (Accent)</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="color" id="brandAccent" value="#00d4ff" style="width:48px;height:36px;border:none;background:none;cursor:pointer;padding:0;">
+                <input type="text" id="brandAccentHex" value="#00d4ff" maxlength="7" style="width:90px;font-family:'Share Tech Mono',monospace;"
+                  oninput="syncColor('brandAccent','brandAccentHex')">
+                <div id="brandAccentPreview" class="color-preview" style="background:#00d4ff;"></div>
+              </div>
+            </div>
+            <div class="field">
+              <label>Cor Secundária (Gold)</label>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="color" id="brandGold" value="#ffb800" style="width:48px;height:36px;border:none;background:none;cursor:pointer;padding:0;">
+                <input type="text" id="brandGoldHex" value="#ffb800" maxlength="7" style="width:90px;font-family:'Share Tech Mono',monospace;"
+                  oninput="syncColor('brandGold','brandGoldHex')">
+                <div id="brandGoldPreview" class="color-preview" style="background:#ffb800;"></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <div style="font-size:10px;color:var(--dim);margin-bottom:8px;">Presets rápidos:</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-sm" style="background:#00d4ff22;border:1px solid #00d4ff;color:#00d4ff;" onclick="applyPreset('#00d4ff','#ffb800')">⚡ Padrão</button>
+              <button class="btn btn-sm" style="background:#7c3aed22;border:1px solid #7c3aed;color:#a78bfa;" onclick="applyPreset('#a78bfa','#f59e0b')">💜 Roxo</button>
+              <button class="btn btn-sm" style="background:#059669;border:1px solid #10b981;color:#10b981;" onclick="applyPreset('#10b981','#f59e0b')">💚 Verde</button>
+              <button class="btn btn-sm" style="background:#dc262622;border:1px solid #ef4444;color:#ef4444;" onclick="applyPreset('#ef4444','#f97316')">🔴 Vermelho</button>
+              <button class="btn btn-sm" style="background:#0ea5e922;border:1px solid #0ea5e9;color:#0ea5e9;" onclick="applyPreset('#0ea5e9','#06b6d4')">🔵 Azul</button>
+              <button class="btn btn-sm" style="background:#f59e0b22;border:1px solid #f59e0b;color:#f59e0b;" onclick="applyPreset('#f59e0b','#ef4444')">🟡 Ouro</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:16px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);margin-bottom:16px;">📞 CONTATO & SUPORTE</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="field">
+              <label>WhatsApp de Suporte</label>
+              <input type="text" id="brandWhatsapp" placeholder="Ex: +55 11 99999-9999">
+            </div>
+            <div class="field">
+              <label>Telegram</label>
+              <input type="text" id="brandTelegram" placeholder="Ex: @suaempresa">
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <label>Site / Link de Vendas</label>
+              <input type="text" id="brandWebsite" placeholder="https://seusite.com">
+            </div>
+            <div class="field" style="grid-column:1/-1;">
+              <label>Mensagem de boas-vindas (exibida no login)</label>
+              <textarea id="brandWelcome" rows="2" placeholder="Ex: Bem-vindo ao sistema mais avançado de trading automatizado!"
+                style="resize:vertical;font-family:'Share Tech Mono',monospace;font-size:12px;"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;">
+          <button class="btn btn-primary" onclick="saveBrand()" style="flex:1;">💾 SALVAR E APLICAR MARCA</button>
+          <button class="btn btn-sm" onclick="resetBrand()" style="color:var(--dim);border:1px solid var(--border);">↺ Restaurar Padrão</button>
+        </div>
+        <div id="brandSaveMsg" style="display:none;text-align:center;padding:10px;color:var(--green);font-size:12px;margin-top:8px;"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /screenAdmin -->
+
+<!-- ════════════════════════════════════════════
+     SCREEN 3: DASHBOARD (TRADER)
+════════════════════════════════════════════ -->
+<div id="screenDashboard" class="screen">
+  <!-- Ping alert banner -->
+  <div id="pingAlert">
+    <div style="font-size:18px;margin-bottom:4px;">⚠️ PING ALTO — INSTABILIDADE</div>
+    <div id="pingAlertMsg" style="font-size:12px;color:#c8e6f5;"></div>
+    <div style="font-size:10px;color:var(--dim);margin-top:6px;">Operação pode ser pulada para evitar entrada em momento ruim</div>
+  </div>
+
+  <div class="topnav">
+    <div class="topnav-brand" id="dashTopnavBrand">⚡ DERIV ROBO SYSTEM</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <!-- Ping indicator -->
+      <div class="ping-box" id="pingBox">
+        <div class="ping-dot" id="pingDot"></div>
+        <div>
+          <div class="ping-val" id="pingVal">—</div>
+          <div class="ping-label">PING (ms)</div>
+        </div>
+      </div>
+      <span id="dashNavUser" style="font-size:12px;color:var(--dim);"></span>
+      <button class="nav-pill" onclick="showScreen('screenAdmin')" id="btnAdminNav" style="display:none;">🛠️ Admin</button>
+      <button class="btn btn-danger btn-sm" onclick="logoutAll()">⏏ Sair</button>
+    </div>
+  </div>
+
+  <!-- ACCOUNT BAR (top strip) -->
+  <div class="acc-bar" id="accBar" style="display:none;border-radius:0;border-left:none;border-right:none;border-top:none;">
+    <div class="acc-info">
+      <div class="acc-field">
+        <span class="acc-field-label">CONTA</span>
+        <span class="acc-field-val mono" id="accLoginIdD" style="color:var(--accent);">—</span>
+      </div>
+      <div class="acc-field">
+        <span class="acc-field-label">TIPO</span>
+        <span class="acc-field-val" id="accTypeD">—</span>
+      </div>
+      <div class="acc-field">
+        <span class="acc-field-label">SALDO</span>
+        <span class="acc-field-val mono" id="accBalanceD" style="color:var(--green);">—</span>
+      </div>
+      <div class="acc-field">
+        <span class="acc-field-label">MERCADO</span>
+        <span class="acc-field-val mono" id="accMarketD" style="color:var(--text);">—</span>
+      </div>
+      <div class="acc-field">
+        <span class="acc-field-label">ESTRATÉGIA</span>
+        <span class="acc-field-val mono" id="accStratD" style="color:var(--gold);">—</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div id="autoTradeIndicator" style="width:10px;height:10px;border-radius:50%;background:var(--dim);"></div>
+      <span id="autoTradeLabel" style="font-size:11px;font-family:'Share Tech Mono',monospace;color:var(--dim);">ROBÔ PARADO</span>
+    </div>
+  </div>
+
+  <div class="dash-wrapper">
+    <!-- ═══ LEFT PANEL ═══ -->
+    <div class="dash-left">
+
+        <!-- ── BOLETA DE OPERAÇÃO ── -->
+        <div class="card">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--gold);font-family:'Share Tech Mono',monospace;margin-bottom:14px;">💼 BOLETA DE OPERAÇÃO</div>
+
+          <!-- Robot dropdown selector -->
+          <div class="field" style="margin-bottom:12px;">
+            <label>Robô / Modo</label>
+            <div class="robot-dropdown" id="robotDropdown">
+              <button class="robot-dropdown-btn" id="robotDropdownBtn" onclick="toggleRobotDropdown()">
+                <span class="rdb-name" id="robotDropdownLabel">⚡ Selecione um robô...</span>
+                <span class="rdb-arrow">▼</span>
+              </button>
+              <div class="robot-dropdown-menu" id="robotDropdownMenu">
+                <!-- populated by renderRobotSelectorList() -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Manual mode fields (shown only when manual selected) -->
+          <div class="manual-fields" id="manualFields">
+            <div class="form-grid-2" style="gap:10px;">
+              <div class="field">
+                <label>Estratégia</label>
+                <select id="manualStrategy" onchange="applyBoleta()">
+                  <option value="over0">Over 0 · 90%</option>
+                  <option value="over1">Over 1 · 80%</option>
+                  <option value="over2">Over 2 · 70%</option>
+                  <option value="over3" selected>Over 3 · 60%</option>
+                  <option value="over4">Over 4 · 50%</option>
+                  <option value="over5">Over 5 · 40%</option>
+                  <option value="over6">Over 6 · 30%</option>
+                  <option value="over7">Over 7 · 20%</option>
+                  <option value="over8">Over 8 · 10%</option>
+                  <option value="under1">Under 1 · 10%</option>
+                  <option value="under2">Under 2 · 20%</option>
+                  <option value="under3">Under 3 · 30%</option>
+                  <option value="under4">Under 4 · 40%</option>
+                  <option value="under5">Under 5 · 50%</option>
+                  <option value="under6">Under 6 · 60%</option>
+                  <option value="under7">Under 7 · 70%</option>
+                  <option value="under8">Under 8 · 80%</option>
+                  <option value="under9">Under 9 · 90%</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Losses Virtuais</label>
+                <select id="manualVirtual" onchange="applyBoleta();updateVdots();">
+                  <option value="2">2 losses</option>
+                  <option value="3">3 losses</option>
+                  <option value="4">4 losses</option>
+                  <option value="5" selected>5 losses</option>
+                  <option value="6">6 losses</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Fator Martingale</label>
+                <input type="number" id="manualFactor" value="2.8" min="1.1" max="5" step="0.1" oninput="applyBoleta()">
+              </div>
+              <div class="field">
+                <label>Níveis Máx.</label>
+                <input type="number" id="manualLevels" value="5" min="1" max="8" step="1" oninput="applyBoleta()">
+              </div>
+            </div>
+          </div>
+
+          <!-- Common boleta fields -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;margin-top:4px;">
+            <div class="field">
+              <label>Mercado</label>
+              <select id="boletaMarket" onchange="applyBoleta()">
+                <option value="R_100">Volatility 100</option>
+                <option value="R_10">Volatility 10</option>
+                <option value="R_25">Volatility 25</option>
+                <option value="R_50">Volatility 50</option>
+                <option value="R_75">Volatility 75</option>
+                <option value="1HZ100V">Vol 100 (1s)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Entrada Base ($)</label>
+              <input type="number" id="boletaEntry" value="0.35" min="0.35" step="0.05" oninput="applyBoleta()">
+            </div>
+            <div class="field">
+              <label>Stop Gain ($)</label>
+              <input type="number" id="boletaSG" value="20" min="0.50" step="0.50" oninput="applyBoleta()">
+            </div>
+            <div class="field">
+              <label>Stop Loss ($)</label>
+              <input type="number" id="boletaSL" value="30" min="0.50" step="0.50" oninput="applyBoleta()">
+            </div>
+          </div>
+
+          <!-- Martingale table -->
+          <div id="boletaMartTable" style="background:var(--surface2);border-radius:8px;padding:10px;margin-bottom:12px;min-height:40px;">
+            <div style="font-size:9px;letter-spacing:2px;color:var(--dim);font-family:Share Tech Mono,monospace;margin-bottom:6px;">TABELA MARTINGALE</div>
+            <div id="martTableCells" style="display:flex;gap:5px;flex-wrap:wrap;"></div>
+            <div id="martExposure" style="font-size:10px;color:var(--red);font-family:Share Tech Mono,monospace;margin-top:6px;"></div>
+          </div>
+
+          <!-- Controls inside boleta -->
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">
+            <button class="btn btn-primary" id="connectBtn" onclick="connectDash()">▶ CONECTAR</button>
+            <button class="btn" id="tradeToggleBtn" onclick="toggleAutoTrade()" style="background:rgba(0,255,159,.1);color:var(--green);border:1px solid rgba(0,255,159,.4);font-weight:700;">🤖 INICIAR ROBÔ</button>
+          </div>
+
+          <!-- Progress -->
+          <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;">
+              <span>HISTÓRICO COLETADO</span>
+              <span id="progressText">0 dígitos</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:100%;"></div></div>
+          </div>
+
+          <!-- PnL stats -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+            <div class="boleta-stat">
+              <div class="boleta-stat-label">NÍVEL MART.</div>
+              <div class="boleta-stat-val" id="bLevel" style="color:var(--gold);">—</div>
+            </div>
+            <div class="boleta-stat">
+              <div class="boleta-stat-label">STATUS SESSÃO</div>
+              <div class="boleta-stat-val" id="bStatus" style="font-size:13px;color:var(--dim);">AGUARDANDO</div>
+            </div>
+          </div>
+          <div class="boleta-stat">
+            <div class="boleta-stat-label">SESSÃO P&L</div>
+            <div class="boleta-stat-val" id="bPnl" style="color:var(--green);">$0.00</div>
+            <div class="pnl-bar"><div class="pnl-fill" id="pnlFill" style="width:0%;background:var(--green);"></div></div>
+          </div>
+        </div>
+    </div><!-- /dash-left -->
+
+    <!-- ═══ CENTER PANEL ═══ -->
+    <div class="dash-center">
+        <!-- Signal box -->
+        <div class="signal-box">
+          <div class="signal-main">
+            <span style="font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;">🤖 SINAL DO ROBÔ</span>
+            <span class="signal-val aguardando" id="robotSignal">AGUARDANDO CONEXÃO</span>
+            <span style="font-size:11px;color:var(--dim);" id="signalDesc">Conecte para iniciar</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <span style="font-size:9px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;">LOSSES VIRTUAIS</span>
+            <div class="vdots" id="vdots"></div>
+            <span class="mono" style="font-size:10px;color:var(--dim);" id="vdotCount">0 / 5</span>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:9px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;">MARTINGALE</div>
+            <div style="font-size:26px;font-weight:900;font-family:'Share Tech Mono',monospace;color:var(--gold);" id="mLevel">—</div>
+            <div style="font-size:13px;font-family:'Share Tech Mono',monospace;color:var(--accent);" id="mEntry">$—</div>
+            <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;" id="mAccum">Acum: $—</div>
+          </div>
+        </div>
+
+        <!-- Last digit + stream -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+            <div style="width:64px;height:64px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;font-family:'Share Tech Mono',monospace;" id="lastDigitDisplay">—</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;" id="lastDigitResult">—</div>
+              <div style="font-size:11px;color:var(--dim);" id="lastDigitStrat">—</div>
+              <div style="font-size:11px;color:var(--dim);margin-top:4px;" id="totalDigits">0 dígitos</div>
+            </div>
+          </div>
+          <div class="digit-stream" id="digitStream"></div>
+        </div>
+
+        <!-- Stats by digit -->
+        <div class="stats-grid" id="freqGrid"></div>
+
+        <!-- Over/Under Table -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:12px;">📊 TABELA OVER/UNDER</div>
+          <table class="ou-table" id="ouTable"><thead><tr><th>OPERAÇÃO</th><th>DÍGITOS</th><th>WIN RATE</th><th>STATUS</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <!-- Martingale Reference Table -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:10px;">📈 POTENCIAL MARTINGALE — OVER 0 a 8 · 5 NÍVEIS</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+            <div class="field" style="margin:0;flex:1;min-width:90px;">
+              <label>Entrada ($)</label>
+              <input type="number" id="martRefEntry" value="0.35" min="0.01" step="0.05"
+                oninput="updateMartRefTable()"
+                style="padding:6px 8px;font-size:13px;">
+            </div>
+            <div class="field" style="margin:0;flex:1;min-width:90px;">
+              <label>Fator Mart.</label>
+              <input type="number" id="martRefFactor" value="2.8" min="1.1" max="10" step="0.1"
+                oninput="updateMartRefTable()"
+                style="padding:6px 8px;font-size:13px;">
+            </div>
+            <div class="field" style="margin:0;flex:1;min-width:90px;">
+              <label>Níveis</label>
+              <select id="martRefLevels" onchange="updateMartRefTable()" style="padding:6px 8px;font-size:13px;">
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5" selected>5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8">8</option>
+              </select>
+            </div>
+            <button onclick="syncMartRefFromBoleta()" title="Sincronizar com boleta"
+              style="background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:6px;color:var(--accent);font-size:11px;padding:6px 10px;cursor:pointer;font-family:'Share Tech Mono',monospace;letter-spacing:1px;white-space:nowrap;margin-top:14px;">
+              ⟳ BOLETA
+            </button>
+          </div>
+          <div class="mart-ref-section">
+            <table class="mart-ref-table" id="martRefTable">
+              <thead>
+                <tr>
+                  <th class="strat-col">ESTRATÉGIA</th>
+                  <th>PAYOUT</th>
+                  <th>N1</th>
+                  <th>N2</th>
+                  <th>N3</th>
+                  <th>N4</th>
+                  <th>N5</th>
+                </tr>
+              </thead>
+              <tbody id="martRefBody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:9px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:8px;line-height:1.6;">
+            🟢 Lucro bruto por nível &nbsp;·&nbsp; 🟡 Lucro líquido (descontando acumulado) &nbsp;·&nbsp; 🔴 Prejuízo líquido
+          </div>
+        </div>
+
+        <!-- Diagnostics -->
+        <div class="card" style="margin-bottom:14px;">
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:12px;">🔬 DIAGNÓSTICO PREDITIVO</div>
+          <div class="diag-grid" id="diagGrid"></div>
+        </div>
+
+    </div><!-- /dash-center -->
+
+    <!-- ═══ RIGHT PANEL — LOG ═══ -->
+    <div class="dash-right">
+      <div class="dash-right-header">
+        <span>📋 LOG DO SISTEMA</span>
+        <button onclick="document.getElementById('logArea').innerHTML=''" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);font-size:9px;padding:2px 7px;cursor:pointer;letter-spacing:1px;">LIMPAR</button>
+      </div>
+      <div class="dash-right-log" id="logArea"></div>
+    </div><!-- /dash-right -->
+
+  </div><!-- /dash-wrapper -->
+</div><!-- /screenDashboard -->
+
+<!-- OAuth waiting overlay -->
+<div id="oauthOverlay">
+  <div class="oauth-modal">
+    <div style="font-size:32px;margin-bottom:12px;">⚡</div>
+    <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:8px;" id="oauthModalTitle">AUTORIZANDO...</div>
+    <div class="oauth-spinner"></div>
+    <div style="font-size:12px;color:var(--dim);margin-top:12px;" id="oauthModalMsg">Aguardando autorização na janela da Deriv</div>
+    <button onclick="cancelOAuth()" style="margin-top:20px;background:none;border:1px solid var(--border);color:var(--dim);border-radius:8px;padding:8px 20px;cursor:pointer;font-size:12px;">Cancelar</button>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════
+// STORAGE — persistent robots & admins
+// ════════════════════════════════════════
+function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function load(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
+
+// Default admin
+let admins = load('drv_admins', [{ user: 'admin', pass: btoa('admin123') }]);
+const DEFAULT_ROBOTS = [
+  {
+    "id": "robot_gladiador",
+    "name": "GLADIADOR",
+    "desc": "Over 3 equilibrado. 60% win rate. Fator 2.8 calculado — lucro garantido em todos os 4 níveis. Entrada após 3 losses virtuais. Ideal para operação diária.",
+    "strategy": "over3",
+    "virtualLosses": 3,
+    "entry": 0.35,
+    "factor": 2.8,
+    "levels": 4,
+    "running": true,
+    "createdAt": 1700000001000
+  },
+  {
+    "id": "robot_sniper",
+    "name": "SNIPER",
+    "desc": "Over 5 seletivo. Payout ~123%. Fator 1.8 — cada nível garante ~$0.40 líquido. Aguarda 5 losses virtuais. Menor exposição, alta seletividade.",
+    "strategy": "over5",
+    "virtualLosses": 5,
+    "entry": 0.35,
+    "factor": 1.8,
+    "levels": 5,
+    "running": true,
+    "createdAt": 1700000002000
+  },
+  {
+    "id": "robot_titan",
+    "name": "TITAN",
+    "desc": "Over 4 ativo. 50% win rate. Fator 2.2 garante lucro crescente por nível. 2 losses virtuais = alta frequência de entradas.",
+    "strategy": "over4",
+    "virtualLosses": 2,
+    "entry": 0.35,
+    "factor": 2.2,
+    "levels": 5,
+    "running": true,
+    "createdAt": 1700000003000
+  },
+  {
+    "id": "robot_conservador",
+    "name": "CONSERVADOR",
+    "desc": "Over 2 — 70% win rate mas payout 22%. Fator 5.5 necessário para cobrir perdas em 3 níveis. Exposição sobe rapidamente — use com cautela.",
+    "strategy": "over2",
+    "virtualLosses": 4,
+    "entry": 0.35,
+    "factor": 5.5,
+    "levels": 3,
+    "running": true,
+    "createdAt": 1700000004000
+  },
+  {
+    "id": "robot_cacador",
+    "name": "CAÇADOR",
+    "desc": "Under 4 contrarian. Payout ~150%. Fator 1.6 — lucro líquido positivo em todos os 5 níveis. Complementa estratégias Over.",
+    "strategy": "under4",
+    "virtualLosses": 4,
+    "entry": 0.35,
+    "factor": 1.6,
+    "levels": 5,
+    "running": true,
+    "createdAt": 1700000005000
+  },
+  {
+    "id": "robot_equilibrio",
+    "name": "EQUILÍBRIO",
+    "desc": "Over 3 seguro. Apenas 3 níveis. Fator 2.7 garante lucro mínimo em cada nível. Para iniciantes ou preservação de capital.",
+    "strategy": "over3",
+    "virtualLosses": 4,
+    "entry": 0.35,
+    "factor": 2.7,
+    "levels": 3,
+    "running": true,
+    "createdAt": 1700000006000
+  },
+  {
+    "id": "robot_agressor",
+    "name": "AGRESSOR",
+    "desc": "Over 6 alto retorno. Payout 240%. Fator 1.3 — lucro líquido $0.84 no N1 até $0.23 no N5. Aguarda 6 losses virtuais.",
+    "strategy": "over6",
+    "virtualLosses": 6,
+    "entry": 0.35,
+    "factor": 1.3,
+    "levels": 5,
+    "running": true,
+    "createdAt": 1700000007000
+  },
+  {
+    "id": "robot_surfista",
+    "name": "SURFISTA",
+    "desc": "Under 5 simétrico. Fator 2.2 igual ao TITAN. Alternativa Under para diversificar direção de entrada.",
+    "strategy": "under5",
+    "virtualLosses": 3,
+    "entry": 0.35,
+    "factor": 2.2,
+    "levels": 5,
+    "running": true,
+    "createdAt": 1700000008000
+  }
+];
+let robots = load('drv_robots', null);
+// Always sync default robots — update factor/levels on existing pre-built ones, preserve user-created
+{
+  const stored = robots || [];
+  const prebuiltIds = DEFAULT_ROBOTS.map(function(r){ return r.id; });
+  const userRobots = stored.filter(function(r){ return !prebuiltIds.includes(r.id); });
+  const merged = DEFAULT_ROBOTS.map(function(def){
+    const existing = stored.find(function(r){ return r.id === def.id; });
+    if(existing){ const copy = Object.assign({}, def); copy.running = existing.running; return copy; }
+    return Object.assign({}, def);
+  });
+  robots = merged.concat(userRobots);
+  store('drv_robots', robots);
+}
+let currentUser = null; // { user, isAdmin }
+let editingRobotId = null;
+let selectedRobot = null;
+
+// ════════════════════════════════════════
+// SCREENS
+// ════════════════════════════════════════
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════
+// LOGIN
+// ════════════════════════════════════════
+function switchLoginTab(tab){
+  document.getElementById('panelAdminLogin').style.display = tab === 'admin' ? 'block' : 'none';
+  document.getElementById('panelTraderLogin').style.display = tab === 'trader' ? 'block' : 'none';
+  document.getElementById('tabAdmin').classList.toggle('active', tab === 'admin');
+  document.getElementById('tabTrader').classList.toggle('active', tab === 'trader');
+}
+
+// ════════════════════════════════════════
+// DERIV OAUTH
+// ════════════════════════════════════════
+// How it works:
+// 1. Open Deriv OAuth URL in popup window
+// 2. Deriv redirects back to this page with ?token1=...&acct1=...
+// 3. We detect the redirect via popup URL polling OR via URL params on load
+// 4. Extract tokens and auto-login
+
+const DERIV_APP_ID = '1089'; // Replace with your registered App ID for production
+const DERIV_OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=pt&brand=deriv`;
+
+let oauthPopup = null;
+let oauthPollTimer = null;
+
+function loginWithDeriv(){
+  // Check if we already have tokens in URL (redirect flow)
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('token1')){
+    handleOAuthCallback(params);
+    return;
+  }
+
+  // Open popup
+  const w=600, h=700;
+  const left=(screen.width-w)/2, top=(screen.height-h)/2;
+  oauthPopup = window.open(
+    DERIV_OAUTH_URL,
+    'DerivAuth',
+    `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes`
+  );
+
+  if(!oauthPopup || oauthPopup.closed){
+    // Popup blocked — fallback to redirect
+    showOAuthStatus('⚠️ Popup bloqueado. Redirecionando...');
+    setTimeout(()=>{ window.location.href = DERIV_OAUTH_URL + '&redirect_uri=' + encodeURIComponent(window.location.href); }, 1000);
+    return;
+  }
+
+  // Show overlay
+  document.getElementById('oauthOverlay').classList.add('show');
+  document.getElementById('oauthModalMsg').textContent = 'Complete o login na janela da Deriv que abriu';
+
+  // Poll popup URL for callback
+  oauthPollTimer = setInterval(()=>{
+    try{
+      if(!oauthPopup || oauthPopup.closed){
+        clearInterval(oauthPollTimer);
+        document.getElementById('oauthOverlay').classList.remove('show');
+        return;
+      }
+      const popupUrl = oauthPopup.location.href;
+      if(popupUrl && popupUrl.includes('token1=')){
+        clearInterval(oauthPollTimer);
+        const popupParams = new URLSearchParams(new URL(popupUrl).search);
+        oauthPopup.close();
+        oauthPopup = null;
+        handleOAuthCallback(popupParams);
+      }
+    }catch(e){
+      // Cross-origin — popup is on deriv.com, can't read URL yet (normal)
+    }
+  }, 500);
+}
+
+function handleOAuthCallback(params){
+  document.getElementById('oauthOverlay').classList.remove('show');
+  clearInterval(oauthPollTimer);
+
+  // Deriv returns: acct1=VRTC..., token1=..., cur1=USD, acct2=CR..., token2=..., cur2=USD
+  const accounts = [];
+  let i = 1;
+  while(params.get('acct'+i)){
+    accounts.push({
+      loginid:  params.get('acct'+i),
+      token:    params.get('token'+i),
+      currency: params.get('cur'+i) || 'USD',
+      isVirtual: params.get('acct'+i).startsWith('VR') || params.get('acct'+i).startsWith('VRTC')
+    });
+    i++;
+  }
+
+  if(!accounts.length){
+    showOAuthError('Nenhuma conta encontrada na resposta da Deriv.');
+    return;
+  }
+
+  // Clean URL (remove tokens from address bar)
+  window.history.replaceState({}, document.title, window.location.pathname);
+
+  // If multiple accounts — let user pick
+  if(accounts.length > 1){
+    showAccountPicker(accounts);
+  } else {
+    finishOAuthLogin(accounts[0]);
+  }
+}
+
+function showAccountPicker(accounts){
+  const overlay = document.getElementById('oauthOverlay');
+  overlay.classList.add('show');
+  document.getElementById('oauthModalTitle').textContent = 'SELECIONE A CONTA';
+  document.getElementById('oauthModalMsg').textContent = '';
+  document.querySelector('.oauth-spinner').style.display='none';
+
+  const modal = document.querySelector('.oauth-modal');
+  // Remove existing picker if any
+  const old = modal.querySelector('.account-picker');
+  if(old) old.remove();
+
+  const picker = document.createElement('div');
+  picker.className = 'account-picker';
+  picker.style.cssText='display:flex;flex-direction:column;gap:8px;margin-top:12px;';
+  accounts.forEach(acc=>{
+    const badge = acc.isVirtual ? '📊 DEMO' : '💰 REAL';
+    const color = acc.isVirtual ? 'var(--accent)' : 'var(--gold)';
+    const btn = document.createElement('button');
+    btn.style.cssText=`background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;color:var(--text);font-family:'Share Tech Mono',monospace;`;
+    btn.innerHTML=`<span style="font-weight:700;">${acc.loginid}</span><span style="color:${color};font-size:11px;">${badge} · ${acc.currency}</span>`;
+    btn.onmouseover=()=>btn.style.borderColor='var(--accent)';
+    btn.onmouseout=()=>btn.style.borderColor='var(--border)';
+    btn.onclick=()=>{ overlay.classList.remove('show'); document.querySelector('.oauth-spinner').style.display='block'; finishOAuthLogin(acc); };
+    picker.appendChild(btn);
+  });
+
+  modal.appendChild(picker);
+}
+
+function finishOAuthLogin(acc){
+  document.getElementById('oauthOverlay').classList.remove('show');
+
+  const appId = document.getElementById('derivAppId')?.value.trim() || DERIV_APP_ID;
+  currentUser = { user: acc.loginid, isAdmin: false };
+  derivAccount = {
+    loginid:   acc.loginid,
+    token:     acc.token,
+    appId:     appId,
+    accType:   acc.isVirtual ? 'demo' : 'real',
+    isVirtual: acc.isVirtual,
+    currency:  acc.currency
+  };
+
+  document.getElementById('dashNavUser').textContent = '📊 ' + acc.loginid;
+  document.getElementById('btnAdminNav').style.display = 'none';
+  renderRobotSelectorList();
+  showScreen('screenDashboard');
+  log('✅ Login OAuth Deriv: ' + acc.loginid + ' (' + (acc.isVirtual?'DEMO':'REAL') + ') | ' + acc.currency, 'success');
+}
+
+function cancelOAuth(){
+  clearInterval(oauthPollTimer);
+  if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
+  oauthPopup = null;
+  document.getElementById('oauthOverlay').classList.remove('show');
+}
+
+function showOAuthStatus(msg){
+  const el = document.getElementById('oauthStatus');
+  const msgEl = document.getElementById('oauthStatusMsg');
+  if(el) el.style.display='block';
+  if(msgEl) msgEl.textContent = msg;
+}
+
+function showOAuthError(msg){
+  const err = document.getElementById('traderLoginErr');
+  if(err){ err.textContent=msg; err.style.display='block'; }
+}
+
+// On page load — check if this is an OAuth redirect (redirect flow fallback)
+(function checkOAuthOnLoad(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('token1') && params.get('acct1')){
+    // Switch to trader tab and process
+    setTimeout(()=>{
+      switchLoginTab('trader');
+      handleOAuthCallback(params);
+    }, 300);
+  }
+})();
+
+function showTokenHint(input){
+  const val = input.value.replace(/[^a-zA-Z0-9\-_]/g,'');
+  const hint = document.getElementById('tokenHint');
+  if(!val.length){ hint.textContent=''; return; }
+  if(val.length < 15){ hint.textContent=`⚠️ ${val.length} chars — parece incompleto`; hint.style.color='var(--red)'; }
+  else { hint.textContent=`✅ ${val.length} chars — OK`; hint.style.color='var(--green)'; }
+}
+
+function loginAdmin(){
+  const u = document.getElementById('adminUser').value.trim();
+  const p = document.getElementById('adminPass').value;
+  const err = document.getElementById('adminLoginErr');
+  const found = admins.find(a => a.user === u && a.pass === btoa(p));
+  if(!found){ err.textContent='Usuário ou senha incorretos.'; err.style.display='block'; return; }
+  err.style.display='none';
+  currentUser = { user: u, isAdmin: true };
+  document.getElementById('adminNavUser').textContent = '👤 ' + u;
+  document.getElementById('dashNavUser').textContent = '👤 ' + u;
+  document.getElementById('btnAdminNav').style.display = 'inline-block';
+  renderRobotList();
+  renderAdminList();
+  showScreen('screenAdmin');
+}
+
+function loginTrader(){
+  const loginId = document.getElementById('derivLoginId').value.trim().toUpperCase();
+  const token = document.getElementById('derivToken').value.replace(/[^a-zA-Z0-9\-_]/g,'').trim();
+  const accType = document.getElementById('derivAccType').value;
+  const appId = document.getElementById('derivAppId').value.trim();
+  const err = document.getElementById('traderLoginErr');
+
+  if(!loginId){ err.textContent='Informe o Login ID.'; err.style.display='block'; return; }
+  if(token.length < 10){ err.textContent='Token inválido ou incompleto.'; err.style.display='block'; return; }
+  if(!appId){ err.textContent='Informe o App ID.'; err.style.display='block'; return; }
+  err.style.display='none';
+
+  currentUser = { user: loginId, isAdmin: false };
+  // Create a temporary "manual" account for trader
+  derivAccount = { loginid: loginId, token, appId, accType, isVirtual: accType === 'demo' };
+  document.getElementById('dashNavUser').textContent = '📊 ' + loginId;
+  document.getElementById('btnAdminNav').style.display = 'none';
+  renderRobotSelectorList();
+  showScreen('screenDashboard');
+  log('✅ Login como trader: ' + loginId + ' (' + accType.toUpperCase() + ')', 'success');
+}
+
+function safeEl(id){ return document.getElementById(id); }
+function safeSet(id, prop, val){ const el=safeEl(id); if(el) el[prop]=val; }
+function safeCss(id, css){ const el=safeEl(id); if(el) el.style.cssText=css; }
+
+function logoutAll(){
+  // Hard close WebSocket
+  stopPing();
+  if(ws){
+    ws.onclose=null; ws.onerror=null; ws.onmessage=null; ws.onopen=null;
+    ws.close(); ws=null;
+  }
+  currentUser = null; derivAccount = null; selectedRobot = null;
+  digits=[]; freqMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+  try{ resetSessionState(); }catch(e){}
+  // Reset dashboard UI safely (may not exist if coming from admin screen)
+  safeSet('accBar','style','display:none');
+  safeSet('digitStream','innerHTML','');
+  safeSet('logArea','innerHTML','');
+  safeSet('robotDropdownLabel','textContent','⚡ Selecione um robô...');
+  const lblEl=safeEl('robotDropdownLabel'); if(lblEl) lblEl.style.color='';
+  try{ setSignal('aguardando','AGUARDANDO CONEXÃO','Conecte para iniciar'); }catch(e){}
+  try{ resetConnectBtn(); }catch(e){}
+  safeSet('tradeToggleBtn','textContent','🤖 INICIAR ROBÔ');
+  safeCss('tradeToggleBtn','background:rgba(0,255,159,.1);color:var(--green);border:1px solid rgba(0,255,159,.4);font-weight:700;');
+  safeCss('autoTradeIndicator','width:10px;height:10px;border-radius:50%;background:var(--dim);');
+  safeSet('autoTradeLabel','textContent','ROBÔ PARADO');
+  safeCss('autoTradeLabel','color:var(--dim)');
+  safeSet('adminNavUser','textContent','');
+  safeCss('btnAdminNav','display:none');
+  // Clear login inputs
+  safeSet('adminUser','value',''); safeSet('adminPass','value','');
+  safeSet('derivLoginId','value',''); safeSet('derivToken','value','');
+  safeSet('adminLoginErr','style','display:none');
+  safeSet('traderLoginErr','style','display:none');
+  showScreen('screenLogin');
+}
+
+// ════════════════════════════════════════
+// ADMIN — ROBOTS CRUD
+// ════════════════════════════════════════
+function goToDashboard(){
+  // Go to dashboard screen keeping the admin session active
+  renderRobotSelectorList();
+  showScreen('screenDashboard');
+  document.getElementById('btnAdminNav').style.display='inline-block';
+  log('🔄 Trocado para tela de operação.','info');
+}
+
+// ════════════════════════════════════════
+// BRAND SYSTEM
+// ════════════════════════════════════════
+const BRAND_DEFAULTS = {
+  name: 'DERIV ROBO SYSTEM',
+  slogan: 'PAINEL DE OPERAÇÕES AUTOMATIZADAS',
+  icon: '⚡',
+  logoUrl: '',
+  accent: '#00d4ff',
+  gold: '#ffb800',
+  whatsapp: '',
+  telegram: '',
+  website: '',
+  welcome: ''
+};
+
+let brandConfig = Object.assign({}, BRAND_DEFAULTS, load('drv_brand', {}));
+
+function applyBrand(){
+  const b = brandConfig;
+  // CSS variables
+  document.documentElement.style.setProperty('--accent', b.accent);
+  document.documentElement.style.setProperty('--gold', b.gold);
+  // Login screen
+  const nameEl = document.getElementById('loginBrandName');
+  const sloganEl = document.getElementById('loginBrandSlogan');
+  const emojiEl = document.getElementById('loginLogoEmoji');
+  const imgEl = document.getElementById('loginLogoImg');
+  const welcomeEl = document.getElementById('loginBrandWelcome');
+  if(nameEl) nameEl.textContent = b.name;
+  if(sloganEl) sloganEl.textContent = b.slogan;
+  if(emojiEl){ emojiEl.textContent = b.icon; emojiEl.style.display = b.logoUrl ? 'none' : 'block'; }
+  if(imgEl){ imgEl.src = b.logoUrl || ''; imgEl.style.display = b.logoUrl ? 'block' : 'none'; }
+  if(welcomeEl){ welcomeEl.textContent = b.welcome; welcomeEl.style.display = b.welcome ? 'block' : 'none'; }
+  // Topnav
+  const adminBrand = document.getElementById('adminTopnavBrand');
+  const dashBrand = document.getElementById('dashTopnavBrand');
+  if(adminBrand) adminBrand.textContent = b.icon + ' ' + b.name + ' · ADMIN';
+  if(dashBrand) dashBrand.textContent = b.icon + ' ' + b.name;
+  // Page title
+  document.title = b.name;
+}
+
+function loadBrandForm(){
+  const b = brandConfig;
+  const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+  set('brandName', b.name);
+  set('brandSlogan', b.slogan);
+  set('brandIcon', b.icon);
+  set('brandLogoUrl', b.logoUrl);
+  set('brandAccent', b.accent);
+  set('brandAccentHex', b.accent);
+  set('brandGold', b.gold);
+  set('brandGoldHex', b.gold);
+  set('brandWhatsapp', b.whatsapp);
+  set('brandTelegram', b.telegram);
+  set('brandWebsite', b.website);
+  set('brandWelcome', b.welcome);
+  // Previews
+  const ap = document.getElementById('brandAccentPreview');
+  const gp = document.getElementById('brandGoldPreview');
+  if(ap) ap.style.background = b.accent;
+  if(gp) gp.style.background = b.gold;
+  const emojiEl = document.getElementById('brandLogoEmoji');
+  if(emojiEl) emojiEl.textContent = b.icon || '⚡';
+  previewLogo();
+}
+
+function saveBrand(){
+  brandConfig = {
+    name:     (document.getElementById('brandName')?.value.trim()   || BRAND_DEFAULTS.name).toUpperCase(),
+    slogan:   (document.getElementById('brandSlogan')?.value.trim() || BRAND_DEFAULTS.slogan).toUpperCase(),
+    icon:     document.getElementById('brandIcon')?.value.trim()    || BRAND_DEFAULTS.icon,
+    logoUrl:  document.getElementById('brandLogoUrl')?.value.trim() || '',
+    accent:   document.getElementById('brandAccentHex')?.value.trim() || BRAND_DEFAULTS.accent,
+    gold:     document.getElementById('brandGoldHex')?.value.trim()   || BRAND_DEFAULTS.gold,
+    whatsapp: document.getElementById('brandWhatsapp')?.value.trim()  || '',
+    telegram: document.getElementById('brandTelegram')?.value.trim()  || '',
+    website:  document.getElementById('brandWebsite')?.value.trim()   || '',
+    welcome:  document.getElementById('brandWelcome')?.value.trim()   || '',
+  };
+  store('drv_brand', brandConfig);
+  applyBrand();
+  const msg = document.getElementById('brandSaveMsg');
+  if(msg){ msg.textContent='✅ Marca aplicada com sucesso!'; msg.style.display='block'; setTimeout(()=>msg.style.display='none', 3000); }
+}
+
+function resetBrand(){
+  if(!confirm('Restaurar configurações padrão da marca?')) return;
+  brandConfig = Object.assign({}, BRAND_DEFAULTS);
+  store('drv_brand', brandConfig);
+  loadBrandForm();
+  applyBrand();
+}
+
+function previewLogo(){
+  const url = document.getElementById('brandLogoUrl')?.value.trim();
+  const imgEl = document.getElementById('brandLogoImg');
+  const emojiEl = document.getElementById('brandLogoEmoji');
+  if(!imgEl || !emojiEl) return;
+  if(url){ imgEl.src=url; imgEl.style.display='block'; emojiEl.style.display='none'; }
+  else { imgEl.style.display='none'; emojiEl.style.display='block'; }
+}
+
+function syncColor(pickerIdOrHex, hexId){
+  // called from hex input
+  const hex = document.getElementById(hexId)?.value;
+  if(!hex || hex.length < 4) return;
+  const picker = document.getElementById(pickerIdOrHex);
+  if(picker && /^#[0-9a-fA-F]{6}$/.test(hex)) picker.value = hex;
+  // update preview
+  const previewId = pickerIdOrHex + 'Preview';
+  const preview = document.getElementById(previewId);
+  if(preview) preview.style.background = hex;
+  // live CSS update
+  if(pickerIdOrHex === 'brandAccent') document.documentElement.style.setProperty('--accent', hex);
+  if(pickerIdOrHex === 'brandGold') document.documentElement.style.setProperty('--gold', hex);
+}
+
+function applyPreset(accent, gold){
+  const aEl = document.getElementById('brandAccent');
+  const aHex = document.getElementById('brandAccentHex');
+  const gEl = document.getElementById('brandGold');
+  const gHex = document.getElementById('brandGoldHex');
+  if(aEl) aEl.value = accent;
+  if(aHex) aHex.value = accent;
+  if(gEl) gEl.value = gold;
+  if(gHex) gHex.value = gold;
+  const ap = document.getElementById('brandAccentPreview');
+  const gp = document.getElementById('brandGoldPreview');
+  if(ap) ap.style.background = accent;
+  if(gp) gp.style.background = gold;
+  document.documentElement.style.setProperty('--accent', accent);
+  document.documentElement.style.setProperty('--gold', gold);
+}
+
+// Sync color picker → hex input
+document.addEventListener('input', function(e){
+  if(e.target.id === 'brandAccent'){
+    const hex = e.target.value;
+    const hEl = document.getElementById('brandAccentHex');
+    if(hEl) hEl.value = hex;
+    const p = document.getElementById('brandAccentPreview');
+    if(p) p.style.background = hex;
+    document.documentElement.style.setProperty('--accent', hex);
+  }
+  if(e.target.id === 'brandGold'){
+    const hex = e.target.value;
+    const hEl = document.getElementById('brandGoldHex');
+    if(hEl) hEl.value = hex;
+    const p = document.getElementById('brandGoldPreview');
+    if(p) p.style.background = hex;
+    document.documentElement.style.setProperty('--gold', hex);
+  }
+  if(e.target.id === 'brandIcon'){
+    const emojiEl = document.getElementById('brandLogoEmoji');
+    if(emojiEl) emojiEl.textContent = e.target.value || '⚡';
+  }
+});
+
+function showAdminTab(tab){
+  document.getElementById('adminTabRobots').style.display = tab==='robots'?'block':'none';
+  document.getElementById('adminTabAdmins').style.display = tab==='admins'?'block':'none';
+  document.getElementById('adminTabBtnRobots')?.classList.toggle('active', tab==='robots');
+  document.getElementById('adminTabBtnAdmins')?.classList.toggle('active', tab==='admins');
+}
+
+['rfEntry','rfFactor','rfLevels'].forEach(id=>{
+  // will attach after DOM ready
+});
+
+function updateMartPreview(){
+  const entry = parseFloat(document.getElementById('rfEntry').value)||0.35;
+  const factor = parseFloat(document.getElementById('rfFactor').value)||2.8;
+  const levels = parseInt(document.getElementById('rfLevels').value)||5;
+  let e=entry, acc=0, html='<div style="font-size:10px;letter-spacing:1px;color:var(--dim);font-family:Share Tech Mono,monospace;margin-bottom:6px;">TABELA MARTINGALE</div><div style="display:flex;gap:6px;flex-wrap:wrap;">';
+  for(let i=1;i<=levels;i++){
+    acc+=e;
+    html+=`<div style="background:var(--bg);border-radius:6px;padding:5px 8px;text-align:center;">
+      <div style="font-size:9px;color:var(--dim);">N${i}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--gold);font-family:Share Tech Mono,monospace;">$${e.toFixed(2)}</div>
+    </div>`;
+    e=e*factor;
+  }
+  html+=`</div><div style="font-size:11px;color:var(--red);font-family:Share Tech Mono,monospace;margin-top:8px;">Exposição máxima: $${acc.toFixed(2)}</div>`;
+  document.getElementById('martPreview').innerHTML=html;
+}
+
+function openRobotForm(id=null){
+  editingRobotId=id;
+  const title=document.getElementById('robotFormTitle');
+  if(id){
+    const r=robots.find(x=>x.id===id);
+    if(!r) return;
+    title.textContent='✏️ EDITAR ROBÔ';
+    document.getElementById('rfName').value=r.name;
+    document.getElementById('rfDesc').value=r.desc||'';
+    document.getElementById('rfStrategy').value=r.strategy;
+    document.getElementById('rfVirtual').value=r.virtualLosses;
+    document.getElementById('rfEntry').value=r.entry;
+    document.getElementById('rfFactor').value=r.factor;
+    document.getElementById('rfLevels').value=r.levels;
+  } else {
+    title.textContent='➕ NOVO ROBÔ';
+    ['rfName','rfDesc'].forEach(i=>document.getElementById(i).value='');
+    document.getElementById('rfStrategy').value='over3';
+  }
+  updateMartPreview();
+  document.getElementById('robotFormErr').style.display='none';
+}
+
+function cancelRobotForm(){ editingRobotId=null; openRobotForm(); }
+
+function saveRobot(){
+  const err=document.getElementById('robotFormErr');
+  const name=document.getElementById('rfName').value.trim();
+
+  if(!name){ err.textContent='Nome é obrigatório.'; err.style.display='block'; return; }
+
+  const robot = {
+    id: editingRobotId || ('r_'+Date.now()),
+    name,
+    desc: document.getElementById('rfDesc').value.trim(),
+    strategy: document.getElementById('rfStrategy').value,
+    virtualLosses: parseInt(document.getElementById('rfVirtual').value),
+    entry: parseFloat(document.getElementById('rfEntry').value),
+    factor: parseFloat(document.getElementById('rfFactor').value),
+    levels: parseInt(document.getElementById('rfLevels').value),
+    running: false,
+    createdAt: editingRobotId ? (robots.find(r=>r.id===editingRobotId)?.createdAt||Date.now()) : Date.now()
+  };
+
+  if(editingRobotId){
+    robots=robots.map(r=>r.id===editingRobotId?robot:r);
+  } else {
+    robots.push(robot);
+  }
+  store('drv_robots', robots);
+  err.style.display='none';
+  editingRobotId=null;
+  renderRobotList();
+  openRobotForm(); // reset form
+}
+
+function deleteRobot(id){
+  if(!confirm('Deletar este robô?')) return;
+  robots=robots.filter(r=>r.id!==id);
+  store('drv_robots', robots);
+  renderRobotList();
+}
+
+function toggleRobotRunning(id){
+  robots=robots.map(r=>r.id===id?{...r,running:!r.running}:r);
+  store('drv_robots', robots);
+  renderRobotList();
+}
+
+function renderRobotList(){
+  const list=document.getElementById('robotList');
+  if(!robots.length){ list.innerHTML='<div style="color:var(--dim);font-size:13px;text-align:center;padding:40px;">Nenhum robô criado ainda.</div>'; return; }
+  list.innerHTML=robots.map(r=>{
+    const stratLabel=r.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2');
+    const accBadge=r.accType==='demo'?'<span class="badge badge-gold">DEMO</span>':'<span class="badge badge-red">REAL</span>';
+    return `<div class="robot-card-item ${r.running?'running':''}">
+      <div class="robot-status-dot ${r.running?'running':''}"></div>
+      <div style="flex:1;min-width:150px;">
+        <div class="robot-name">${r.name}</div>
+        <div class="robot-meta">${stratLabel} · ${r.market} · ${r.loginId} ${accBadge}</div>
+        <div class="robot-meta">Entrada: $${r.entry} · x${r.factor} · ${r.levels} níveis · Virtual: ${r.virtualLosses} losses</div>
+      </div>
+      <div class="robot-actions">
+        <button class="btn btn-sm ${r.running?'btn-danger':'btn-success'}" onclick="toggleRobotRunning('${r.id}')">${r.running?'⏹ Parar':'▶ Ativar'}</button>
+        <button class="btn btn-sm btn-gold" onclick="openRobotForm('${r.id}')">✏️</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteRobot('${r.id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// ADMIN — ADMINS CRUD
+// ════════════════════════════════════════
+function openAdminForm(){ document.getElementById('adminFormCard').style.display='block'; }
+
+function saveAdmin(){
+  const u=document.getElementById('afUser').value.trim();
+  const p=document.getElementById('afPass').value;
+  const p2=document.getElementById('afPass2').value;
+  const err=document.getElementById('adminFormErr');
+  if(!u){ err.textContent='Usuário obrigatório.'; err.style.display='block'; return; }
+  if(p.length<4){ err.textContent='Senha mínima: 4 caracteres.'; err.style.display='block'; return; }
+  if(p!==p2){ err.textContent='Senhas não conferem.'; err.style.display='block'; return; }
+  if(admins.find(a=>a.user===u)){ err.textContent='Usuário já existe.'; err.style.display='block'; return; }
+  admins.push({ user: u, pass: btoa(p) });
+  store('drv_admins', admins);
+  err.style.display='none';
+  document.getElementById('adminFormCard').style.display='none';
+  renderAdminList();
+}
+
+function deleteAdmin(u){
+  if(u===currentUser?.user){ alert('Você não pode deletar seu próprio usuário.'); return; }
+  if(!confirm('Deletar admin "'+u+'"?')) return;
+  admins=admins.filter(a=>a.user!==u);
+  store('drv_admins', admins);
+  renderAdminList();
+}
+
+function renderAdminList(){
+  const list=document.getElementById('adminList');
+  list.innerHTML=admins.map(a=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <span style="font-weight:700;">👤 ${a.user}</span>
+        ${a.user===currentUser?.user?'<span class="badge badge-gold" style="margin-left:8px;">VOCÊ</span>':''}
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${a.user}')" ${a.user===currentUser?.user?'disabled':''}>🗑️ Remover</button>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════
+// DASHBOARD STATE
+// ════════════════════════════════════════
+let ws = null;
+let derivAccount = null; // from trader login or selected robot
+let digits = [];
+let freqMap = {0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+let wins=0, losses=0, currentLossStreak=0, maxLossStreak=0;
+let virtualLossStreak=0, robotActive=false, pendingMartingaleLevel=0;
+let martingaleLevel=0, martingaleEntry=0;
+let robotActivationCount=0;
+let autoTradeEnabled=false, tradeInProgress=false, currentContractId=null, pendingBuyReqId=null;
+let processedContracts=new Set(); // prevent double-processing
+let sessionPnl=0, sessionOps=0, sessionStopped=false;
+let accountBalance=0, accountCurrency='USD';
+let dynamicMartTable=[];
+let connectTimeout=null;
+
+function resetSessionState(){
+  digits=[]; freqMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+  wins=0; losses=0; currentLossStreak=0; maxLossStreak=0;
+  virtualLossStreak=0; robotActive=false; pendingMartingaleLevel=0;
+  martingaleLevel=0; martingaleEntry=0; robotActivationCount=0;
+  autoTradeEnabled=false; tradeInProgress=false; currentContractId=null; cycleState='IDLE'; processedContracts=new Set();
+  sessionPnl=0; sessionOps=0; sessionStopped=false;
+  dynamicMartTable=[];
+}
+
+// ════════════════════════════════════════
+// ROBOT SELECTOR (dashboard)
+// ════════════════════════════════════════
+function renderRobotSelectorList(){
+  const menu=document.getElementById('robotDropdownMenu');
+  if(!menu) return;
+  const toShow = robots; // all robots visible; admin marks active/inactive
+  let html='';
+  toShow.forEach(r=>{
+    const stratLabel=r.strategy.toUpperCase().replace(/([A-Za-z]+)(\d+)/,'$1 $2');
+    const statusBadge=r.running
+      ?'<span style="color:var(--green);font-size:9px;margin-left:4px;">● ATIVO</span>'
+      :'<span style="color:var(--dim);font-size:9px;margin-left:4px;">○ inativo</span>';
+    html+=`<div class="robot-dropdown-item" id="rsel_${r.id}" onclick="selectRobot('${r.id}')"
+      style="${r.running?'':'opacity:0.7'}">
+      <div class="rdi-name">🤖 ${r.name} ${statusBadge}</div>
+      <div class="rdi-meta">${stratLabel} · x${r.factor} · ${r.levels} níveis · ${r.virtualLosses} losses</div>
+    </div>`;
+  });
+  html+=`<div class="robot-dropdown-item manual-mode" onclick="selectManualMode()">
+    <div class="rdi-name" style="color:var(--gold);">✋ MODO MANUAL</div>
+    <div class="rdi-meta" style="color:var(--gold);">Configure a estratégia manualmente</div>
+  </div>`;
+  menu.innerHTML=html||'<div style="padding:12px;color:var(--dim);font-size:12px;text-align:center;">Nenhum robô disponível.</div>';
+}
+
+function toggleRobotDropdown(){
+  const btn=document.getElementById('robotDropdownBtn');
+  const menu=document.getElementById('robotDropdownMenu');
+  if(!menu) return;
+  renderRobotSelectorList();
+  const isOpen=menu.classList.contains('open');
+  if(!isOpen){
+    menu.classList.add('open'); btn.classList.add('open');
+    setTimeout(()=>document.addEventListener('click',closeDropdownOutside,{once:true}),10);
+  } else {
+    menu.classList.remove('open'); btn.classList.remove('open');
+  }
+}
+
+function closeDropdownOutside(e){
+  const dd=document.getElementById('robotDropdown');
+  if(dd&&!dd.contains(e.target)){
+    document.getElementById('robotDropdownMenu')?.classList.remove('open');
+    document.getElementById('robotDropdownBtn')?.classList.remove('open');
+  }
+}
+
+function selectManualMode(){
+  selectedRobot=null;
+  document.getElementById('robotDropdownMenu')?.classList.remove('open');
+  document.getElementById('robotDropdownBtn')?.classList.remove('open');
+  const lbl=document.getElementById('robotDropdownLabel');
+  if(lbl){ lbl.textContent='✋ MODO MANUAL'; lbl.style.color='var(--gold)'; }
+  document.getElementById('manualFields')?.classList.add('active');
+  document.querySelectorAll('.robot-dropdown-item').forEach(el=>el.classList.remove('active'));
+  applyBoleta();
+  log('✋ Modo manual ativado.','info');
+}
+
+function selectRobot(id){
+  selectedRobot=robots.find(r=>r.id===id);
+  if(!selectedRobot) return;
+  // Close dropdown
+  document.getElementById('robotDropdownMenu')?.classList.remove('open');
+  document.getElementById('robotDropdownBtn')?.classList.remove('open');
+  // Update label
+  const lbl=document.getElementById('robotDropdownLabel');
+  if(lbl){ lbl.textContent='🤖 '+selectedRobot.name; lbl.style.color='var(--accent)'; }
+  // Mark active in menu
+  document.querySelectorAll('.robot-dropdown-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('rsel_'+id)?.classList.add('active');
+  // Hide manual fields
+  document.getElementById('manualFields')?.classList.remove('active');
+  // Sync entry from robot config
+  const entryEl=document.getElementById('boletaEntry');
+  if(entryEl){ entryEl.value=selectedRobot.entry; delete entryEl.dataset.manuallyChanged; }
+  buildMartTable();
+  renderMartTable();
+  updateBoletaDisplay();
+  updateVdots();
+  const stratLabel=selectedRobot.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2');
+  log(`🤖 Robô selecionado: ${selectedRobot.name} | ${stratLabel} | ${selectedRobot.virtualLosses} losses virtuais`, 'info');
+}
+
+function buildMartTable(){
+  dynamicMartTable=[];
+  const baseEntry=parseFloat(document.getElementById('boletaEntry')?.value||selectedRobot?.entry||0.35)||0.35;
+  const levels=getMartLevels();
+  const factor=getMartFactor();
+  let e=baseEntry, acc=0;
+  for(let i=1;i<=levels;i++){
+    acc+=e;
+    dynamicMartTable.push({level:i, entry:parseFloat(e.toFixed(2)), accum:parseFloat(acc.toFixed(2))});
+    e=e*factor;
+  }
+}
+
+function applyBoleta(){
+  buildMartTable();
+  renderMartTable();
+  updateVdots();
+  updateMartRefTable();
+  schedulePayout();
+  const market=document.getElementById('boletaMarket')?.value||'R_100';
+  document.getElementById('accMarketD').textContent=market;
+  if(selectedRobot){
+    document.getElementById('accStratD').textContent=selectedRobot.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2');
+  } else {
+    const ms=document.getElementById('manualStrategy')?.value||'over3';
+    document.getElementById('accStratD').textContent=ms.toUpperCase().replace(/([a-z]+)(\d+)/i,'$1 $2');
+  }
+}
+
+function renderMartTable(){
+  const cells=document.getElementById('martTableCells');
+  const exp=document.getElementById('martExposure');
+  if(!cells) return;
+  // Use live payout if available, fallback to static table
+  const stratKey=selectedRobot?.strategy||document.getElementById('manualStrategy')?.value||'over3';
+  const payout=getEffectivePayout(stratKey);
+  const isLivePayout=payoutCache[stratKey]!=null;
+  cells.innerHTML=dynamicMartTable.map(row=>{
+    const grossProfit=row.entry*payout;
+    const profitStr='+$'+grossProfit.toFixed(2);
+    return `
+    <div style="background:var(--bg);border-radius:6px;padding:6px 10px;text-align:center;border:1px solid var(--border);min-width:64px;">
+      <div style="font-size:9px;color:var(--dim);font-family:Share Tech Mono,monospace;">N${row.level}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--gold);font-family:Share Tech Mono,monospace;">$${row.entry.toFixed(2)}</div>
+      <div style="font-size:11px;font-weight:700;color:#00ff9f;font-family:Share Tech Mono,monospace;">${profitStr}</div>
+      <div style="font-size:9px;color:var(--dim);font-family:Share Tech Mono,monospace;">acum $${row.accum.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+  const maxExposure=dynamicMartTable[dynamicMartTable.length-1]?.accum||0;
+  const entryLast=dynamicMartTable[dynamicMartTable.length-1]?.entry||0;
+  const lastProfit='+$'+(entryLast*payout).toFixed(2);
+  const liveTag=isLivePayout?' ●live':' ~est.';
+  exp.textContent=maxExposure>0?`Exposição máxima: $${maxExposure.toFixed(2)} · Lucro N${dynamicMartTable.length}: ${lastProfit}${liveTag}`:'';
+}
+
+function updateBoletaDisplay(){
+  if(!selectedRobot) return;
+  document.getElementById('bLevel').textContent=martingaleLevel||'—';
+  document.getElementById('accMarketD').textContent=document.getElementById('boletaMarket')?.value||'R_100';
+  document.getElementById('accStratD').textContent=selectedRobot.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2');
+  // Sync boleta entry with robot entry if not manually changed
+  const entryEl=document.getElementById('boletaEntry');
+  if(entryEl&&!entryEl.dataset.manuallyChanged) entryEl.value=selectedRobot.entry;
+  renderMartTable();
+}
+
+function updateVdots(){
+  const target=getVirtualLossTarget();
+  const container=document.getElementById('vdots');
+  container.innerHTML='';
+  for(let i=0;i<target;i++){
+    const d=document.createElement('div');
+    d.className='vdot'+(i<virtualLossStreak?' active':'');
+    container.appendChild(d);
+  }
+  document.getElementById('vdotCount').textContent=virtualLossStreak+' / '+target;
+}
+
+// ════════════════════════════════════════
+// SOUND EFFECTS
+// ════════════════════════════════════════
+const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+function playWin(){
+  [0,0.18].forEach((d,i)=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='sine';o.frequency.setValueAtTime(i?1500:1200,audioCtx.currentTime+d);
+    g.gain.setValueAtTime(0,audioCtx.currentTime+d);
+    g.gain.linearRampToValueAtTime(0.4,audioCtx.currentTime+d+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d+0.15);
+    o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+0.15);
+  });
+}
+function playLoss(){
+  const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+  o.connect(g);g.connect(audioCtx.destination);
+  o.type='sawtooth';o.frequency.setValueAtTime(400,audioCtx.currentTime);
+  o.frequency.exponentialRampToValueAtTime(150,audioCtx.currentTime+0.4);
+  g.gain.setValueAtTime(0.3,audioCtx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+0.4);
+  o.start(audioCtx.currentTime);o.stop(audioCtx.currentTime+0.4);
+}
+function playStopGain(){
+  [0,0.12,0.24,0.36].forEach((d,i)=>{
+    const f=[800,1000,1200,1600][i];
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='sine';o.frequency.setValueAtTime(f,audioCtx.currentTime+d);
+    g.gain.setValueAtTime(0.35,audioCtx.currentTime+d);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d+0.2);
+    o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+0.2);
+  });
+}
+function playStopLoss(){
+  [0,0.2,0.4].forEach(d=>{
+    const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+    o.connect(g);g.connect(audioCtx.destination);
+    o.type='square';o.frequency.setValueAtTime(300,audioCtx.currentTime+d);
+    g.gain.setValueAtTime(0.2,audioCtx.currentTime+d);
+    g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d+0.15);
+    o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+0.15);
+  });
+}
+
+// ════════════════════════════════════════
+// STRATEGY CONFIG
+// ════════════════════════════════════════
+// Live payout cache — fetched from Deriv proposal API
+// key: strategyKey, value: multiplier (profit/stake ratio)
+let payoutCache = {};
+let payoutFetchTimer = null;
+let payoutReqMap = {}; // reqId → stratKey mapping
+
+function getStrategyPayout(key){
+  if(!key){
+    if(selectedRobot) key=selectedRobot.strategy;
+    else key=document.getElementById('manualStrategy')?.value||'over3';
+  }
+  return payoutCache[key] || null; // null = not yet fetched, use getEffectivePayout for fallback
+}
+
+// Fetch real payout from Deriv proposal API
+function fetchPayoutFromDeriv(stratKey, stake, market){
+  if(!ws || ws.readyState !== 1) return;
+  const contract = getContractTypeForStrategy(stratKey);
+  const reqId = 'p_' + stratKey + '_' + Date.now(); // string req_id, encodes stratKey
+  payoutReqMap[reqId] = stratKey; // track which strat this request is for
+  const msg = {
+    proposal: 1,
+    amount: parseFloat(stake).toFixed(2),
+    basis: 'stake',
+    contract_type: contract.type,
+    currency: accountCurrency || 'USD',
+    duration: 1,
+    duration_unit: 't',
+    symbol: market || 'R_100',
+    barrier: contract.barrier,
+    req_id: reqId
+  };
+  ws.send(JSON.stringify(msg));
+}
+
+function getContractTypeForStrategy(key){
+  if(!key) key = (selectedRobot?.strategy) || document.getElementById('manualStrategy')?.value || 'over3';
+  const n = parseInt(key.replace(/[^0-9]/g,''));
+  const isOver = key.startsWith('over');
+  return { type: isOver ? 'DIGITOVER' : 'DIGITUNDER', barrier: String(n) };
+}
+
+// Schedule a payout fetch (debounced 600ms) — current strategy only
+function schedulePayout(){
+  clearTimeout(payoutFetchTimer);
+  payoutFetchTimer = setTimeout(()=>{
+    if(!ws || ws.readyState !== 1) return;
+    const stratKey = selectedRobot?.strategy || document.getElementById('manualStrategy')?.value || 'over3';
+    const stake = parseFloat(document.getElementById('boletaEntry')?.value || 0.35);
+    const market = document.getElementById('boletaMarket')?.value || 'R_100';
+    fetchPayoutFromDeriv(stratKey, stake, market);
+  }, 600);
+}
+
+// Fetch payout for ALL 9 Over strategies sequentially (with small delay between each)
+function scheduleAllPayouts(){
+  if(!ws || ws.readyState !== 1) return;
+  const stake = parseFloat(document.getElementById('boletaEntry')?.value || 0.35);
+  const market = document.getElementById('boletaMarket')?.value || 'R_100';
+  const keys = ['over0','over1','over2','over3','over4','over5','over6','over7','over8'];
+  keys.forEach((key, i) => {
+    setTimeout(() => {
+      if(ws && ws.readyState === 1) fetchPayoutFromDeriv(key, stake, market);
+    }, i * 400); // 400ms between each to avoid rate limit
+  });
+}
+
+function getStrategyConfig(key){
+  if(!key){
+    if(selectedRobot) key=selectedRobot.strategy;
+    else key=document.getElementById('manualStrategy')?.value||'over3';
+  }
+  const n=parseInt(key.replace(/[^0-9]/g,''));
+  const isOver=key.startsWith('over');
+  const winDigits=[], lossDigits=[];
+  for(let d=0;d<=9;d++){
+    if(isOver){ (d>n?winDigits:lossDigits).push(d); }
+    else { (d<n?winDigits:lossDigits).push(d); }
+  }
+  const payout=getStrategyPayout(key);
+  return { name:(isOver?'OVER ':'UNDER ')+n, winDigits, lossDigits, payout };
+}
+
+function getVirtualLossTarget(){
+  if(selectedRobot) return selectedRobot.virtualLosses||2;
+  return parseInt(document.getElementById('manualVirtual')?.value||5);
+}
+
+function getMartLevels(){
+  if(selectedRobot) return selectedRobot.levels||5;
+  return parseInt(document.getElementById('manualLevels')?.value||5);
+}
+
+function getMartFactor(){
+  if(selectedRobot) return selectedRobot.factor||2.8;
+  return parseFloat(document.getElementById('manualFactor')?.value||2.8);
+}
+
+function getContractType(){
+  return getContractTypeForStrategy(); // uses selectedRobot or manualStrategy correctly
+}
+
+// ════════════════════════════════════════
+// WEBSOCKET & CONNECT
+// ════════════════════════════════════════
+function connectDash(){
+  if(!derivAccount){ log('❌ Faça login com suas credenciais Deriv primeiro.','error'); return; }
+  if(ws&&(ws.readyState===0||ws.readyState===1)){ log('⚠️ Já conectado.','warning'); return; }
+  if(location.protocol==='file:'){ log('⚠️ Aberto via file:// — use o INICIAR_WINDOWS.bat para funcionar corretamente.','warning'); }
+
+  // Credentials ALWAYS come from derivAccount (robots are strategy-only configs)
+  const creds = derivAccount;
+  const appId = creds?.appId || '1089';
+  const token = creds?.token || null;
+  const market = document.getElementById('boletaMarket')?.value || 'R_100';
+
+  if(!token && !creds){ log('❌ Faça login com suas credenciais Deriv primeiro.','error'); return; }
+
+  // Reset digit state
+  digits=[]; freqMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+  wins=0; losses=0; currentLossStreak=0;
+  document.getElementById('digitStream').innerHTML='';
+  buildMartTable(); updateBoletaDisplay(); updateVdots();
+
+  // Connection state — prevents double auth/subscription
+  let connState = 'CONNECTING'; // CONNECTING → AUTHING → LOADING → LIVE
+
+  document.getElementById('connectBtn').textContent='⏹ ENCERRAR CONEXÃO';
+  document.getElementById('connectBtn').style.cssText='background:rgba(255,59,107,.15);color:var(--red);border:1px solid rgba(255,59,107,.4);font-weight:700;';
+  document.getElementById('connectBtn').setAttribute('onclick','disconnectDash()');
+  const modeLabel = selectedRobot ? `Robô: ${selectedRobot.name}` : 'Modo Manual';
+  log(`🔌 Conectando: ${creds?.loginid||creds?.loginId||'—'} | ${market} | ${modeLabel}`,'info');
+
+  connectTimeout=setTimeout(()=>{
+    log('⏱️ Timeout 10s — sem resposta da Deriv. Verifique App ID, internet e tente novamente.','error');
+    resetConnectBtn(); if(ws) ws.close();
+  },15000);
+
+  try{
+    ws=new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${appId}`);
+  }catch(e){
+    clearTimeout(connectTimeout);
+    log('❌ Erro WebSocket: '+e.message,'error');
+    resetConnectBtn(); return;
+  }
+
+  ws.onopen=()=>{
+    clearTimeout(connectTimeout);
+    log('✅ WebSocket conectado!','success');
+    document.getElementById('connectBtn').textContent='⏹ ENCERRAR CONEXÃO';
+    document.getElementById('connectBtn').style.cssText='background:rgba(255,59,107,.15);color:var(--red);border:1px solid rgba(255,59,107,.4);font-weight:700;';
+    document.getElementById('connectBtn').setAttribute('onclick','disconnectDash()');
+    // Step 1: authorize if we have a token, else go straight to history
+    if(token){
+      connState='AUTHING';
+      log('🔐 Autenticando...','info');
+      ws.send(JSON.stringify({authorize:token}));
+    } else {
+      connState='LOADING';
+      loadHistory(market);
+    }
+    // Start ping AFTER connection (ping is independent, handled separately)
+    startPing();
+  };
+
+  ws.onmessage=(e)=>{
+    let data; try{data=JSON.parse(e.data);}catch{return;}
+
+    // ── Ping/pong (independent of auth flow) ──
+    if(data.msg_type==='ping') handlePong();
+
+    // ── Auth ──
+    if(data.msg_type==='authorize' && data.authorize && connState==='AUTHING'){
+      connState='LOADING';
+      const auth=data.authorize;
+      accountCurrency=auth.currency||'USD';
+      const isVirt=auth.is_virtual===1;
+      document.getElementById('accLoginIdD').textContent=auth.loginid;
+      document.getElementById('accTypeD').textContent=isVirt?'📊 DEMO':'💰 REAL';
+      document.getElementById('accTypeD').style.color=isVirt?'var(--accent)':'var(--gold)';
+      document.getElementById('accBar').style.display='flex';
+      log(`✅ Autenticado: ${auth.loginid} (${isVirt?'DEMO':'REAL'}) | ${auth.currency}`,'success');
+      if(!isVirt) log('🚨 CONTA REAL ATIVA — opere com cuidado!','error');
+      // Subscribe balance ONCE
+      ws.send(JSON.stringify({balance:1,subscribe:1}));
+      // Load history ONCE
+      loadHistory(market);
+    }
+
+    // ── Balance updates ──
+    if(data.msg_type==='balance' && data.balance){
+      accountBalance=parseFloat(data.balance.balance);
+      updateBalanceUI(accountBalance);
+    }
+
+    // ── History loaded → subscribe ticks ONCE ──
+    if(data.msg_type==='history' && data.history && connState==='LOADING'){
+      connState='LIVE';
+      const prices=data.history.prices||[];
+      log(`📦 Carregando ${prices.length} dígitos históricos...`,'info');
+      prices.forEach(p=>{
+        const s=p.toString(), parts=s.split('.');
+        const d=parts.length>1?parseInt(parts[1].slice(-1)):parseInt(s.slice(-1));
+        processDigitSilent(d);
+      });
+      log(`✅ Histórico carregado! ${digits.length} dígitos. Iniciando stream ao vivo...`,'success');
+      updateDiagnostics(); updateOUTable();
+updateMartRefTable(); updateFreqGrid(); updateMartRefTable();
+      updateLastDigit(digits[digits.length-1]??0);
+      // Subscribe ticks ONCE
+      ws.send(JSON.stringify({ticks:market,subscribe:1}));
+      schedulePayout();
+    }
+
+    // ── Live ticks ──
+    if(data.msg_type==='tick' && data.tick && connState==='LIVE'){
+      const s=data.tick.quote.toString(), parts=s.split('.');
+      const d=parts.length>1?parseInt(parts[1].slice(-1)):parseInt(s.slice(-1));
+      processDigit(d);
+    }
+
+    // ── Trade responses ──
+    if(data.msg_type==='buy') handleBuy(data);
+    if(data.msg_type==='proposal') handleProposalResponse(data);
+    if(data.msg_type==='proposal_open_contract') handleContract(data);
+
+    // ── Errors ──
+    if(data.error){
+      const code = data.error.code || '';
+      const msg  = data.error.message || '';
+
+      // 1. Trade buy error — don't kill connection
+      if(data.req_id===pendingBuyReqId){
+        tradeInProgress=false; cycleState='IDLE';
+        log('❌ Erro trade: '+msg,'error'); return;
+      }
+      // 2. Payout proposal error — ignore silently
+      if(data.msg_type==='proposal') return;
+      // 3. AlreadySubscribed — ignore silently
+      if(code==='AlreadySubscribed') return;
+      // 4. MarketIsClosed — warn only
+      if(code==='MarketIsClosed'){
+        log('⚠️ Mercado fechado no momento.','warning'); return;
+      }
+      // 5. All other errors — log with guidance and reset connection
+      clearTimeout(connectTimeout);
+      log(`❌ Erro API: ${msg} (${code})`,'error');
+      if(code==='InvalidAppID')
+        log('💡 App ID inválido. Crie um em: developers.deriv.com → Dashboard → Register App','warning');
+      else if(code==='InvalidToken')
+        log('💡 Token inválido ou expirado. Gere novo em: app.deriv.com/account/api-token (permissões: Read + Trade)','warning');
+      else if(code==='WrongResponse')
+        log('💡 WrongResponse: verifique se o App ID e Token correspondem à mesma conta Deriv.','warning');
+      else if(code==='AuthorizationRequired')
+        log('💡 Autorização necessária. Verifique o token.','warning');
+      else if(code==='RateLimit')
+        log('💡 Muitas requisições. Aguarde alguns segundos e tente novamente.','warning');
+      // Reset and close for fatal errors
+      disconnectDash();
+      resetConnectBtn();
+    }
+  };
+
+  ws.onerror=()=>{
+    clearTimeout(connectTimeout);
+    stopPing();
+    if(location.protocol==='file:') log('🚨 WebSocket bloqueado via file://. Use o INICIAR_WINDOWS.bat (servidor local).','error');
+    else { cycleState='IDLE'; log('❌ Erro de conexão WebSocket.','error'); }
+    resetConnectBtn();
+  };
+
+  ws.onclose=(e)=>{
+    clearTimeout(connectTimeout);
+    stopPing();
+    if(ws){ ws.onmessage=null; ws.onerror=null; }
+    if(cycleState==='TRIGGERED'){ cycleState='IDLE'; tradeInProgress=false; }
+    log(`🔌 Conexão encerrada (${e.code}). Reconecte para operar.`,'warning');
+    resetConnectBtn();
+    if(autoTradeEnabled) disableAutoTrade();
+  };
+}
+
+function resetConnectBtn(){
+  const btn=document.getElementById('connectBtn');
+  btn.textContent='▶ CONECTAR';
+  btn.style.cssText='';
+  btn.className='btn btn-primary';
+  btn.setAttribute('onclick','connectDash()');
+}
+
+function disconnectDash(){
+  if(ws){ ws.onclose=null; ws.onerror=null; ws.onmessage=null; ws.onopen=null; ws.close(); ws=null; }
+  cycleState='IDLE';
+  if(autoTradeEnabled) disableAutoTrade();
+  resetConnectBtn();
+  log('⏹ Conexão encerrada pelo usuário.','warning');
+}
+
+function loadHistory(market){
+  log(`📡 Buscando últimos 5000 dígitos históricos (${market})...`,'info');
+  ws.send(JSON.stringify({ticks_history:market,count:5000,end:'latest',style:'ticks',adjust_start_time:1}));
+}
+
+// ════════════════════════════════════════
+// AUTO-TRADE
+// ════════════════════════════════════════
+function toggleAutoTrade(){
+  autoTradeEnabled=!autoTradeEnabled;
+  const btn=document.getElementById('tradeToggleBtn');
+  const ind=document.getElementById('autoTradeIndicator');
+  const lbl=document.getElementById('autoTradeLabel');
+  if(autoTradeEnabled){
+    btn.textContent='⏹ PARAR ROBÔ';
+    btn.style.cssText='background:rgba(255,59,107,.15);color:var(--red);border:1px solid rgba(255,59,107,.5);font-weight:700;';
+    ind.style.cssText='width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.5s infinite;';
+    lbl.style.color='var(--green)'; lbl.textContent='ROBÔ ATIVO';
+    // Reset cycle and show active monitoring signal
+    cycleState='IDLE'; virtualLossStreak=0; pendingMartingaleLevel=0;
+  window._nextChipIsTrigger=false; window._triggerChip=null;
+    updateVdots();
+    setSignal('virtual','👁️ MONITORANDO','Aguardando '+getVirtualLossTarget()+' losses virtuais para entrar');
+    document.getElementById('bStatus').textContent='OPERANDO';
+    document.getElementById('bStatus').style.color='var(--green)';
+    log('🤖 ROBÔ INICIADO — Operando automaticamente!','success');
+  } else {
+    btn.textContent='🤖 INICIAR ROBÔ';
+    btn.style.cssText='background:rgba(0,255,159,.1);color:var(--green);border:1px solid rgba(0,255,159,.4);font-weight:700;';
+    ind.style.cssText='width:10px;height:10px;border-radius:50%;background:var(--dim);';
+    lbl.style.color='var(--dim)'; lbl.textContent='ROBÔ PARADO';
+    // Reset robot cycle completely when manually disabled
+    cycleState = 'IDLE';
+    virtualLossStreak = 0;
+    pendingMartingaleLevel = 0;
+    robotActive = false;
+    setSignal('aguardando', '⏸ ROBÔ PARADO', 'Clique em INICIAR ROBÔ para operar');
+    log('⏸ Robô parado. Ciclo e streak resetados.','warning');
+  }
+}
+
+function disableAutoTrade(){
+  if(!autoTradeEnabled) return;
+  autoTradeEnabled=false;
+  robotActive=false;
+  cycleState='IDLE';
+  virtualLossStreak=0;
+  const btn=document.getElementById('tradeToggleBtn');
+  btn.textContent='🤖 INICIAR ROBÔ';
+  btn.style.cssText='background:rgba(0,255,159,.1);color:var(--green);border:1px solid rgba(0,255,159,.4);font-weight:700;';
+  document.getElementById('autoTradeIndicator').style.cssText='width:10px;height:10px;border-radius:50%;background:var(--dim);';
+  document.getElementById('autoTradeLabel').style.color='var(--dim)';
+  document.getElementById('autoTradeLabel').textContent='ROBÔ PARADO';
+}
+
+// ════════════════════════════════════════
+// TRADING
+// ════════════════════════════════════════
+function placeTrade(amount){
+  if(!ws||ws.readyState!==1){
+    log('❌ Sem conexão — ciclo liberado.','error');
+    cycleState='IDLE'; return;
+  }
+  if(tradeInProgress){log('⏳ Trade já em andamento — bloqueado.','warning');return;}
+  if(!isPingOkToTrade()){
+    log(`🔴 OPERAÇÃO PULADA — Ping crítico: ${currentPing}ms. Aguarde conexão estável.`,'error');
+    cycleState='IDLE'; virtualLossStreak=0;
+    setSignal('perigo','⚠️ PING CRÍTICO','Operação pulada — aguardando conexão estável');
+    return;
+  }
+  if(cycleState !== 'TRIGGERED'){log('⚠️ Ciclo não ativo — trade cancelado.','warning');return;}
+  if(sessionStopped){
+    cycleState='IDLE';
+    log('🛑 Sessão parada — ciclo liberado.','warning'); return;
+  }
+  const contract=getContractType();
+  const market=selectedRobot?.market||derivAccount?.market||'R_100';
+  pendingBuyReqId=Date.now();
+  tradeInProgress=true;
+  ws.send(JSON.stringify({buy:1,price:parseFloat(amount).toFixed(2),parameters:{
+    contract_type:contract.type,symbol:market,duration:1,duration_unit:'t',
+    basis:'stake',amount:parseFloat(amount).toFixed(2),currency:accountCurrency||'USD',barrier:contract.barrier
+  },req_id:pendingBuyReqId}));
+  log(`📤 Ordem: ${contract.type} barrier ${contract.barrier} — $${parseFloat(amount).toFixed(2)}`,'info');
+  setSignal('enviando','📤 ENVIANDO ORDEM...','Aguardando confirmação da Deriv');
+}
+
+function handleBuy(data){
+  if(data.error){ tradeInProgress=false; cycleState='IDLE'; log('❌ Erro ao comprar: '+data.error.message+' — ciclo liberado.','error'); return; }
+  currentContractId=data.buy.contract_id;
+  log(`✅ Contrato aberto! ID: ${currentContractId} | Pago: $${data.buy.buy_price}`,'success');
+  ws.send(JSON.stringify({proposal_open_contract:1,contract_id:currentContractId,subscribe:1}));
+  setSignal('enviando','⏳ CONTRATO ABERTO','Aguardando resultado...');
+}
+
+function handleProposalResponse(data){
+  if(data.error) return; // ignore proposal errors silently
+  const p = data.proposal;
+  if(!p) return;
+  // Identify which strategy this proposal was for via req_id map
+  const reqId = String(data.req_id || '');
+  // Try map first, then parse from req_id string (format: p_over5_timestamp)
+  let stratKey = payoutReqMap[reqId];
+  if(!stratKey && reqId.startsWith('p_')){
+    const parts = reqId.split('_');
+    if(parts.length >= 3) stratKey = parts[1] + parts[2]; // e.g. 'over' + '5'
+    // actually format is p_{stratKey}_{timestamp} where stratKey has no underscore
+    stratKey = reqId.replace(/^p_/, '').replace(/_\d+$/, '');
+  }
+  if(!stratKey) stratKey = selectedRobot?.strategy || document.getElementById('manualStrategy')?.value || 'over3';
+  delete payoutReqMap[reqId]; // cleanup
+  // Calculate real payout multiplier from API response
+  const stake = parseFloat(p.ask_price || 0);
+  const payout = parseFloat(p.payout || 0);
+  if(stake <= 0 || payout <= 0) return;
+  const multiplier = (payout - stake) / stake;
+  if(multiplier <= 0) return; // sanity check
+  payoutCache[stratKey] = multiplier;
+  // Update payout cell in martRefTable for this specific strategy (no full rebuild)
+  updatePayoutCell(stratKey, multiplier);
+  // Only full-rebuild martingale boleta table if this is the active strategy
+  const activeKey = selectedRobot?.strategy || document.getElementById('manualStrategy')?.value || 'over3';
+  if(stratKey === activeKey) renderMartTable();
+  const label=stratKey.replace(/([a-zA-Z]+)(\d+)/,'$1 $2').toUpperCase();
+  log(`💰 Payout REAL ${label}: ${(multiplier*100).toFixed(1)}% (entrada $${stake.toFixed(2)} → lucro $${(stake*multiplier).toFixed(2)})`, 'success');
+}
+
+function handleContract(data){
+  const c=data.proposal_open_contract; if(!c) return;
+  // Ignore updates from old/stale contracts — only process current one
+  if(currentContractId && c.contract_id !== currentContractId){
+    log(`⚠️ Ignorando contrato antigo: ${c.contract_id}`, 'info');
+    return;
+  }
+  if(c.balance_after) updateBalanceUI(parseFloat(c.balance_after));
+  if(c.is_expired||c.is_sold){
+    // Prevent double-processing same contract result
+    if(processedContracts.has(c.contract_id)){
+      log(`⚠️ Resultado duplicado ignorado: ${c.contract_id}`, 'info');
+      return;
+    }
+    processedContracts.add(c.contract_id);
+    // Keep set small
+    if(processedContracts.size > 20) processedContracts.clear();
+    tradeInProgress=false;
+    const profit=parseFloat(c.profit||0);
+    const isWin=profit>0;
+    const bal=parseFloat(c.balance_after||0);
+    if(isWin){
+      try{playWin();}catch(e){}
+      addPnl(profit);
+      const pnlSign=sessionPnl>=0?'+':'';
+      log(`🏆 GANHOU! +$${profit.toFixed(2)} | Sessão: ${pnlSign}$${sessionPnl.toFixed(2)} | Saldo: $${bal.toFixed(2)}`,'success');
+      // Recolor trigger chip to BLUE (win)
+      if(window._triggerChip){ window._triggerChip.className='digit-chip trigger-win'; window._triggerChip=null; }
+      // WIN → reset everything, back to IDLE for fresh new cycle
+      cycleState = 'IDLE';
+      robotActive = false; virtualLossStreak = 0;
+      // WIN em qualquer nível → volta SEMPRE ao nível 1
+      const wasLevel = martingaleLevel;
+      martingaleLevel = 0; pendingMartingaleLevel = 0;
+      currentContractId = null;
+      if(wasLevel > 1){
+        log(`↩️ Martingale resetado ao nível 1 (ganhou no nível ${wasLevel})`, 'success');
+      }
+      setSignal('aguardando', '✅ GANHOU! Monitorando...', 'Aguardando próximo ciclo de ' + (getVirtualLossTarget()) + ' losses virtuais');
+    } else {
+      try{playLoss();}catch(e){}
+      const lost=Math.abs(profit);
+      addPnl(-lost);
+      martingaleLevel++;
+      const pnlSign=sessionPnl>=0?'+':'';
+      const balMsg=bal<0?` | ⚠️ SALDO NEGATIVO: $${bal.toFixed(2)}`:`| Saldo: $${bal.toFixed(2)}`;
+      log(`💸 PERDEU! -$${lost.toFixed(2)} | Sessão: ${pnlSign}$${sessionPnl.toFixed(2)} ${balMsg}`,'error');
+      // Recolor trigger chip to BRIGHT RED (loss)
+      if(window._triggerChip){ window._triggerChip.className='digit-chip trigger-loss'; window._triggerChip=null; }
+      if(bal<0) log(`🚨 SALDO NEGATIVO: $${bal.toFixed(2)}`,'error');
+      const maxLvl=getMartLevels();
+      if(martingaleLevel>maxLvl){
+        log(`🚨 STOP MARTINGALE! Perdeu no nível máximo (${maxLvl}). Robô encerrado automaticamente.`,'error');
+        cycleState = 'IDLE';
+        robotActive = false; martingaleLevel = 0; virtualLossStreak = 0; pendingMartingaleLevel = 0;
+        // Encerra robô automaticamente — independente do stop loss
+        sessionStopped = true;
+        disableAutoTrade();
+        document.getElementById('bStatus').textContent='STOP MARTINGALE ❌';
+        document.getElementById('bStatus').style.color='var(--red)';
+        setSignal('perigo','🚨 STOP MARTINGALE','Nível máximo atingido — Robô encerrado');
+        try{playStopLoss();}catch(e){}
+        showStopAlert('martingale');
+      } else {
+        // LOSS → store martingale level, go back to IDLE to wait for next virtual cycle
+        pendingMartingaleLevel = martingaleLevel;
+        cycleState = 'IDLE';
+        robotActive = false; virtualLossStreak = 0;
+        const next = dynamicMartTable[martingaleLevel - 1]?.entry || (selectedRobot?.entry || 1);
+        log(`🔄 Voltando ao virtual... Próximo ciclo entrará no nível ${martingaleLevel} ($${parseFloat(next).toFixed(2)})`, 'warning');
+        setSignal('virtual', '🔄 AGUARDANDO CICLO VIRTUAL', 'Esperando ' + (selectedRobot?.virtualLosses||2) + ' losses virtuais → Nível ' + martingaleLevel);
+      }
+    }
+    currentContractId=null;
+    updateBoletaDisplay();
+    updateVdots();
+  }
+}
+
+// ════════════════════════════════════════
+// PNL & STOPS
+// ════════════════════════════════════════
+function addPnl(amount){
+  sessionPnl+=amount; sessionOps++;
+  updatePnlUI();
+  checkStops();
+}
+
+function updatePnlUI(){
+  const el=document.getElementById('bPnl');
+  const bar=document.getElementById('pnlFill');
+  const sign=sessionPnl>=0?'+':'';
+  el.textContent=sign+'$'+sessionPnl.toFixed(2);
+  el.style.color=sessionPnl>=0?'var(--green)':'var(--red)';
+  const sg=parseFloat(document.getElementById('boletaSG')?.value||20);
+  const sl=parseFloat(document.getElementById('boletaSL')?.value||30);
+  const maxV=Math.max(sg,sl,Math.abs(sessionPnl));
+  bar.style.width=Math.min(Math.abs(sessionPnl)/maxV*100,100)+'%';
+  bar.style.background=sessionPnl>=0?'var(--green)':'var(--red)';
+  const statusEl=document.getElementById('bStatus');
+  if(!sessionStopped){
+    statusEl.textContent=sessionOps>0?'OPERANDO':'AGUARDANDO';
+    statusEl.style.color=sessionOps>0?'var(--accent)':'var(--dim)';
+  }
+}
+
+function updateBalanceUI(bal){
+  accountBalance=bal;
+  const el=document.getElementById('accBalanceD');
+  el.textContent=(bal<0?'-$'+Math.abs(bal).toFixed(2):'$'+bal.toFixed(2));
+  el.style.color=bal<0?'var(--red)':'var(--green)';
+}
+
+function checkStops(){
+  if(sessionStopped) return;
+  const sg=parseFloat(document.getElementById('boletaSG')?.value||20);
+  const sl=parseFloat(document.getElementById('boletaSL')?.value||30);
+  if(sessionPnl>=sg){
+    sessionStopped=true; disableAutoTrade();
+    log(`🏆 STOP GAIN! Lucro: $${sessionPnl.toFixed(2)}`,'success');
+    document.getElementById('bStatus').textContent='STOP GAIN ✅';
+    document.getElementById('bStatus').style.color='var(--green)';
+    try{playStopGain();}catch(e){}
+    showStopAlert('gain');
+  } else if(sessionPnl<=-sl){
+    sessionStopped=true; disableAutoTrade();
+    log(`🚨 STOP LOSS! Prejuízo: $${sessionPnl.toFixed(2)}`,'error');
+    document.getElementById('bStatus').textContent='STOP LOSS ❌';
+    document.getElementById('bStatus').style.color='var(--red)';
+    try{playStopLoss();}catch(e){}
+    showStopAlert('loss');
+  }
+}
+
+function showStopAlert(type){
+  const old=document.getElementById('stopAlert'); if(old) old.remove();
+  const isGain=type==='gain';
+  const isMart=type==='martingale';
+  const color=isGain?'#00ff9f':'#ff3b6b', rgba=isGain?'rgba(0,255,159,.3)':'rgba(255,59,107,.3)';
+  const div=document.createElement('div');
+  div.id='stopAlert'; div.className='overlay';
+  div.innerHTML=`<div class="overlay-box" style="border:2px solid ${color};box-shadow:0 0 60px ${rgba};">
+    <div style="font-size:52px;margin-bottom:12px;">${isGain?'🏆':isMart?'💀':'🛑'}</div>
+    <h2 style="color:${color};font-size:20px;letter-spacing:2px;margin-bottom:10px;">${isGain?'STOP GAIN ATINGIDO!':isMart?'STOP MARTINGALE!':'STOP LOSS ATINGIDO!'}</h2>
+    <p style="color:#c8e6f5;font-size:13px;margin-bottom:6px;">${isGain?'Meta de lucro alcançada!':isMart?'Perdeu no nível máximo do Martingale.':'Limite de perda atingido.'}</p>
+    <p style="color:${color};font-size:30px;font-weight:900;font-family:Share Tech Mono,monospace;margin-bottom:8px;">${sessionPnl>=0?'+':''}$${sessionPnl.toFixed(2)}</p>
+    <p style="color:#8aafcc;font-size:13px;margin-bottom:24px;">Deseja continuar operando ou encerrar?</p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <button onclick="continueSession()" style="background:rgba(0,212,255,.15);color:#00d4ff;border:1px solid #00d4ff;border-radius:8px;padding:11px 24px;cursor:pointer;font-size:13px;font-weight:700;">▶ CONTINUAR</button>
+      <button onclick="stopSession()" style="background:${isGain?'rgba(0,255,159,.1)':'rgba(255,59,107,.1)'};color:${color};border:1px solid ${color};border-radius:8px;padding:11px 24px;cursor:pointer;font-size:13px;font-weight:700;">⏹ ENCERRAR</button>
+    </div>
+  </div>`;
+  document.body.appendChild(div);
+}
+
+function continueSession(){
+  document.getElementById('stopAlert')?.remove();
+  sessionStopped=false; sessionPnl=0; sessionOps=0;
+  updatePnlUI();
+  log('▶ Sessão continuada! Contadores resetados.','info');
+}
+
+function stopSession(){
+  document.getElementById('stopAlert')?.remove();
+  sessionStopped=true; disableAutoTrade();
+  log('⏹ Sessão encerrada.','warning');
+}
+
+// ════════════════════════════════════════
+// PROCESS DIGIT
+// ════════════════════════════════════════
+function processDigitSilent(d){
+  digits.push(d); freqMap[d]=(freqMap[d]||0)+1;
+  const cfg=getStrategyConfig();
+  const isWin=cfg.winDigits.includes(d);
+  if(isWin){wins++;currentLossStreak=0;}
+  else{losses++;currentLossStreak++;if(currentLossStreak>maxLossStreak)maxLossStreak=currentLossStreak;}
+}
+
+// ── CYCLE STATES ──────────────────────────────────────────────────────────
+// IDLE       → monitoring virtual losses, counting toward target
+// TRIGGERED  → target reached, trade sent, waiting for result
+// After result → back to IDLE (win: reset mart) or IDLE (loss: pending mart++)
+// One trade per cycle. No re-entry until next virtual cycle completes.
+// ──────────────────────────────────────────────────────────────────────────
+let cycleState = 'IDLE'; // 'IDLE' | 'TRIGGERED'
+
+// ── PING ENGINE ─────────────────────────────────
+let pingInterval = null;
+let pingStartTime = 0;
+let currentPing = 0;
+let pingAlertShown = false;
+const PING_GOOD = 200;   // ms — green
+const PING_WARN = 500;   // ms — yellow
+const PING_BAD  = 1000;  // ms — red, alert + skip trade
+
+function startPing(){
+  stopPing();
+  pingInterval = setInterval(sendPing, 3000); // every 3s
+  sendPing(); // immediate first
+}
+
+function stopPing(){
+  clearInterval(pingInterval);
+  pingInterval = null;
+  pingAlertShown = false;
+  // Reset UI
+  const dot=document.getElementById('pingDot');
+  const box=document.getElementById('pingBox');
+  const val=document.getElementById('pingVal');
+  if(dot){ dot.className='ping-dot'; }
+  if(box){ box.className='ping-box'; }
+  if(val){ val.textContent='—'; }
+  hidePingAlert();
+}
+
+function sendPing(){
+  if(!ws || ws.readyState !== 1) return;
+  pingStartTime = Date.now();
+  try{ ws.send(JSON.stringify({ping:1})); } catch(e){}
+}
+
+function handlePong(){
+  currentPing = Date.now() - pingStartTime;
+  updatePingUI(currentPing);
+}
+
+function updatePingUI(ms){
+  const dot=document.getElementById('pingDot');
+  const box=document.getElementById('pingBox');
+  const val=document.getElementById('pingVal');
+  if(!val) return;
+  val.textContent = ms + ' ms';
+  let cls, boxCls, label;
+  if(ms < PING_GOOD){
+    cls='good'; boxCls='good';
+    val.style.color='var(--green)';
+    label='EXCELENTE';
+  } else if(ms < PING_WARN){
+    cls='warn'; boxCls='warn';
+    val.style.color='var(--gold)';
+    label='ACEITÁVEL';
+  } else {
+    cls='bad'; boxCls='bad';
+    val.style.color='var(--red)';
+    label='ALTO';
+  }
+  if(dot){ dot.className='ping-dot '+cls; }
+  if(box){ box.className='ping-box '+boxCls; box.title='Ping: '+ms+'ms — '+label; }
+  // Alert if bad
+  if(ms >= PING_BAD){
+    showPingAlert(ms);
+  } else {
+    hidePingAlert();
+  }
+}
+
+function showPingAlert(ms){
+  const el=document.getElementById('pingAlert');
+  const msg=document.getElementById('pingAlertMsg');
+  if(!el) return;
+  if(msg) msg.textContent='Ping atual: '+ms+'ms — Latência muito alta para operar com segurança';
+  el.classList.add('show');
+  if(!pingAlertShown){
+    pingAlertShown=true;
+    log('🔴 PING CRÍTICO: '+ms+'ms — Operações podem ser puladas!','error');
+  }
+}
+
+function hidePingAlert(){
+  const el=document.getElementById('pingAlert');
+  if(el) el.classList.remove('show');
+  pingAlertShown=false;
+}
+
+function isPingOkToTrade(){
+  // If no ping measured yet (not connected long), allow
+  if(currentPing === 0) return true;
+  return currentPing < PING_BAD;
+}
+
+function processDigit(d){
+  digits.push(d); freqMap[d]=(freqMap[d]||0)+1;
+  const cfg=getStrategyConfig();
+  const isWin=cfg.winDigits.includes(d);
+  if(isWin){wins++;currentLossStreak=0;}
+  else{losses++;currentLossStreak++;if(currentLossStreak>maxLossStreak)maxLossStreak=currentLossStreak;}
+
+  // Chip class determined inline as robot logic runs (captures state before resets)
+  let pendingChipClass = 'neutral';
+  // If this is the trade digit (first digit after trigger), mark it
+  if(window._nextChipIsTrigger){
+    pendingChipClass = 'pending-trigger';
+    window._nextChipIsTrigger = false;
+  }
+
+  // ── Virtual loss monitoring — only when IDLE (no active trade) ──
+  if(cycleState === 'IDLE' && !sessionStopped && autoTradeEnabled){
+    // A win resets the virtual streak — fresh start
+    if(isWin){
+      pendingChipClass = 'neutral';
+      if(virtualLossStreak > 0){
+        log(`🔁 Streak virtual zerado (dígito ${d} = WIN)`, 'info');
+      }
+      virtualLossStreak = 0;
+    } else {
+      virtualLossStreak++;
+      const target = getVirtualLossTarget();
+      pendingChipClass = 'virt-loss'; // will be overwritten if this is the trigger digit
+      log(`👁️ Loss virtual ${virtualLossStreak}/${target} (dígito ${d})`, 'info');
+
+      if(virtualLossStreak >= target){
+        // ── CYCLE TRIGGERED ─────────────────────────────────────────────
+        cycleState = 'TRIGGERED';
+        robotActivationCount++;
+        buildMartTable();
+
+        if(pendingMartingaleLevel > 0){
+          martingaleLevel = pendingMartingaleLevel;
+          martingaleEntry = dynamicMartTable[martingaleLevel - 1]?.entry || (selectedRobot?.entry || 1);
+          log(`🤖 REATIVADO após ${target} losses virtuais → Nível ${martingaleLevel} — $${parseFloat(martingaleEntry).toFixed(2)}`, 'warning');
+          pendingMartingaleLevel = 0;
+        } else {
+          martingaleLevel = 1;
+          martingaleEntry = dynamicMartTable[0]?.entry || (selectedRobot?.entry || 1);
+          log(`🤖 ROBÔ ATIVADO! ${target} losses virtuais → Nível 1 — $${parseFloat(martingaleEntry).toFixed(2)}`, 'warning');
+        }
+
+        setSignal('entrar', '🚨 ENTRAR AGORA!', `Nível ${martingaleLevel} — $${parseFloat(martingaleEntry).toFixed(2)}`);
+        // Trigger digit is the last virtual loss — stays red (virt-loss).
+        // The NEXT digit (evaluated by Deriv for the trade) will be marked pending-trigger.
+        pendingChipClass = 'virt-loss';
+        window._nextChipIsTrigger = true; // flag: next digit = trade digit
+        virtualLossStreak = 0;
+
+        if(autoTradeEnabled && !tradeInProgress && !sessionStopped){
+          // AUTO-TRADE ON: send trade, stay TRIGGERED until result comes back
+          setTimeout(() => placeTrade(martingaleEntry), 300);
+        } else {
+          // AUTO-TRADE OFF: just signal, immediately return to IDLE for next cycle
+          // User sees the signal but robot doesn't place the trade automatically
+          cycleState = 'IDLE';
+        }
+      }
+    }
+  }
+  // If TRIGGERED: ignore all incoming digits for robot logic — just display them
+
+  updateLastDigit(d);
+  updateVdots();
+  updateBoletaDisplay();
+  // Update freq + OU every digit via rAF (non-blocking); diagnostics every 5 digits
+  if(!window._uiUpdatePending){
+    window._uiUpdatePending = true;
+    requestAnimationFrame(()=>{
+      updateFreqGrid();
+      updateOUTable();
+      if(digits.length % 5 === 0) updateDiagnostics();
+      window._uiUpdatePending = false;
+    });
+  }
+  document.getElementById('progressText').textContent = digits.length + ' dígitos';
+  document.getElementById('totalDigits').textContent = 'Total: ' + digits.length + ' dígitos';
+
+  // Digit chip coloring based on cycle context
+  // chipClass is set BEFORE any streak resets to capture correct state
+  const stream = document.getElementById('digitStream');
+  const chip = document.createElement('div');
+  chip.className = 'digit-chip ' + pendingChipClass;
+  chip.textContent = d;
+  // If this is the trade digit, store reference to recolor when trade result arrives
+  if(pendingChipClass === 'pending-trigger'){
+    window._triggerChip = chip;
+    chip.className = 'digit-chip virt-loss'; // neutral until result
+  }
+  stream.appendChild(chip);
+  if(stream.children.length > 200) stream.removeChild(stream.firstChild);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+// ════════════════════════════════════════
+// UI UPDATES
+// ════════════════════════════════════════
+function setSignal(cls, text, desc){
+  document.getElementById('robotSignal').className='signal-val '+cls;
+  document.getElementById('robotSignal').textContent=text;
+  document.getElementById('signalDesc').textContent=desc;
+}
+
+function updateLastDigit(d){
+  const cfg=getStrategyConfig();
+  const isWin=cfg.winDigits.includes(d);
+  const el=document.getElementById('lastDigitDisplay');
+  el.textContent=d;
+  el.style.color=isWin?'var(--green)':'var(--red)';
+  el.style.background=isWin?'rgba(0,255,159,.1)':'rgba(255,59,107,.1)';
+  document.getElementById('lastDigitResult').textContent=isWin?'✅ WIN':'❌ LOSS';
+  document.getElementById('lastDigitResult').style.color=isWin?'var(--green)':'var(--red)';
+  document.getElementById('lastDigitStrat').textContent=cfg.name+' ('+cfg.winDigits.join(',')+')';
+}
+
+function updateFreqGrid(){
+  const total=digits.length;
+  const max=Math.max(...Object.values(freqMap),1);
+  document.getElementById('freqGrid').innerHTML=Object.keys(freqMap).map(d=>{
+    const cnt=freqMap[d]||0;
+    const pct=total>0?(cnt/total*100).toFixed(1):0;
+    const barW=total>0?(cnt/max*100):0;
+    return `<div class="freq-card">
+      <div class="freq-digit">${d}</div>
+      <div class="freq-count">${cnt} (${pct}%)</div>
+      <div class="freq-bar-wrap"><div class="freq-bar" style="width:${barW}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+// ── ESTRATÉGIAS Over 0-8 com payouts base da Deriv (R_100 Volatility)
+// Payout real é buscado via API — esses valores são fallback inicial
+const FALLBACK_PAYOUTS = {
+  over0:0.055, over1:0.10, over2:0.22, over3:0.43,
+  over4:0.85,  over5:1.50, over6:2.40, over7:4.50, over8:9.00,
+  under1:9.00, under2:4.50, under3:2.40, under4:1.50,
+  under5:0.85, under6:0.43, under7:0.22, under8:0.10, under9:0.055
+};
+
+const ALL_STRATEGIES = [
+  {key:'over0', label:'Over 0', digits:'1–9', winCount:9},
+  {key:'over1', label:'Over 1', digits:'2–9', winCount:8},
+  {key:'over2', label:'Over 2', digits:'3–9', winCount:7},
+  {key:'over3', label:'Over 3', digits:'4–9', winCount:6},
+  {key:'over4', label:'Over 4', digits:'5–9', winCount:5},
+  {key:'over5', label:'Over 5', digits:'6–9', winCount:4},
+  {key:'over6', label:'Over 6', digits:'7–9', winCount:3},
+  {key:'over7', label:'Over 7', digits:'8–9', winCount:2},
+  {key:'over8', label:'Over 8', digits:'só 9', winCount:1},
+];
+
+function getEffectivePayout(key){
+  // Prefer live fetched payout, fall back to static table
+  return payoutCache[key] ?? FALLBACK_PAYOUTS[key] ?? 0.43;
+}
+
+function syncMartRefFromBoleta(){
+  const entry=parseFloat(document.getElementById('boletaEntry')?.value||0.35)||0.35;
+  const factor=getMartFactor();
+  const levels=getMartLevels();
+  const eEl=document.getElementById('martRefEntry');
+  const fEl=document.getElementById('martRefFactor');
+  const lEl=document.getElementById('martRefLevels');
+  if(eEl) eEl.value=entry.toFixed(2);
+  if(fEl) fEl.value=factor;
+  if(lEl){ const capped=Math.min(Math.max(levels,3),8); lEl.value=String(capped); }
+  updateMartRefTable();
+}
+
+// Update a single strategy row's payout cell in real-time
+function updatePayoutCell(stratKey, multiplier){
+  const entry=parseFloat(document.getElementById('martRefEntry')?.value||0.35)||0.35;
+  const factor=parseFloat(document.getElementById('martRefFactor')?.value||2.8)||2.8;
+  const LEVELS=parseInt(document.getElementById('martRefLevels')?.value||5)||5;
+
+  // Build level amounts
+  const levelAmounts=[], levelAccum=[];
+  let e=entry, acc=0;
+  for(let i=0;i<LEVELS;i++){
+    acc+=e;
+    levelAmounts.push(parseFloat(e.toFixed(2)));
+    levelAccum.push(parseFloat(acc.toFixed(2)));
+    e*=factor;
+  }
+
+  const payout=multiplier;
+  const payoutPct=(payout*100).toFixed(1)+'%';
+  const payColor=payout>1.5?'var(--red)':payout>0.5?'var(--gold)':'var(--green)';
+
+  // Find the row for this strategy
+  const tbody=document.getElementById('martRefBody');
+  if(!tbody) return;
+  const rows=tbody.querySelectorAll('tr');
+  rows.forEach(row=>{
+    if(row.dataset.stratKey !== stratKey) return;
+    const cells=row.querySelectorAll('td');
+    if(!cells.length) return;
+    // Update payout cell (index 1)
+    cells[1].innerHTML=`<span style="color:${payColor};font-weight:700;font-size:12px;">${payoutPct}</span><div style="font-size:9px;color:var(--green);letter-spacing:1px;">●LIVE</div>`;
+    // Update profit cells (index 3 onwards — after strat, payout, win%)
+    for(let i=0;i<LEVELS;i++){
+      const cell=cells[i+3];
+      if(!cell) continue;
+      const stake=levelAmounts[i];
+      const prevAccum=i>0?levelAccum[i-1]:0;
+      const grossProfit=stake*payout;
+      const net=grossProfit-prevAccum;
+      const grossStr='+$'+grossProfit.toFixed(2);
+      const netStr=(net>=0?'▲+$':'▼-$')+Math.abs(net).toFixed(2);
+      const netColor=net>=0?'var(--green)':'var(--red)';
+      cell.innerHTML=`<div style="color:var(--green);font-size:11px;font-weight:700;">${grossStr}</div><div style="color:${netColor};font-size:9px;">${netStr}</div>`;
+    }
+  });
+}
+
+function updateMartRefTable(){
+  const tbody=document.getElementById('martRefBody');
+  if(!tbody) return;
+
+  // Own inputs — independent of boleta
+  const entry=parseFloat(document.getElementById('martRefEntry')?.value||0.35)||0.35;
+  const factor=parseFloat(document.getElementById('martRefFactor')?.value||2.8)||2.8;
+  const LEVELS=parseInt(document.getElementById('martRefLevels')?.value||5)||5;
+  const activeStrat=selectedRobot?.strategy||document.getElementById('manualStrategy')?.value||'over3';
+
+  // Info label
+  const info=document.getElementById('martRefInfo');
+  if(info) info.textContent=`Entrada: $${entry.toFixed(2)} · Fator: x${factor} · 5 níveis`;
+
+  // Always build 5 levels regardless of robot config
+  const levelAmounts=[], levelAccum=[];
+  let e=entry, acc=0;
+  for(let i=0;i<LEVELS;i++){
+    acc+=e;
+    levelAmounts.push(parseFloat(e.toFixed(2)));
+    levelAccum.push(parseFloat(acc.toFixed(2)));
+    e*=factor;
+  }
+
+  // Header
+  const headerRow=document.querySelector('#martRefTable thead tr');
+  if(headerRow){
+    let h='<th class="strat-col">ESTRATÉGIA</th><th>PAYOUT</th><th>WIN%</th>';
+    for(let i=1;i<=LEVELS;i++){
+      const stakeStr='$'+levelAmounts[i-1].toFixed(2);
+      h+=`<th>N${i}<div style="font-size:8px;color:var(--dim);font-weight:400;">${stakeStr}</div></th>`;
+    }
+    headerRow.innerHTML=h;
+  }
+
+  tbody.innerHTML=ALL_STRATEGIES.map(strat=>{
+    const payout=getEffectivePayout(strat.key);
+    const isLive=payoutCache[strat.key]!=null;
+    const winPct=((strat.winCount/10)*100).toFixed(0)+'%';
+    const payoutPct=(payout*100).toFixed(0)+'%';
+    const isActive=strat.key===activeStrat;
+    const payColor=payout>1.5?'var(--red)':payout>0.5?'var(--gold)':'var(--green)';
+
+    let cells='';
+    for(let i=0;i<LEVELS;i++){
+      const stake=levelAmounts[i];
+      const prevAccum=i>0?levelAccum[i-1]:0;
+      const grossProfit=stake*payout;
+      // Net profit = gross profit from this bet minus all previous losses
+      const net=grossProfit-prevAccum;
+      const grossStr='+$'+grossProfit.toFixed(2);
+      const netStr=(net>=0?'▲+$':'▼-$')+Math.abs(net).toFixed(2);
+      const netColor=net>=0?'var(--green)':'var(--red)';
+      cells+=`<td style="padding:4px 6px;">
+        <div style="color:var(--green);font-size:11px;font-weight:700;">${grossStr}</div>
+        <div style="color:${netColor};font-size:9px;">${netStr}</div>
+      </td>`;
+    }
+
+    return `<tr class="${isActive?'active-strat':''}" data-strat-key="${strat.key}">
+      <td class="strat-cell" style="padding:5px 8px;">
+        <span style="font-size:12px;">${strat.label}</span>
+        <div style="font-size:9px;color:var(--dim);">${strat.digits}</div>
+      </td>
+      <td style="color:${payColor};font-weight:700;font-size:11px;">
+        ${payoutPct}
+        ${isLive
+          ? '<div style="font-size:9px;color:var(--green);letter-spacing:1px;">●LIVE</div>'
+          : '<div style="font-size:9px;color:var(--dim);letter-spacing:1px;">~est.</div>'}
+      </td>
+      <td style="color:var(--dim);font-size:11px;">${winPct}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+}
+
+function updateOUTable(){
+  const total=digits.length;
+  const ops=[
+    {name:'Over 0',winD:[1,2,3,4,5,6,7,8,9]},{name:'Over 1',winD:[2,3,4,5,6,7,8,9]},
+    {name:'Over 2',winD:[3,4,5,6,7,8,9]},{name:'Over 3',winD:[4,5,6,7,8,9]},
+    {name:'Over 4',winD:[5,6,7,8,9]},{name:'Over 5',winD:[6,7,8,9]},
+    {name:'Over 6',winD:[7,8,9]},{name:'Over 7',winD:[8,9]},{name:'Over 8',winD:[9]},
+    {name:'Under 1',winD:[0]},{name:'Under 2',winD:[0,1]},{name:'Under 3',winD:[0,1,2]},
+    {name:'Under 4',winD:[0,1,2,3]},{name:'Under 5',winD:[0,1,2,3,4]},
+    {name:'Under 6',winD:[0,1,2,3,4,5]},{name:'Under 7',winD:[0,1,2,3,4,5,6]},
+    {name:'Under 8',winD:[0,1,2,3,4,5,6,7]},{name:'Under 9',winD:[0,1,2,3,4,5,6,7,8]},
+  ];
+  const tbody=document.querySelector('#ouTable tbody');
+  tbody.innerHTML=ops.map(o=>{
+    const cnt=o.winD.reduce((s,d)=>s+(freqMap[d]||0),0);
+    const pct=total>0?(cnt/total*100).toFixed(1):0;
+    const exp=(o.winD.length/10*100).toFixed(0);
+    const diff=total>0?(parseFloat(pct)-parseFloat(exp)):0;
+    const badge=diff>=2?'badge-green':diff<=-2?'badge-red':'badge-gold';
+    const label=diff>=2?'ACIMA':'ABAIXO DO ESPERADO';
+    const isActive=selectedRobot&&selectedRobot.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2')===o.name;
+    return `<tr ${isActive?'style="background:rgba(0,212,255,.05)"':''}>
+      <td style="font-weight:700;${isActive?'color:var(--accent)':''}">${o.name}</td>
+      <td>${o.winD[0]}–${o.winD[o.winD.length-1]}</td>
+      <td style="color:${parseFloat(pct)>=parseFloat(exp)?'var(--green)':'var(--red)'};">${total>0?pct+'%':'—'}</td>
+      <td>${total>50?`<span class="badge ${badge}">${pct>=exp?'ACIMA':label}</span>`:'<span style="color:var(--dim)">Coletando...</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateDiagnostics(){
+  const total=digits.length;
+  const grid=document.getElementById('diagGrid');
+  const configs=[];
+  for(let x=0;x<=8;x++){
+    const w=[]; for(let d=x+1;d<=9;d++) w.push(d);
+    configs.push({name:`OVER ${x}`,winD:w,expected:(9-x)/10*100,digits:`${x+1}–9`});
+  }
+  for(let x=1;x<=9;x++){
+    const w=[]; for(let d=0;d<x;d++) w.push(d);
+    configs.push({name:`UNDER ${x}`,winD:w,expected:x/10*100,digits:`0–${x-1}`});
+  }
+  const activeStrat=selectedRobot?selectedRobot.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2'):'';
+  grid.innerHTML=configs.map(c=>{
+    const cnt=c.winD.reduce((s,d)=>s+(freqMap[d]||0),0);
+    const pct=total>0?cnt/total*100:null;
+    const pctD=pct!==null?pct.toFixed(1)+'%':'—';
+    let color='var(--dim)', trend='Coletando...';
+    if(pct!==null&&total>50){
+      const diff=pct-c.expected;
+      if(diff>=3){color='var(--green)';trend='🟢 ACIMA';}
+      else if(diff>=0){color='var(--accent)';trend='🔵 NORMAL';}
+      else if(diff>=-3){color='var(--gold)';trend='🟡 ABAIXO';}
+      else{color='var(--red)';trend='🔴 BEM ABAIXO';}
+    }
+    const isActive=c.name===activeStrat;
+    return `<div class="diag-item" style="${isActive?'border-color:var(--accent);box-shadow:0 0 8px rgba(0,212,255,.2);':''}">
+      <div class="diag-name" style="${isActive?'color:var(--accent);':''}">${c.name}</div>
+      <div class="diag-exp">${c.digits} · esp:${c.expected.toFixed(0)}%</div>
+      <div class="diag-pct" style="color:${color}">${pctD}</div>
+      <div class="diag-trend" style="color:${color}">${total>50?trend:'Coletando...'}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════
+// LOG
+// ════════════════════════════════════════
+function log(msg,type='info'){
+  const area=document.getElementById('logArea'); if(!area) return;
+  const t=new Date().toLocaleTimeString('pt-BR');
+  const line=document.createElement('div');
+  line.className=`log-line ${type}`;
+  line.textContent=`[${t}] ${msg}`;
+  area.appendChild(line);
+  // Keep max 200 lines — remove oldest when exceeded
+  while(area.children.length > 50) area.removeChild(area.firstChild);
+  area.scrollTop=area.scrollHeight;
+}
+
+// ════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════
+// Init form watchers
+['rfEntry','rfFactor','rfLevels'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.addEventListener('input',updateMartPreview);
+});
+
+renderRobotList();
+updateMartPreview();
+applyBrand(); // apply saved brand on load
+updateDiagnostics();
+updateOUTable();
+updateFreqGrid();
+</script>
+</body>
+</html>
