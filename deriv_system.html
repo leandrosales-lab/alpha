@@ -338,22 +338,24 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         try {
           const { data: profile } = await _supa
             .from('profiles')
-            .select('name, plan')
+            .select('name, plan, is_admin')
             .eq('id', user.id)
             .single();
 
           window._alphaUser = {
-            uid:   user.id,
-            email: user.email,
-            name:  profile?.name || user.email.split('@')[0],
-            plan:  profile?.plan || 'free',
+            uid:      user.id,
+            email:    user.email,
+            name:     profile?.name || user.email.split('@')[0],
+            plan:     profile?.plan || 'free',
+            is_admin: profile?.is_admin || false,
           };
         } catch(e) {
           window._alphaUser = {
-            uid:   user.id,
-            email: user.email,
-            name:  user.email.split('@')[0],
-            plan:  'free',
+            uid:      user.id,
+            email:    user.email,
+            name:     user.email.split('@')[0],
+            plan:     'free',
+            is_admin: false,
           };
         }
         window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
@@ -367,14 +369,20 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     if(_saved){
       try {
         const { access_token } = JSON.parse(_saved);
-        _supa.auth.getUser(access_token).then(({ data, error }) => {
+        _supa.auth.getUser(access_token).then(async ({ data, error }) => {
           document.documentElement.classList.remove('restoring-session');
           if(data?.user && !error){
+            let profile = null;
+            try {
+              const res = await _supa.from('profiles').select('name, plan, is_admin').eq('id', data.user.id).single();
+              profile = res.data;
+            } catch(e){}
             window._alphaUser = {
-              uid:   data.user.id,
-              email: data.user.email,
-              name:  data.user.email.split('@')[0],
-              plan:  'free',
+              uid:      data.user.id,
+              email:    data.user.email,
+              name:     profile?.name || data.user.email.split('@')[0],
+              plan:     profile?.plan || 'free',
+              is_admin: profile?.is_admin || false,
             };
             window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
           } else {
@@ -424,7 +432,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       <div class="login-tabs" style="margin-bottom:16px;">
         <button class="login-tab active" id="tabAlphaLogin"  onclick="switchAlphaTab('login')">ENTRAR</button>
         <button class="login-tab"        id="tabAlphaSignup" onclick="switchAlphaTab('signup')">CADASTRAR</button>
-        <button class="login-tab"        id="tabAlphaAdmin"  onclick="switchAlphaTab('admin')" style="font-size:10px;padding:6px 10px;">🛠️ ADMIN</button>
       </div>
 
       <!-- LOGIN -->
@@ -460,20 +467,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         </div>
       </div>
 
-      <!-- ADMIN (local) -->
-      <div id="panelAdminLogin" style="display:none;">
-        <div style="display:flex;flex-direction:column;gap:12px;">
-          <div class="field"><label>Usuário</label>
-            <input type="text" id="adminUser" placeholder="admin" autocomplete="username">
-          </div>
-          <div class="field"><label>Senha</label>
-            <input type="password" id="adminPass" placeholder="••••••••"
-              onkeydown="if(event.key==='Enter')loginAdmin()">
-          </div>
-          <button class="btn btn-primary" onclick="loginAdmin()">🔐 ENTRAR COMO ADMIN</button>
-          <div id="adminLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
-        </div>
-      </div>
     </div>
 
 
@@ -1173,7 +1166,6 @@ function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); } catch(e
 function load(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
 
 // Default admin
-let admins = load('drv_admins', [{ user: 'admin', pass: btoa('admin123') }]);
 const DEFAULT_ROBOTS = [
   {
     "id": "robot_gladiador",
@@ -1457,22 +1449,24 @@ async function alphaLogin(){
     try {
       const { data: profile } = await window._sb
         .from('profiles')
-        .select('name, plan')
+        .select('name, plan, is_admin')
         .eq('id', data.user.id)
         .single();
 
       window._alphaUser = {
-        uid:   data.user.id,
-        email: data.user.email,
-        name:  profile?.name || data.user.email.split('@')[0],
-        plan:  profile?.plan || 'free',
+        uid:      data.user.id,
+        email:    data.user.email,
+        name:     profile?.name || data.user.email.split('@')[0],
+        plan:     profile?.plan || 'free',
+        is_admin: profile?.is_admin || false,
       };
     } catch(e) {
       window._alphaUser = {
-        uid:   data.user.id,
-        email: data.user.email,
-        name:  data.user.email.split('@')[0],
-        plan:  'free',
+        uid:      data.user.id,
+        email:    data.user.email,
+        name:     data.user.email.split('@')[0],
+        plan:     'free',
+        is_admin: false,
       };
     }
     window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
@@ -1536,9 +1530,15 @@ async function alphaLogout(){
 
 // Called by Supabase onAuthStateChange when user logs in
 window._onAlphaLogin = function(user){
-  // Go straight to dashboard
+  currentUser = { user: user.name, isAdmin: user.is_admin || false };
   updateProfileDropdown();
-  // If Deriv already connected keep it, otherwise show disconnected state
+  const btnAdmin = document.getElementById('btnAdminNav');
+  if(btnAdmin) btnAdmin.style.display = user.is_admin ? 'inline-block' : 'none';
+  if(user.is_admin){
+    safeSet('adminNavUser','textContent','👤 ' + user.name);
+    renderRobotList();
+    renderAdminList();
+  }
   if(!derivAccount){
     document.getElementById('pdDerivConnect').style.display='block';
     document.getElementById('pdDerivDisconnect').style.display='none';
@@ -1779,25 +1779,6 @@ function showTokenHint(input){
   else { hint.textContent=`✅ ${val.length} chars — OK`; hint.style.color='var(--green)'; }
 }
 
-function loginAdmin(){
-  const u = document.getElementById('adminUser').value.trim();
-  const p = document.getElementById('adminPass').value;
-  const err = document.getElementById('adminLoginErr');
-  if(!err){ return; }
-  const found = admins.find(a => a.user === u && a.pass === btoa(p));
-  if(!found){ err.textContent='Usuário ou senha incorretos.'; err.style.display='block'; return; }
-  err.style.display='none';
-  currentUser = { user: u, isAdmin: true };
-  window._alphaUser = { uid: null, email: u, name: u, plan: 'admin' };
-  safeSet('adminNavUser','textContent','👤 ' + u);
-  safeSet('btnAdminNav','style.display','inline-block');
-  const btnAdmin = document.getElementById('btnAdminNav');
-  if(btnAdmin) btnAdmin.style.display = 'inline-block';
-  updateProfileDropdown();
-  renderRobotList();
-  renderAdminList();
-  showScreen('screenAdmin');
-}
 
 function loginTrader(){
   const loginId = document.getElementById('derivLoginId').value.trim().toUpperCase();
