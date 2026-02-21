@@ -5,7 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DERIV · Sistema de Robôs</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script>if(sessionStorage.getItem('alpha_session'))document.documentElement.classList.add('restoring-session');</script>
 <style>
+.restoring-session #screenLogin{visibility:hidden!important;}
+
 :root {
   --bg:#020b14; --surface:#041020; --surface2:#071828;
   --border:#0d3a5c; --accent:#00d4ff; --accent2:#00ff9f;
@@ -363,9 +366,8 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     if(_saved){
       try {
         const { access_token } = JSON.parse(_saved);
-        // Oculta tela de login imediatamente (evita flash) enquanto valida o token
-        document.getElementById('screenLogin').style.visibility = 'hidden';
         _supa.auth.getUser(access_token).then(({ data, error }) => {
+          document.documentElement.classList.remove('restoring-session');
           if(data?.user && !error){
             window._alphaUser = {
               uid:   data.user.id,
@@ -376,12 +378,11 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
             window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
           } else {
             sessionStorage.removeItem('alpha_session');
-            document.getElementById('screenLogin').style.visibility = '';
           }
         });
       } catch(e) {
         sessionStorage.removeItem('alpha_session');
-        document.getElementById('screenLogin').style.visibility = '';
+        document.documentElement.classList.remove('restoring-session');
       }
     }
 
