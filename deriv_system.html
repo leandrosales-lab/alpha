@@ -374,8 +374,12 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           if(data?.user && !error){
             let profile = null;
             try {
-              const res = await _supa.from('profiles').select('name, plan, is_admin').eq('id', data.user.id).single();
-              profile = res.data;
+              const resp = await fetch(
+                `${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=name,plan,is_admin&limit=1`,
+                { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${access_token}` } }
+              );
+              const rows = await resp.json();
+              profile = rows[0] || null;
             } catch(e){}
             window._alphaUser = {
               uid:      data.user.id,
