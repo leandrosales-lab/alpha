@@ -370,7 +370,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       try {
         const { access_token } = JSON.parse(_saved);
         _supa.auth.getUser(access_token).then(async ({ data, error }) => {
-          document.documentElement.classList.remove('restoring-session');
           if(data?.user && !error){
             let profile = null;
             try {
@@ -389,8 +388,10 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
               is_admin: profile?.is_admin || false,
             };
             window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
+            document.documentElement.classList.remove('restoring-session');
           } else {
             sessionStorage.removeItem('alpha_session');
+            document.documentElement.classList.remove('restoring-session');
           }
         });
       } catch(e) {
