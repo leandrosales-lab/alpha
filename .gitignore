@@ -1,0 +1,28 @@
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (caso use no futuro)
+node_modules/
+npm-debug.log
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# Backups
+*.bak
+*.backup
+*_old.*
+
+# Arquivos temporários
+*.tmp
+*.log
