@@ -1599,7 +1599,18 @@ function loginWithDeriv(){
   document.getElementById('oauthOverlay').classList.add('show');
   document.getElementById('oauthModalMsg').textContent = 'Complete o login na janela da Deriv que abriu';
 
-  // Poll popup URL for callback
+  // Recebe tokens via postMessage quando o popup redireciona de volta
+  function onOAuthMessage(e){
+    if(!e.data || e.data.type !== 'deriv_oauth') return;
+    window.removeEventListener('message', onOAuthMessage);
+    clearInterval(oauthPollTimer);
+    if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
+    oauthPopup = null;
+    handleOAuthCallback(new URLSearchParams(e.data.search));
+  }
+  window.addEventListener('message', onOAuthMessage);
+
+  // Poll popup URL for callback (fallback caso postMessage não funcione)
   oauthPollTimer = setInterval(()=>{
     try{
       if(!oauthPopup || oauthPopup.closed){
@@ -1744,7 +1755,13 @@ function showOAuthError(msg){
 (function checkOAuthOnLoad(){
   const params = new URLSearchParams(window.location.search);
   if(params.get('token1') && params.get('acct1')){
-    // Switch to trader tab and process
+    // Se estiver dentro de um popup, envia tokens para a janela pai e fecha
+    if(window.opener && !window.opener.closed){
+      window.opener.postMessage({ type:'deriv_oauth', search: window.location.search }, '*');
+      window.close();
+      return;
+    }
+    // Fluxo de redirect (popup bloqueado) — processa na própria janela
     setTimeout(()=>{
       switchLoginTab('trader');
       handleOAuthCallback(params);
