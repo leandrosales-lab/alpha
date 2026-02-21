@@ -356,19 +356,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         window._onAlphaLogout && window._onAlphaLogout();
       }
     });
-    // Test connection immediately
-    _supa.auth.getSession().then(({ data, error }) => {
-      if(error){
-        console.error('❌ Supabase connection error:', error.message);
-        const errEls = document.querySelectorAll('[id$="LoginErr"]');
-        errEls.forEach(el => {
-          el.textContent = 'Erro de conexão: ' + error.message;
-          el.style.display = 'block';
-        });
-      } else {
-        console.log('✅ Supabase conectado. Sessão:', data.session ? 'ativa' : 'nenhuma');
-      }
-    });
     console.log('✅ Supabase inicializado');
   }
 
