@@ -363,6 +363,8 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     if(_saved){
       try {
         const { access_token } = JSON.parse(_saved);
+        // Oculta tela de login imediatamente (evita flash) enquanto valida o token
+        document.getElementById('screenLogin').style.visibility = 'hidden';
         _supa.auth.getUser(access_token).then(({ data, error }) => {
           if(data?.user && !error){
             window._alphaUser = {
@@ -374,10 +376,12 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
             window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
           } else {
             sessionStorage.removeItem('alpha_session');
+            document.getElementById('screenLogin').style.visibility = '';
           }
         });
       } catch(e) {
         sessionStorage.removeItem('alpha_session');
+        document.getElementById('screenLogin').style.visibility = '';
       }
     }
 
