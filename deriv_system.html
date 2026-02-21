@@ -1599,18 +1599,20 @@ function loginWithDeriv(){
   document.getElementById('oauthOverlay').classList.add('show');
   document.getElementById('oauthModalMsg').textContent = 'Complete o login na janela da Deriv que abriu';
 
-  // Recebe tokens via postMessage quando o popup redireciona de volta
-  function onOAuthMessage(e){
-    if(!e.data || e.data.type !== 'deriv_oauth') return;
-    window.removeEventListener('message', onOAuthMessage);
+  // Recebe tokens via localStorage (funciona mesmo sem window.opener)
+  function onStorageOAuth(e){
+    if(e.key !== 'deriv_oauth_callback' || !e.newValue) return;
+    window.removeEventListener('storage', onStorageOAuth);
     clearInterval(oauthPollTimer);
+    const search = e.newValue;
+    localStorage.removeItem('deriv_oauth_callback');
     if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
     oauthPopup = null;
-    handleOAuthCallback(new URLSearchParams(e.data.search));
+    handleOAuthCallback(new URLSearchParams(search));
   }
-  window.addEventListener('message', onOAuthMessage);
+  window.addEventListener('storage', onStorageOAuth);
 
-  // Poll popup URL for callback (fallback caso postMessage não funcione)
+  // Poll popup URL for callback (fallback)
   oauthPollTimer = setInterval(()=>{
     try{
       if(!oauthPopup || oauthPopup.closed){
@@ -1755,17 +1757,15 @@ function showOAuthError(msg){
 (function checkOAuthOnLoad(){
   const params = new URLSearchParams(window.location.search);
   if(params.get('token1') && params.get('acct1')){
-    // Se estiver dentro de um popup, envia tokens para a janela pai e fecha
-    if(window.opener && !window.opener.closed){
-      window.opener.postMessage({ type:'deriv_oauth', search: window.location.search }, '*');
-      window.close();
-      return;
-    }
-    // Fluxo de redirect (popup bloqueado) — processa na própria janela
+    // Grava no localStorage para sinalizar a janela principal e fecha o popup
+    localStorage.setItem('deriv_oauth_callback', window.location.search);
+    window.close();
+    // Fallback: se não fechou (não é popup), processa como redirect na própria janela
     setTimeout(()=>{
+      localStorage.removeItem('deriv_oauth_callback');
       switchLoginTab('trader');
       handleOAuthCallback(params);
-    }, 300);
+    }, 500);
   }
 })();
 
