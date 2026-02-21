@@ -483,7 +483,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     <div class="topnav-brand" id="adminTopnavBrand">⚡ DERIV ROBO SYSTEM · ADMIN</div>
     <div class="topnav-user" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="nav-pill active" id="adminTabBtnRobots" onclick="showAdminTab('robots')">🤖 Robôs</button>
-      <button class="nav-pill" id="adminTabBtnAdmins" onclick="showAdminTab('admins')">👥 Admins</button>
       <button class="nav-pill" id="adminTabBtnBrand" onclick="showAdminTab('brand')">🎨 Marca</button>
       <span style="font-size:12px;color:var(--dim);" id="adminNavUser"></span>
       <button class="btn btn-gold btn-sm" onclick="goToDashboard()">📊 Trocar Conta</button>
@@ -592,30 +591,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       </div>
     </div>
 
-    <!-- ADMINS TAB -->
-    <div id="adminTabAdmins" style="display:none;">
-      <div style="max-width:600px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <h2 style="font-size:16px;font-weight:900;">👥 Administradores</h2>
-          <button class="btn btn-success btn-sm" onclick="openAdminForm()">+ Novo Admin</button>
-        </div>
-        <div id="adminList" style="display:flex;flex-direction:column;gap:10px;"></div>
-
-        <div class="card" id="adminFormCard" style="display:none;margin-top:16px;">
-          <div style="font-size:13px;font-weight:900;margin-bottom:14px;">➕ NOVO ADMINISTRADOR</div>
-          <div style="display:flex;flex-direction:column;gap:12px;">
-            <div class="field"><label>Usuário</label><input type="text" id="afUser" placeholder="nome_usuario"></div>
-            <div class="field"><label>Senha</label><input type="password" id="afPass" placeholder="••••••••"></div>
-            <div class="field"><label>Confirmar Senha</label><input type="password" id="afPass2" placeholder="••••••••"></div>
-            <div style="display:flex;gap:10px;">
-              <button class="btn btn-primary btn-sm" onclick="saveAdmin()">Salvar</button>
-              <button class="btn btn-danger btn-sm" onclick="document.getElementById('adminFormCard').style.display='none'">Cancelar</button>
-            </div>
-            <div id="adminFormErr" style="color:var(--red);font-size:12px;display:none;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
 
     <!-- BRAND TAB -->
@@ -1537,7 +1512,6 @@ window._onAlphaLogin = function(user){
   if(user.is_admin){
     safeSet('adminNavUser','textContent','👤 ' + user.name);
     renderRobotList();
-    renderAdminList();
   }
   if(!derivAccount){
     document.getElementById('pdDerivConnect').style.display='block';
@@ -2013,9 +1987,7 @@ document.addEventListener('input', function(e){
 
 function showAdminTab(tab){
   document.getElementById('adminTabRobots').style.display = tab==='robots'?'block':'none';
-  document.getElementById('adminTabAdmins').style.display = tab==='admins'?'block':'none';
   document.getElementById('adminTabBtnRobots')?.classList.toggle('active', tab==='robots');
-  document.getElementById('adminTabBtnAdmins')?.classList.toggle('active', tab==='admins');
 }
 
 ['rfEntry','rfFactor','rfLevels'].forEach(id=>{
@@ -2138,46 +2110,6 @@ function renderRobotList(){
   }).join('');
 }
 
-// ════════════════════════════════════════
-// ADMIN — ADMINS CRUD
-// ════════════════════════════════════════
-function openAdminForm(){ document.getElementById('adminFormCard').style.display='block'; }
-
-function saveAdmin(){
-  const u=document.getElementById('afUser').value.trim();
-  const p=document.getElementById('afPass').value;
-  const p2=document.getElementById('afPass2').value;
-  const err=document.getElementById('adminFormErr');
-  if(!u){ err.textContent='Usuário obrigatório.'; err.style.display='block'; return; }
-  if(p.length<4){ err.textContent='Senha mínima: 4 caracteres.'; err.style.display='block'; return; }
-  if(p!==p2){ err.textContent='Senhas não conferem.'; err.style.display='block'; return; }
-  if(admins.find(a=>a.user===u)){ err.textContent='Usuário já existe.'; err.style.display='block'; return; }
-  admins.push({ user: u, pass: btoa(p) });
-  store('drv_admins', admins);
-  err.style.display='none';
-  document.getElementById('adminFormCard').style.display='none';
-  renderAdminList();
-}
-
-function deleteAdmin(u){
-  if(u===currentUser?.user){ alert('Você não pode deletar seu próprio usuário.'); return; }
-  if(!confirm('Deletar admin "'+u+'"?')) return;
-  admins=admins.filter(a=>a.user!==u);
-  store('drv_admins', admins);
-  renderAdminList();
-}
-
-function renderAdminList(){
-  const list=document.getElementById('adminList');
-  list.innerHTML=admins.map(a=>`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
-      <div>
-        <span style="font-weight:700;">👤 ${a.user}</span>
-        ${a.user===currentUser?.user?'<span class="badge badge-gold" style="margin-left:8px;">VOCÊ</span>':''}
-      </div>
-      <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${a.user}')" ${a.user===currentUser?.user?'disabled':''}>🗑️ Remover</button>
-    </div>`).join('');
-}
 
 // ════════════════════════════════════════
 // DASHBOARD STATE
