@@ -1280,7 +1280,8 @@ let robots = load('drv_robots', null);
   const userRobots = stored.filter(function(r){ return !prebuiltIds.includes(r.id); });
   const merged = DEFAULT_ROBOTS.map(function(def){
     const existing = stored.find(function(r){ return r.id === def.id; });
-    if(existing){ const copy = Object.assign({}, def); copy.running = existing.running; return copy; }
+    // Preserve ALL stored values (admin changes); only fill missing keys from default
+    if(existing){ return Object.assign({}, def, existing); }
     return Object.assign({}, def);
   });
   robots = merged.concat(userRobots);
@@ -2103,6 +2104,14 @@ function saveRobot(){
 
   if(editingRobotId){
     robots=robots.map(r=>r.id===editingRobotId?robot:r);
+    // Se o robô editado é o selecionado atualmente, atualiza referência e UI
+    if(selectedRobot && selectedRobot.id===editingRobotId){
+      selectedRobot=robots.find(r=>r.id===editingRobotId);
+      buildMartTable();
+      renderMartTable();
+      updateVdots();
+      updateBoletaDisplay();
+    }
   } else {
     robots.push(robot);
   }
