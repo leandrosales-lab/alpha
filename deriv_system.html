@@ -1074,7 +1074,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           </select>
         </div>
         <div class="field" style="margin:0;"><label>App ID</label>
-          <input type="text" id="derivAppId" value="1089">
+          <input type="text" id="derivAppId" value="128505">
         </div>
       </div>
       <button class="btn btn-primary" onclick="loginTrader()" style="padding:12px;font-size:13px;">
@@ -1451,7 +1451,7 @@ function switchLoginTab(tab){
 // 3. We detect the redirect via popup URL polling OR via URL params on load
 // 4. Extract tokens and auto-login
 
-const DERIV_APP_ID = '1089'; // Replace with your registered App ID for production
+const DERIV_APP_ID = '128505'; // Replace with your registered App ID for production
 const DERIV_OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=pt&brand=deriv`;
 
 let oauthPopup = null;
@@ -1666,7 +1666,7 @@ function loginTrader(){
   const loginId = document.getElementById('derivLoginId').value.trim().toUpperCase();
   const token   = document.getElementById('derivToken').value.replace(/[^a-zA-Z0-9\-_]/g,'').trim();
   const accType = document.getElementById('derivAccType').value;
-  const appId   = document.getElementById('derivAppId').value.trim() || '1089';
+  const appId   = document.getElementById('derivAppId').value.trim() || '128505';
   const err     = document.getElementById('traderLoginErr');
 
   if(!loginId){ err.textContent='Informe o Login ID.'; err.style.display='block'; return; }
@@ -2405,7 +2405,7 @@ function connectDash(){
 
   // Credentials ALWAYS come from derivAccount (robots are strategy-only configs)
   const creds = derivAccount;
-  const appId = creds?.appId || '1089';
+  const appId = creds?.appId || '128505';
   const token = creds?.token || null;
   const market = document.getElementById('boletaMarket')?.value || 'R_100';
 
