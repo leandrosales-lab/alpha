@@ -33,10 +33,6 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-h
 .chart-tf-sep{width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0;}
 .btn.active{background:rgba(0,212,255,.15);color:var(--accent);border:1px solid var(--accent);}
 /* Live ops */
-#liveOpsPanel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;}
-.live-ops-row{display:grid;grid-template-columns:60px 1fr 60px 60px 70px;gap:6px;font-size:11px;font-family:'Share Tech Mono',monospace;padding:6px 0;border-bottom:1px solid var(--border);}
-.live-ops-row:last-child{border-bottom:none;}
-.live-ops-head{color:var(--dim);font-size:9px;letter-spacing:1px;}
 /* Balance font sizes */
 #accBalanceD{font-size:22px!important;font-weight:900!important;}
 #bPnl{font-size:26px!important;}
@@ -190,7 +186,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   justify-content:space-between;
 }
 .dash-right-log{
-  flex:1;
+  flex:0 0 40%;
   overflow-y:auto;
   padding:10px 12px;
   font-family:'Share Tech Mono',monospace;
@@ -199,6 +195,17 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   scrollbar-color:var(--border) transparent;
   background:var(--bg);
 }
+.dash-right-ops{
+  flex:1;
+  overflow-y:auto;
+  padding:0;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+  background:var(--bg);
+}
+.live-ops-row{display:grid;grid-template-columns:48px 1fr 72px 90px 44px 60px;gap:4px;font-size:10px;font-family:'Share Tech Mono',monospace;padding:5px 10px;border-bottom:1px solid var(--border);}
+.live-ops-row:last-child{border-bottom:none;}
+.live-ops-head{color:var(--dim);font-size:8.5px;letter-spacing:1px;}
 @media(max-width:1200px){
   #screenDashboard .dash-wrapper{grid-template-columns:300px 1fr 240px;}
 }
@@ -440,7 +447,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       </div>
       <h1 id="loginBrandName">DERIV ROBO SYSTEM</h1>
       <p id="loginBrandSlogan">PAINEL DE OPERAÇÕES AUTOMATIZADAS</p>
-      <div id="loginBrandWelcome" style="font-size:11px;color:var(--gold);margin-top:6px;display:none;"></div>
     </div>
 
     <!-- ── STEP 1: ALPHA LOGIN / REGISTER ── -->
@@ -773,6 +779,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         </div>
       </div>
       <button class="nav-pill" id="btnChartNav" onclick="toggleChartPanel()">📈 Gráfico</button>
+      <button class="nav-pill" id="btnReportsNav" onclick="showScreen('screenReports')">📊 Relatórios</button>
       <button class="nav-pill" onclick="showScreen('screenAdmin')" id="btnAdminNav" style="display:none;">🛠️ Admin</button>
 
       <!-- Profile icon with dropdown -->
@@ -971,7 +978,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;margin-top:4px;align-items:end;">
             <div class="field">
               <label>Mercado</label>
-              <select id="boletaMarket" onchange="applyBoleta()" style="height:38px;">
+              <select id="boletaMarket" onchange="applyBoleta();updateOUTable();updateDiagnostics();" style="height:38px;">
                 <optgroup label="── Volatility (padrão)">
                   <option value="R_10">Volatility 10</option>
                   <option value="R_25">Volatility 25</option>
@@ -1067,24 +1074,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
             <div class="pnl-bar"><div class="pnl-fill" id="pnlFill" style="width:0%;background:var(--green);"></div></div>
           </div>
         </div>
-        <!-- ── OPERAÇÕES AO VIVO ── -->
-        <div id="liveOpsPanel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;">⚡ OPERAÇÕES AO VIVO</div>
-            <div style="display:flex;gap:10px;font-family:'Share Tech Mono',monospace;font-size:10px;">
-              <span>✅ <span id="liveWins" style="color:var(--green);">0</span></span>
-              <span>❌ <span id="liveLosses" style="color:var(--red);">0</span></span>
-              <span style="color:var(--dim);">|</span>
-              <span id="liveRate" style="color:var(--gold);">—%</span>
-            </div>
-          </div>
-          <div class="live-ops-row live-ops-head">
-            <span>HORA</span><span>ESTRATÉGIA</span><span>ENTRADA</span><span>RESULT.</span><span>P&L</span>
-          </div>
-          <div id="liveOpsList" style="max-height:220px;overflow-y:auto;">
-            <div style="text-align:center;color:var(--dim);font-size:11px;padding:20px;font-family:'Share Tech Mono',monospace;">Aguardando operações...</div>
-          </div>
-        </div>
 
     </div><!-- /dash-left -->
 
@@ -1134,7 +1123,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 
         <!-- Martingale Reference Table -->
         <div class="card" style="margin-bottom:14px;">
-          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:10px;">📈 POTENCIAL MARTINGALE — OVER 0 a 8 · 5 NÍVEIS</div>
+          <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:10px;">📈 POTENCIAL MARTINGALE — 0 a 8 · 5 NÍVEIS</div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
             <div class="field" style="margin:0;flex:1;min-width:90px;">
               <label>Entrada ($)</label>
@@ -1188,22 +1177,72 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <!-- Diagnostics -->
         <div class="card" style="margin-bottom:14px;">
           <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:12px;">🔬 DIAGNÓSTICO PREDITIVO</div>
-          <div class="diag-grid" id="diagGrid"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <div style="font-size:9px;letter-spacing:2px;color:var(--green);font-family:'Share Tech Mono',monospace;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);">📈 OVER</div>
+              <div class="diag-grid" id="diagGridOver"></div>
+            </div>
+            <div>
+              <div style="font-size:9px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border);">📉 UNDER</div>
+              <div class="diag-grid" id="diagGridUnder"></div>
+            </div>
+          </div>
         </div>
 
     </div><!-- /dash-center -->
 
-    <!-- ═══ RIGHT PANEL — LOG ═══ -->
+    <!-- ═══ RIGHT PANEL — LOG + LIVE OPS ═══ -->
     <div class="dash-right">
+      <!-- LOG -->
       <div class="dash-right-header">
         <span>📋 LOG DO SISTEMA</span>
         <button onclick="document.getElementById('logArea').innerHTML=''" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--dim);font-size:9px;padding:2px 7px;cursor:pointer;letter-spacing:1px;">LIMPAR</button>
       </div>
       <div class="dash-right-log" id="logArea"></div>
+      <!-- LIVE OPS -->
+      <div class="dash-right-header" style="border-top:1px solid var(--border);">
+        <span>⚡ OPERAÇÕES AO VIVO</span>
+        <div style="display:flex;gap:8px;font-size:10px;">
+          <span>✅ <span id="liveWins" style="color:var(--green);">0</span></span>
+          <span>❌ <span id="liveLosses" style="color:var(--red);">0</span></span>
+          <span style="color:var(--dim);">|</span>
+          <span id="liveRate" style="color:var(--gold);">—%</span>
+        </div>
+      </div>
+      <div class="live-ops-row live-ops-head" style="background:var(--surface2);padding:4px 10px;">
+        <span>HORA</span><span>ESTRATÉGIA</span><span>ENTRADA</span><span>PREÇO IN→OUT</span><span>RES.</span><span>P&L</span>
+      </div>
+      <div class="dash-right-ops" id="liveOpsList">
+        <div style="text-align:center;color:var(--dim);font-size:10px;padding:16px;font-family:'Share Tech Mono',monospace;">Aguardando operações...</div>
+      </div>
     </div><!-- /dash-right -->
 
   </div><!-- /dash-wrapper -->
 </div><!-- /screenDashboard -->
+
+<!-- ════════════════════════════════════════════
+     SCREEN: RELATÓRIOS DIÁRIOS
+════════════════════════════════════════════ -->
+<div id="screenReports" class="screen">
+  <!-- Topnav -->
+  <div class="topnav">
+    <div class="topnav-brand" id="reportsTopnavBrand">📊 RELATÓRIOS DIÁRIOS</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="nav-pill" onclick="showScreen('screenDashboard')">◀ Dashboard</button>
+      <button class="nav-pill" id="btnClearReports" onclick="clearReports()" style="color:var(--red);border-color:rgba(255,59,107,.4);">🗑 Limpar</button>
+    </div>
+  </div>
+  <div style="padding:20px;max-width:1200px;margin:0 auto;width:100%;overflow-y:auto;flex:1;">
+    <!-- Resumo do dia atual -->
+    <div id="reportsSummary" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;"></div>
+    <!-- Tabela -->
+    <div id="reportsContent">
+      <div style="text-align:center;color:var(--dim);font-size:12px;padding:40px;font-family:'Share Tech Mono',monospace;">
+        Nenhuma operação registrada nesta sessão.
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- oauthStatus (hidden, used during redirect) -->
 <div id="oauthStatus" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);">
@@ -1748,6 +1787,8 @@ async function finishOAuthLogin(acc){
   renderRobotSelectorList();
   showScreen('screenDashboard');
   log('✅ Deriv conectada: ' + acc.loginid + ' (' + (acc.isVirtual?'DEMO':'REAL') + ') | ' + acc.currency, 'success');
+  // Auto-connect ao sistema sem precisar clicar em CONECTAR
+  setTimeout(()=>{ if(!ws||ws.readyState>1) connectDash(); }, 600);
 }
 
 function cancelOAuth(){
@@ -1948,7 +1989,7 @@ function toggleOperationMode(){
 // LIVE OPS
 // ════════════════════════════════════════
 let _liveWins=0, _liveLosses=0;
-function addLiveOp(strategy, entry, result, pnl){
+function addLiveOp(strategy, entry, result, pnl, entryPrice, exitPrice, accType){
   _liveWins   += result==='WIN'  ? 1 : 0;
   _liveLosses += result==='LOSS' ? 1 : 0;
   const total = _liveWins + _liveLosses;
@@ -1968,14 +2009,21 @@ function addLiveOp(strategy, entry, result, pnl){
   const ss  = now.getSeconds().toString().padStart(2,'0');
   const color = result==='WIN' ? 'var(--green)' : 'var(--red)';
   const sign  = pnl>=0 ? '+' : '';
+  const isReal = accType==='real';
+  const accBadge = isReal
+    ? `<span style="font-size:8px;background:rgba(255,184,0,.2);color:var(--gold);border-radius:3px;padding:1px 4px;">REAL</span>`
+    : `<span style="font-size:8px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:3px;padding:1px 4px;">DEMO</span>`;
+  const priceIn  = entryPrice ? parseFloat(entryPrice).toFixed(2) : '—';
+  const priceOut = exitPrice  ? parseFloat(exitPrice).toFixed(2)  : '—';
   const row = document.createElement('div');
   row.className='live-ops-row';
   row.innerHTML=`
-    <span class="mono" style="color:var(--dim);">${hh}:${mm}:${ss}</span>
-    <span style="font-size:10px;">${strategy||'—'}</span>
-    <span class="mono">$${parseFloat(entry).toFixed(2)}</span>
-    <span style="color:${color};font-weight:700;">${result}</span>
-    <span class="mono" style="color:${color};">${sign}$${Math.abs(pnl).toFixed(2)}</span>`;
+    <span class="mono" style="color:var(--dim);font-size:9px;">${hh}:${mm}:${ss}</span>
+    <span style="font-size:9px;">${strategy||'—'} ${accBadge}</span>
+    <span class="mono" style="font-size:9px;">$${parseFloat(entry).toFixed(2)}</span>
+    <span class="mono" style="font-size:9px;color:var(--dim);">${priceIn}→${priceOut}</span>
+    <span style="color:${color};font-weight:700;font-size:9px;">${result==='WIN'?'WIN':'LOSS'}</span>
+    <span class="mono" style="color:${color};font-size:9px;">${sign}$${Math.abs(pnl).toFixed(2)}</span>`;
   list.insertBefore(row, list.firstChild);
   while(list.children.length > 50) list.removeChild(list.lastChild);
 }
@@ -2104,12 +2152,10 @@ function applyBrand(){
   const sloganEl = document.getElementById('loginBrandSlogan');
   const emojiEl = document.getElementById('loginLogoEmoji');
   const imgEl = document.getElementById('loginLogoImg');
-  const welcomeEl = document.getElementById('loginBrandWelcome');
   if(nameEl) nameEl.textContent = b.name;
   if(sloganEl) sloganEl.textContent = b.slogan;
   if(emojiEl){ emojiEl.textContent = b.icon; emojiEl.style.display = b.logoUrl ? 'none' : 'block'; }
   if(imgEl){ imgEl.src = b.logoUrl || ''; imgEl.style.display = b.logoUrl ? 'block' : 'none'; }
-  if(welcomeEl){ welcomeEl.textContent = b.welcome; welcomeEl.style.display = b.welcome ? 'block' : 'none'; }
   // Topnav
   const adminBrand = document.getElementById('adminTopnavBrand');
   const dashBrand = document.getElementById('dashTopnavBrand');
@@ -3091,10 +3137,15 @@ function handleContract(data){
     const profit=parseFloat(c.profit||0);
     const isWin=profit>0;
     const bal=parseFloat(c.balance_after||0);
+    const _ePrice = c.entry_tick?.value ?? c.entry_spot ?? null;
+    const _xPrice = c.exit_tick?.value  ?? c.exit_spot  ?? null;
+    const _aType  = derivAccount?.accType || 'demo';
+    // Registrar no relatório diário
+    try{ addTradeReport(c, isWin, profit); }catch(e){}
     if(isWin){
       try{playWin();}catch(e){}
       addPnl(profit);
-      addLiveOp(window._lastStrategy||'—', window._lastEntry||0, 'WIN', profit);
+      addLiveOp(window._lastStrategy||'—', window._lastEntry||0, 'WIN', profit, _ePrice, _xPrice, _aType);
       const pnlSign=sessionPnl>=0?'+':'';
       log(`🏆 GANHOU! +$${profit.toFixed(2)} | Sessão: ${pnlSign}$${sessionPnl.toFixed(2)} | Saldo: $${bal.toFixed(2)}`,'success');
       // Recolor trigger chip to BLUE (win)
@@ -3114,7 +3165,7 @@ function handleContract(data){
       try{playLoss();}catch(e){}
       const lost=Math.abs(profit);
       addPnl(-lost);
-      addLiveOp(window._lastStrategy||'—', window._lastEntry||0, 'LOSS', -lost);
+      addLiveOp(window._lastStrategy||'—', window._lastEntry||0, 'LOSS', -lost, _ePrice, _xPrice, _aType);
       martingaleLevel++;
       const pnlSign=sessionPnl>=0?'+':'';
       const balMsg=bal<0?` | ⚠️ SALDO NEGATIVO: $${bal.toFixed(2)}`:`| Saldo: $${bal.toFixed(2)}`;
@@ -3681,18 +3732,11 @@ function updateOUTable(){
 
 function updateDiagnostics(){
   const total=digits.length;
-  const grid=document.getElementById('diagGrid');
-  const configs=[];
-  for(let x=0;x<=8;x++){
-    const w=[]; for(let d=x+1;d<=9;d++) w.push(d);
-    configs.push({name:`OVER ${x}`,winD:w,expected:(9-x)/10*100,digits:`${x+1}–9`});
-  }
-  for(let x=1;x<=9;x++){
-    const w=[]; for(let d=0;d<x;d++) w.push(d);
-    configs.push({name:`UNDER ${x}`,winD:w,expected:x/10*100,digits:`0–${x-1}`});
-  }
+  const gridOver=document.getElementById('diagGridOver');
+  const gridUnder=document.getElementById('diagGridUnder');
+  if(!gridOver||!gridUnder) return;
   const activeStrat=selectedRobot?selectedRobot.strategy.toUpperCase().replace(/(\D+)(\d+)/,'$1 $2'):'';
-  grid.innerHTML=configs.map(c=>{
+  function renderDiagItem(c){
     const cnt=c.winD.reduce((s,d)=>s+(freqMap[d]||0),0);
     const pct=total>0?cnt/total*100:null;
     const pctD=pct!==null?pct.toFixed(1)+'%':'—';
@@ -3711,7 +3755,152 @@ function updateDiagnostics(){
       <div class="diag-pct" style="color:${color}">${pctD}</div>
       <div class="diag-trend" style="color:${color}">${total>50?trend:'Coletando...'}</div>
     </div>`;
+  }
+  const overConfigs=[];
+  for(let x=0;x<=8;x++){
+    const w=[]; for(let d=x+1;d<=9;d++) w.push(d);
+    overConfigs.push({name:`OVER ${x}`,winD:w,expected:(9-x)/10*100,digits:`${x+1}–9`});
+  }
+  const underConfigs=[];
+  for(let x=1;x<=9;x++){
+    const w=[]; for(let d=0;d<x;d++) w.push(d);
+    underConfigs.push({name:`UNDER ${x}`,winD:w,expected:x/10*100,digits:`0–${x-1}`});
+  }
+  gridOver.innerHTML=overConfigs.map(renderDiagItem).join('');
+  gridUnder.innerHTML=underConfigs.map(renderDiagItem).join('');
+}
+
+// ════════════════════════════════════════
+// RELATÓRIOS DIÁRIOS
+// ════════════════════════════════════════
+window._reportTrades = [];
+
+function addTradeReport(c, isWin, profit){
+  const now = new Date();
+  const mkt = document.getElementById('boletaMarket')?.value || '—';
+  const mktLabel = document.getElementById('boletaMarket')?.options[document.getElementById('boletaMarket')?.selectedIndex]?.text || mkt;
+  const entryPrice = c.entry_tick?.value ?? c.entry_spot ?? null;
+  const exitPrice  = c.exit_tick?.value  ?? c.exit_spot  ?? null;
+  const dur = (c.date_expiry && c.date_start) ? (c.date_expiry - c.date_start) + 's' : '—';
+  window._reportTrades.push({
+    date:       now.toLocaleDateString('pt-BR'),
+    time:       now.toLocaleTimeString('pt-BR'),
+    market:     mktLabel,
+    strategy:   window._lastStrategy || '—',
+    entry:      window._lastEntry || 0,
+    entryPrice: entryPrice,
+    exitPrice:  exitPrice,
+    duration:   dur,
+    result:     isWin ? 'WIN' : 'LOSS',
+    pnl:        profit,
+    accType:    derivAccount?.accType || 'demo',
+    martLevel:  martingaleLevel
+  });
+  renderReports();
+}
+
+function renderReports(){
+  const content = document.getElementById('reportsContent');
+  const summary = document.getElementById('reportsSummary');
+  if(!content) return;
+  const trades = window._reportTrades;
+  if(!trades.length){
+    content.innerHTML='<div style="text-align:center;color:var(--dim);font-size:12px;padding:40px;font-family:\'Share Tech Mono\',monospace;">Nenhuma operação registrada nesta sessão.</div>';
+    if(summary) summary.innerHTML='';
+    return;
+  }
+  // Group by date
+  const byDate = {};
+  trades.forEach(t=>{ if(!byDate[t.date]) byDate[t.date]=[]; byDate[t.date].push(t); });
+  const dates = Object.keys(byDate).reverse();
+  // Summary cards for today (first date)
+  const todayTrades = byDate[dates[0]] || [];
+  const todayWins   = todayTrades.filter(t=>t.result==='WIN').length;
+  const todayTotal  = todayTrades.length;
+  const todayPnl    = todayTrades.reduce((s,t)=>s+t.pnl,0);
+  const todayRate   = todayTotal>0 ? Math.round(todayWins/todayTotal*100) : 0;
+  const pnlColor    = todayPnl>=0 ? 'var(--green)' : 'var(--red)';
+  const pnlSign     = todayPnl>=0 ? '+' : '';
+  if(summary) summary.innerHTML=`
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">OPERAÇÕES</div>
+      <div style="font-size:26px;font-weight:900;color:var(--accent);">${todayTotal}</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">WIN RATE</div>
+      <div style="font-size:26px;font-weight:900;color:${todayRate>=50?'var(--green)':'var(--red)'};">${todayRate}%</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">P&L DO DIA</div>
+      <div style="font-size:26px;font-weight:900;color:${pnlColor};">${pnlSign}$${Math.abs(todayPnl).toFixed(2)}</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">RESULTADO</div>
+      <div style="font-size:22px;font-weight:900;color:${pnlColor};">${todayPnl>=0?'✅ GAIN':'❌ LOSS'}</div>
+    </div>`;
+  // Tables per date
+  content.innerHTML = dates.map(date=>{
+    const ts = byDate[date];
+    const wins  = ts.filter(t=>t.result==='WIN').length;
+    const total = ts.length;
+    const pnl   = ts.reduce((s,t)=>s+t.pnl,0);
+    const rate  = total>0 ? Math.round(wins/total*100) : 0;
+    const dp    = pnl>=0;
+    return `<div style="margin-bottom:24px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">
+        <span style="font-size:13px;font-weight:700;font-family:'Share Tech Mono',monospace;color:var(--text);">📅 ${date}</span>
+        <span style="font-size:11px;color:var(--dim);">${total} ops</span>
+        <span style="font-size:11px;color:${rate>=50?'var(--green)':'var(--red)'};">⚡ ${rate}% win</span>
+        <span style="font-size:12px;font-weight:700;color:${dp?'var(--green)':'var(--red)'};">${dp?'+':'-'}$${Math.abs(pnl).toFixed(2)}</span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:700;background:${dp?'rgba(0,255,159,.15)':'rgba(255,59,107,.15)'};color:${dp?'var(--green)':'var(--red)'};">${dp?'GAIN':'LOSS'}</span>
+      </div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:'Share Tech Mono',monospace;">
+        <thead>
+          <tr style="color:var(--dim);font-size:9px;letter-spacing:1px;">
+            <th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);">HORA</th>
+            <th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);">MERCADO</th>
+            <th style="text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);">ESTRATÉGIA</th>
+            <th style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);">ENTRADA</th>
+            <th style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);">PREÇO IN→OUT</th>
+            <th style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);">DURAÇÃO</th>
+            <th style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);">CONTA</th>
+            <th style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border);">RESULTADO</th>
+            <th style="text-align:right;padding:5px 8px;border-bottom:1px solid var(--border);">P&L</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${ts.map(t=>{
+            const win=t.result==='WIN';
+            const c=win?'var(--green)':'var(--red)';
+            const eP=t.entryPrice?parseFloat(t.entryPrice).toFixed(2):'—';
+            const xP=t.exitPrice?parseFloat(t.exitPrice).toFixed(2):'—';
+            const s=t.pnl>=0?'+':'';
+            const isReal=t.accType==='real';
+            const accBadge=isReal?`<span style="font-size:8px;background:rgba(255,184,0,.2);color:var(--gold);border-radius:3px;padding:1px 5px;">REAL</span>`:`<span style="font-size:8px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:3px;padding:1px 5px;">DEMO</span>`;
+            return `<tr style="border-bottom:1px solid rgba(13,58,92,.4);">
+              <td style="padding:5px 8px;color:var(--dim);">${t.time}</td>
+              <td style="padding:5px 8px;">${t.market}</td>
+              <td style="padding:5px 8px;">${t.strategy}</td>
+              <td style="padding:5px 8px;text-align:right;">$${parseFloat(t.entry).toFixed(2)}</td>
+              <td style="padding:5px 8px;text-align:right;color:var(--dim);">${eP}→${xP}</td>
+              <td style="padding:5px 8px;text-align:right;color:var(--dim);">${t.duration}</td>
+              <td style="padding:5px 8px;text-align:center;">${accBadge}</td>
+              <td style="padding:5px 8px;text-align:center;font-weight:700;color:${c};">${t.result}</td>
+              <td style="padding:5px 8px;text-align:right;font-weight:700;color:${c};">${s}$${Math.abs(t.pnl).toFixed(2)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>`;
   }).join('');
+}
+
+function clearReports(){
+  if(!confirm('Limpar todos os relatórios desta sessão?')) return;
+  window._reportTrades=[];
+  renderReports();
 }
 
 // ════════════════════════════════════════
