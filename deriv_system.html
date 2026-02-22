@@ -1967,6 +1967,37 @@ function updateChart(price,time){
 }
 
 // ════════════════════════════════════════
+// BOLETA LOCK / UNLOCK
+// ════════════════════════════════════════
+const _BOLETA_INPUTS = [
+  'robotDropdownBtn','manualStrategy','manualVirtual',
+  'manualFactor','manualLevels','boletaMarket',
+  'boletaEntry','boletaSG','boletaSL'
+];
+function lockBoleta(){
+  _BOLETA_INPUTS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.disabled=true; el.style.opacity='0.4'; el.style.cursor='not-allowed'; }
+  });
+  // Bloquear o toggle AUTO/MANUAL
+  const tog=document.getElementById('modeToggle');
+  if(tog){ tog.style.pointerEvents='none'; tog.style.opacity='0.4'; }
+  // Impedir abertura do dropdown de robôs
+  const menu=document.getElementById('robotDropdownMenu');
+  if(menu){ menu.style.pointerEvents='none'; }
+}
+function unlockBoleta(){
+  _BOLETA_INPUTS.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){ el.disabled=false; el.style.opacity=''; el.style.cursor=''; }
+  });
+  const tog=document.getElementById('modeToggle');
+  if(tog){ tog.style.pointerEvents=''; tog.style.opacity=''; }
+  const menu=document.getElementById('robotDropdownMenu');
+  if(menu){ menu.style.pointerEvents=''; }
+}
+
+// ════════════════════════════════════════
 // TOGGLE AUTO / MANUAL
 // ════════════════════════════════════════
 let _modeManual = false;
@@ -3012,6 +3043,7 @@ function toggleAutoTrade(){
     setSignal('virtual','👁️ MONITORANDO','Aguardando '+getVirtualLossTarget()+' losses virtuais para entrar');
     document.getElementById('bStatus').textContent='OPERANDO';
     document.getElementById('bStatus').style.color='var(--green)';
+    lockBoleta();
     log('🤖 ROBÔ INICIADO — Operando automaticamente!','success');
   } else {
     btn.textContent='🤖 INICIAR ROBÔ';
@@ -3023,6 +3055,7 @@ function toggleAutoTrade(){
     virtualLossStreak = 0;
     pendingMartingaleLevel = 0;
     robotActive = false;
+    unlockBoleta();
     setSignal('aguardando', '⏸ ROBÔ PARADO', 'Clique em INICIAR ROBÔ para operar');
     log('⏸ Robô parado. Ciclo e streak resetados.','warning');
   }
@@ -3040,6 +3073,7 @@ function disableAutoTrade(){
   document.getElementById('autoTradeIndicator').style.cssText='width:10px;height:10px;border-radius:50%;background:var(--dim);';
   document.getElementById('autoTradeLabel').style.color='var(--dim)';
   document.getElementById('autoTradeLabel').textContent='ROBÔ PARADO';
+  unlockBoleta();
 }
 
 // ════════════════════════════════════════
