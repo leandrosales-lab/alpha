@@ -1693,6 +1693,7 @@ function loginWithDeriv(){
   }
 
   // Open popup
+  localStorage.setItem('deriv_oauth_pending', '1');
   const w=600, h=700;
   const left=(screen.width-w)/2, top=(screen.height-h)/2;
   oauthPopup = window.open(
@@ -1865,15 +1866,20 @@ function showOAuthError(msg){
 (function checkOAuthOnLoad(){
   const params = new URLSearchParams(window.location.search);
   if(params.get('token1') && params.get('acct1')){
-    // If running inside popup — write to localStorage and close self
-    if(window.opener){
+    // Detect popup via window.name (persists across cross-origin redirects)
+    // OR via window.opener OR via pending flag set before opening popup
+    const isPopup = window.name === 'DerivAuth'
+                 || window.opener !== null
+                 || localStorage.getItem('deriv_oauth_pending') === '1';
+    if(isPopup){
+      localStorage.removeItem('deriv_oauth_pending');
       localStorage.setItem('deriv_oauth_result', JSON.stringify({
         search: window.location.search, ts: Date.now()
       }));
-      window.close();
+      setTimeout(()=> window.close(), 150);
       return;
     }
-    // Otherwise it's a redirect fallback — process normally
+    // Redirect fallback (main window)
     setTimeout(()=>{ handleOAuthCallback(params); }, 300);
   }
 })();
@@ -2053,6 +2059,9 @@ function toggleOperationMode(){
   if(manualFields) manualFields.style.display = _modeManual ? 'block' : 'none';
   const robotDrop = document.getElementById('robotDropdown');
   if(robotDrop) robotDrop.closest?.('.field')?.style && (robotDrop.closest('.field').style.display = _modeManual ? 'none' : 'block');
+  // Re-renderiza dropdown para mostrar/esconder item Manual
+  renderRobotSelectorList();
+  window._modeManual = _modeManual; // expor globalmente
   log(_modeManual ? '🖐 Modo MANUAL ativado' : '🤖 Modo AUTOMÁTICO ativado', 'warning');
 }
 
@@ -2557,10 +2566,13 @@ function renderRobotSelectorList(){
       <div class="rdi-meta">${stratLabel} · x${r.factor} · ${r.levels} níveis · ${r.virtualLosses} losses</div>
     </div>`;
   });
-  html+=`<div class="robot-dropdown-item manual-mode" onclick="selectManualMode()">
-    <div class="rdi-name" style="color:var(--gold);">✋ MODO MANUAL</div>
-    <div class="rdi-meta" style="color:var(--gold);">Configure a estratégia manualmente</div>
-  </div>`;
+  // Só mostra MODO MANUAL quando o toggle estiver em MANUAL
+  if(window._modeManual){
+    html+=`<div class="robot-dropdown-item manual-mode" onclick="selectManualMode()">
+      <div class="rdi-name" style="color:var(--gold);">✋ MODO MANUAL</div>
+      <div class="rdi-meta" style="color:var(--gold);">Configure a estratégia manualmente</div>
+    </div>`;
+  }
   menu.innerHTML=html||'<div style="padding:12px;color:var(--dim);font-size:12px;text-align:center;">Nenhum robô disponível.</div>';
 }
 
