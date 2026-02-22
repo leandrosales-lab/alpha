@@ -1692,8 +1692,10 @@ function loginWithDeriv(){
     return;
   }
 
-  // Open popup
+  // Clear stale results and mark pending
+  localStorage.removeItem('deriv_oauth_result');
   localStorage.setItem('deriv_oauth_pending', '1');
+
   const w=600, h=700;
   const left=(screen.width-w)/2, top=(screen.height-h)/2;
   oauthPopup = window.open(
@@ -1703,9 +1705,9 @@ function loginWithDeriv(){
   );
 
   if(!oauthPopup || oauthPopup.closed){
-    // Popup blocked — fallback to redirect
+    localStorage.removeItem('deriv_oauth_pending');
     showOAuthStatus('⚠️ Popup bloqueado. Redirecionando...');
-    setTimeout(()=>{ window.location.href = DERIV_OAUTH_URL + '&redirect_uri=' + encodeURIComponent(window.location.href); }, 1000);
+    setTimeout(()=>{ window.location.href = DERIV_OAUTH_URL; }, 1000);
     return;
   }
 
@@ -1713,34 +1715,51 @@ function loginWithDeriv(){
   document.getElementById('oauthOverlay').classList.add('show');
   document.getElementById('oauthModalMsg').textContent = 'Complete o login na janela da Deriv que abriu';
 
-  // Listen for popup result via localStorage storage event
-  function _oauthStorageListener(e){
-    if(e.key === 'deriv_oauth_result' && e.newValue){
-      window.removeEventListener('storage', _oauthStorageListener);
-      clearInterval(oauthPollTimer);
-      if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
-      oauthPopup = null;
+  let _oauthHandled = false;
+
+  function _processOAuthResult(stored){
+    if(_oauthHandled) return;
+    _oauthHandled = true;
+    clearInterval(oauthPollTimer);
+    oauthPollTimer = null;
+    if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
+    oauthPopup = null;
+    try {
+      const result = JSON.parse(stored);
+      localStorage.removeItem('deriv_oauth_result');
+      handleOAuthCallback(new URLSearchParams(result.search));
+    } catch(err){
+      console.error('OAuth parse error', err);
       document.getElementById('oauthOverlay').classList.remove('show');
-      try {
-        const result = JSON.parse(e.newValue);
-        localStorage.removeItem('deriv_oauth_result');
-        handleOAuthCallback(new URLSearchParams(result.search));
-      } catch(err){ console.error('OAuth parse error', err); }
     }
   }
-  window.addEventListener('storage', _oauthStorageListener);
 
-  // Fallback poll (in case popup is on same origin already)
+  // Poll localStorage every 200ms — does not depend on storage events
   oauthPollTimer = setInterval(()=>{
+    // 1. Check if result already available
+    const stored = localStorage.getItem('deriv_oauth_result');
+    if(stored){
+      _processOAuthResult(stored);
+      return;
+    }
+    // 2. Check if popup was closed without completing auth
     try{
-      if(!oauthPopup || oauthPopup.closed){
+      if(oauthPopup && oauthPopup.closed){
         clearInterval(oauthPollTimer);
-        window.removeEventListener('storage', _oauthStorageListener);
-        document.getElementById('oauthOverlay').classList.remove('show');
-        return;
+        // Wait 600ms in case result is still being written
+        setTimeout(()=>{
+          if(_oauthHandled) return;
+          const stored2 = localStorage.getItem('deriv_oauth_result');
+          if(stored2){
+            _processOAuthResult(stored2);
+          } else {
+            _oauthHandled = true;
+            document.getElementById('oauthOverlay').classList.remove('show');
+          }
+        }, 600);
       }
     }catch(e){}
-  }, 500);
+  }, 200);
 }
 
 function handleOAuthCallback(params){
