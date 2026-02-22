@@ -1205,62 +1205,10 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   </div><!-- /dash-wrapper -->
 </div><!-- /screenDashboard -->
 
-<!-- Deriv Connect Modal -->
-<div id="derivConnectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;max-width:360px;width:90%;position:relative;">
-    <button onclick="closeDerivConnectModal()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer;">✕</button>
-    <div style="text-align:center;margin-bottom:20px;">
-      <div style="font-size:28px;margin-bottom:8px;">🔗</div>
-      <div style="font-size:14px;font-weight:700;letter-spacing:2px;color:var(--accent);">CONECTAR DERIV</div>
-      <div style="font-size:11px;color:var(--dim);margin-top:4px;">Autorize o acesso para operar com os robôs</div>
-    </div>
-
-    <!-- Token manual — padrão enquanto OAuth App ID não está registrado -->
-    <div style="display:flex;flex-direction:column;gap:10px;">
-      <div class="field" style="margin:0;"><label>Login ID Deriv</label>
-        <input type="text" id="derivLoginId" placeholder="Ex: VRTC1659209 ou CR123456">
-      </div>
-      <div class="field" style="margin:0;"><label>API Token</label>
-        <input type="password" id="derivToken" placeholder="Cole seu token aqui" oninput="showTokenHint(this)">
-        <span id="tokenHint" style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-top:3px;display:block;"></span>
-        <div style="font-size:10px;color:var(--dim);margin-top:4px;">
-          Gere em <a href="https://app.deriv.com/account/api-token" target="_blank"
-          style="color:var(--accent);">app.deriv.com → API Token</a> com permissões Read + Trade
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-        <div class="field" style="margin:0;"><label>Tipo de Conta</label>
-          <select id="derivAccType">
-            <option value="demo">📊 Demo</option>
-            <option value="real">💰 Real</option>
-          </select>
-        </div>
-        <div class="field" style="margin:0;"><label>App ID</label>
-          <input type="text" id="derivAppId" value="128505">
-        </div>
-      </div>
-      <button class="btn btn-primary" onclick="loginTrader()" style="padding:12px;font-size:13px;">
-        🔗 CONECTAR CONTA DERIV
-      </button>
-    </div>
-    <div id="traderLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;margin-top:8px;"></div>
-
-    <!-- OAuth — disponível quando App ID registrado -->
-    <details style="margin-top:12px;">
-      <summary style="font-size:10px;color:var(--dim);cursor:pointer;list-style:none;text-align:center;letter-spacing:1px;">
-        🔐 Usar OAuth (requer App ID registrado na Deriv)
-      </summary>
-      <div style="margin-top:10px;">
-        <button class="btn btn-sm" onclick="loginWithDeriv()"
-          style="width:100%;padding:10px;font-size:12px;background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.3);color:var(--accent);">
-          Entrar com Deriv (OAuth)
-        </button>
-        <div id="oauthStatus" style="display:none;text-align:center;padding:8px;border-radius:8px;margin-top:8px;
-          background:rgba(0,212,255,.08);border:1px solid rgba(0,212,255,.2);">
-          <div style="font-size:12px;color:var(--accent);" id="oauthStatusMsg">Aguardando...</div>
-        </div>
-      </div>
-    </details>
+<!-- oauthStatus (hidden, used during redirect) -->
+<div id="oauthStatus" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;text-align:center;">
+    <div style="font-size:11px;color:var(--accent);letter-spacing:2px;font-family:'Share Tech Mono',monospace;" id="oauthStatusMsg">Redirecionando para a Deriv...</div>
   </div>
 </div>
 
@@ -1472,13 +1420,9 @@ function updateProfileDropdown(){
 
 function openDerivConnectModal(){
   closeProfileDropdown();
-  const m = document.getElementById('derivConnectModal');
-  if(m) m.style.display='flex';
+  loginWithDeriv();
 }
-function closeDerivConnectModal(){
-  const m = document.getElementById('derivConnectModal');
-  if(m) m.style.display='none';
-}
+function closeDerivConnectModal(){}
 
 function disconnectDeriv(){
   if(!confirm('Desconectar conta Deriv? O robô será parado.')) return;
@@ -1772,7 +1716,7 @@ function showAccountPicker(accounts){
 async function finishOAuthLogin(acc){
   document.getElementById('oauthOverlay').classList.remove('show');
 
-  const appId = document.getElementById('derivAppId')?.value.trim() || DERIV_APP_ID;
+  const appId = DERIV_APP_ID;
   const alphaUser = window._alphaUser;
 
   currentUser = { user: alphaUser?.name || acc.loginid, isAdmin: false };
@@ -1821,8 +1765,14 @@ function showOAuthStatus(msg){
 }
 
 function showOAuthError(msg){
-  const err = document.getElementById('traderLoginErr');
-  if(err){ err.textContent=msg; err.style.display='block'; }
+  const overlay = document.getElementById('oauthOverlay');
+  const title   = document.getElementById('oauthModalTitle');
+  const msgEl   = document.getElementById('oauthModalMsg');
+  const spinner = overlay?.querySelector('.oauth-spinner');
+  if(spinner) spinner.style.display='none';
+  if(title)   title.textContent = 'ERRO';
+  if(msgEl)   { msgEl.textContent=msg; msgEl.style.color='var(--red)'; }
+  if(overlay) overlay.classList.add('show');
 }
 
 // On page load — check if this is an OAuth redirect
@@ -1844,14 +1794,6 @@ function showOAuthError(msg){
   setTimeout(() => { handleOAuthCallback(params); }, 500);
 })();
 
-function showTokenHint(input){
-  const val = input.value.replace(/[^a-zA-Z0-9\-_]/g,'');
-  const hint = document.getElementById('tokenHint');
-  if(!val.length){ hint.textContent=''; return; }
-  if(val.length < 15){ hint.textContent=`⚠️ ${val.length} chars — parece incompleto`; hint.style.color='var(--red)'; }
-  else { hint.textContent=`✅ ${val.length} chars — OK`; hint.style.color='var(--green)'; }
-}
-
 function loginAdmin(){
   const u = document.getElementById('adminUser').value.trim();
   const p = document.getElementById('adminPass').value;
@@ -1870,29 +1812,6 @@ function loginAdmin(){
   renderRobotList();
   renderAdminList();
   showScreen('screenAdmin');
-}
-
-function loginTrader(){
-  const loginId = document.getElementById('derivLoginId').value.trim().toUpperCase();
-  const token   = document.getElementById('derivToken').value.replace(/[^a-zA-Z0-9\-_]/g,'').trim();
-  const accType = document.getElementById('derivAccType').value;
-  const appId   = document.getElementById('derivAppId').value.trim() || '128505';
-  const err     = document.getElementById('traderLoginErr');
-
-  if(!loginId){ err.textContent='Informe o Login ID.'; err.style.display='block'; return; }
-  if(token.length < 10){ err.textContent='Token inválido ou incompleto.'; err.style.display='block'; return; }
-  err.style.display='none';
-
-  const alphaUser = window._alphaUser;
-  currentUser = { user: alphaUser?.name || loginId, isAdmin: false };
-  derivAccount  = { loginid: loginId, token, appId, accType, isVirtual: accType === 'demo' };
-
-  closeDerivConnectModal();
-  closeProfileDropdown();
-  updateProfileDropdown();
-  renderRobotSelectorList();
-  showScreen('screenDashboard');
-  log('✅ Deriv conectada: ' + loginId + ' (' + accType.toUpperCase() + ')', 'success');
 }
 
 function safeEl(id){ return document.getElementById(id); }
@@ -2142,9 +2061,7 @@ function logoutAll(){
   safeCss('btnAdminNav','display:none');
   // Clear login inputs
   safeSet('adminUser','value',''); safeSet('adminPass','value','');
-  safeSet('derivLoginId','value',''); safeSet('derivToken','value','');
   safeSet('adminLoginErr','style','display:none');
-  safeSet('traderLoginErr','style','display:none');
   showScreen('screenLogin');
 }
 
