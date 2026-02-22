@@ -20,10 +20,10 @@ body{background:var(--bg);color:var(--text);font-family:'Exo 2',sans-serif;min-h
 /* Toggle Auto/Manual */
 .mode-toggle{display:flex;align-items:center;gap:6px;}
 .mode-toggle-label{font-size:9px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;font-weight:700;transition:color .3s;}
-.toggle-track{width:46px;height:24px;border-radius:12px;background:rgba(0,255,159,.2);border:1px solid rgba(0,255,159,.5);cursor:pointer;position:relative;transition:all .3s;}
-.toggle-track.manual{background:rgba(0,212,255,.2);border-color:rgba(0,212,255,.5);}
-.toggle-knob{width:18px;height:18px;border-radius:50%;background:var(--green);position:absolute;top:2px;left:2px;transition:left .3s,background .3s;box-shadow:0 0 6px rgba(0,255,159,.6);}
-.toggle-track.manual .toggle-knob{left:24px;background:var(--accent);box-shadow:0 0 6px rgba(0,212,255,.6);}
+.toggle-track{width:46px;height:24px;border-radius:12px;background:rgba(0,212,255,.2);border:1px solid rgba(0,212,255,.5);cursor:pointer;position:relative;transition:all .3s;}
+.toggle-track.manual{background:rgba(0,255,159,.2);border-color:rgba(0,255,159,.5);}
+.toggle-knob{width:18px;height:18px;border-radius:50%;background:var(--accent);position:absolute;top:2px;left:2px;transition:left .3s,background .3s;box-shadow:0 0 6px rgba(0,212,255,.6);}
+.toggle-track.manual .toggle-knob{left:24px;background:var(--green);box-shadow:0 0 6px rgba(0,255,159,.6);}
 /* Chart timeframe */
 #chartTimeframes{overflow-x:auto;scrollbar-width:none;}
 #chartTimeframes::-webkit-scrollbar{display:none;}
@@ -898,7 +898,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div style="font-size:11px;letter-spacing:2px;color:var(--gold);font-family:'Share Tech Mono',monospace;">💼 BOLETA DE OPERAÇÃO</div>
             <div class="mode-toggle">
-              <span class="mode-toggle-label" id="modeLabelAuto" style="color:var(--green);">AUTO</span>
+              <span class="mode-toggle-label" id="modeLabelAuto" style="color:var(--accent);">AUTO</span>
               <div class="toggle-track" id="modeToggle" onclick="toggleOperationMode()">
                 <div class="toggle-knob" id="modeKnob"></div>
               </div>
@@ -1932,8 +1932,8 @@ let _modeManual = false;
 function toggleOperationMode(){
   _modeManual = !_modeManual;
   document.getElementById('modeToggle')?.classList.toggle('manual', _modeManual);
-  document.getElementById('modeLabelAuto').style.color  = _modeManual ? 'var(--dim)'   : 'var(--green)';
-  document.getElementById('modeLabelManual').style.color= _modeManual ? 'var(--accent)': 'var(--dim)';
+  document.getElementById('modeLabelAuto').style.color  = _modeManual ? 'var(--dim)'   : 'var(--accent)';
+  document.getElementById('modeLabelManual').style.color= _modeManual ? 'var(--green)' : 'var(--dim)';
   const manualFields = document.getElementById('manualFields');
   if(manualFields) manualFields.style.display = _modeManual ? 'block' : 'none';
   const robotDrop = document.getElementById('robotDropdown');
