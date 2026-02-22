@@ -1716,50 +1716,50 @@ function loginWithDeriv(){
   document.getElementById('oauthModalMsg').textContent = 'Complete o login na janela da Deriv que abriu';
 
   let _oauthHandled = false;
+  let _bc = null;
 
-  function _processOAuthResult(stored){
+  function _processOAuthResult(search){
     if(_oauthHandled) return;
     _oauthHandled = true;
+    if(_bc){ try{ _bc.close(); }catch(e){} _bc = null; }
     clearInterval(oauthPollTimer);
     oauthPollTimer = null;
     if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
     oauthPopup = null;
-    try {
-      const result = JSON.parse(stored);
-      localStorage.removeItem('deriv_oauth_result');
-      handleOAuthCallback(new URLSearchParams(result.search));
-    } catch(err){
-      console.error('OAuth parse error', err);
-      document.getElementById('oauthOverlay').classList.remove('show');
-    }
+    localStorage.removeItem('deriv_oauth_result');
+    handleOAuthCallback(new URLSearchParams(search));
   }
 
-  // Poll localStorage every 200ms — does not depend on storage events
+  // Primary: BroadcastChannel (push-based, no race conditions)
+  try{
+    _bc = new BroadcastChannel('deriv_oauth');
+    _bc.onmessage = (e)=>{
+      if(e.data && e.data.search) _processOAuthResult(e.data.search);
+    };
+  }catch(e){ _bc = null; }
+
+  // Fallback: poll localStorage every 300ms
   oauthPollTimer = setInterval(()=>{
-    // 1. Check if result already available
     const stored = localStorage.getItem('deriv_oauth_result');
     if(stored){
-      _processOAuthResult(stored);
+      try{
+        const r = JSON.parse(stored);
+        _processOAuthResult(r.search);
+      }catch(e){ /* ignore */ }
       return;
     }
-    // 2. Check if popup was closed without completing auth
     try{
       if(oauthPopup && oauthPopup.closed){
         clearInterval(oauthPollTimer);
-        // Wait 600ms in case result is still being written
         setTimeout(()=>{
           if(_oauthHandled) return;
-          const stored2 = localStorage.getItem('deriv_oauth_result');
-          if(stored2){
-            _processOAuthResult(stored2);
-          } else {
-            _oauthHandled = true;
-            document.getElementById('oauthOverlay').classList.remove('show');
-          }
-        }, 600);
+          const s = localStorage.getItem('deriv_oauth_result');
+          if(s){ try{ const r=JSON.parse(s); _processOAuthResult(r.search); }catch(e){} }
+          else { _oauthHandled=true; document.getElementById('oauthOverlay').classList.remove('show'); }
+        }, 800);
       }
     }catch(e){}
-  }, 200);
+  }, 300);
 }
 
 function handleOAuthCallback(params){
@@ -1884,23 +1884,26 @@ function showOAuthError(msg){
 // On page load — check if this is an OAuth redirect
 (function checkOAuthOnLoad(){
   const params = new URLSearchParams(window.location.search);
-  if(params.get('token1') && params.get('acct1')){
-    // Detect popup via window.name (persists across cross-origin redirects)
-    // OR via window.opener OR via pending flag set before opening popup
-    const isPopup = window.name === 'DerivAuth'
-                 || window.opener !== null
-                 || localStorage.getItem('deriv_oauth_pending') === '1';
-    if(isPopup){
-      localStorage.removeItem('deriv_oauth_pending');
-      localStorage.setItem('deriv_oauth_result', JSON.stringify({
-        search: window.location.search, ts: Date.now()
-      }));
-      setTimeout(()=> window.close(), 150);
-      return;
-    }
-    // Redirect fallback (main window)
-    setTimeout(()=>{ handleOAuthCallback(params); }, 300);
+  if(!params.get('token1') || !params.get('acct1')) return;
+
+  const hasPending = localStorage.getItem('deriv_oauth_pending') === '1';
+  const isPopup = window.name === 'DerivAuth'
+               || window.opener !== null
+               || hasPending;
+
+  if(isPopup){
+    const payload = { search: window.location.search, ts: Date.now() };
+    localStorage.removeItem('deriv_oauth_pending');
+    // Broadcast via BroadcastChannel (most reliable)
+    try{ const bc = new BroadcastChannel('deriv_oauth'); bc.postMessage(payload); bc.close(); }catch(e){}
+    // Also write localStorage as fallback
+    localStorage.setItem('deriv_oauth_result', JSON.stringify(payload));
+    setTimeout(()=> window.close(), 300);
+    return;
   }
+
+  // Not a popup — tokens arrived via main-window redirect
+  setTimeout(()=>{ handleOAuthCallback(params); }, 300);
 })();
 
 function showTokenHint(input){
