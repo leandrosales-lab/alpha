@@ -1467,6 +1467,10 @@ function closeDerivConnectModal(){}
 function disconnectDeriv(){
   if(!confirm('Desconectar conta Deriv? O robô será parado.')) return;
   if(ws) disconnectDash();
+  // Remover token salvo do localStorage
+  if(window._alphaUser?.uid){
+    try{ localStorage.removeItem('drv_conn_' + window._alphaUser.uid); }catch(e){}
+  }
   derivAccount = null;
   updateProfileDropdown();
   closeProfileDropdown();
@@ -1631,14 +1635,35 @@ async function alphaLogout(){
 // Called by Supabase onAuthStateChange when user logs in
 window._onAlphaLogin = function(user){
   currentUser = { user: user.name, isAdmin: user.is_admin || false };
-  updateProfileDropdown();
   const btnAdmin = document.getElementById('btnAdminNav');
   if(btnAdmin) btnAdmin.style.display = user.is_admin ? 'inline-block' : 'none';
-  if(!derivAccount){
-    document.getElementById('pdDerivConnect').style.display='block';
-    document.getElementById('pdDerivDisconnect').style.display='none';
+
+  // Tentar restaurar conexão Deriv salva do localStorage
+  if(!derivAccount && user.uid){
+    try{
+      const saved = localStorage.getItem('drv_conn_' + user.uid);
+      if(saved){
+        const conn = JSON.parse(saved);
+        derivAccount = {
+          loginid:   conn.loginid,
+          token:     conn.token,
+          appId:     conn.appId || DERIV_APP_ID,
+          accType:   conn.accType,
+          isVirtual: conn.isVirtual,
+          currency:  conn.currency
+        };
+        log('🔗 Deriv restaurada automaticamente: ' + conn.loginid, 'success');
+      }
+    }catch(e){}
   }
+
+  updateProfileDropdown();
   showScreen('screenDashboard');
+
+  // Auto-connect se Deriv restaurada
+  if(derivAccount){
+    setTimeout(()=>{ if(!ws||ws.readyState>1) connectDash(); }, 700);
+  }
 };
 
 window._onAlphaLogout = function(){
@@ -1769,7 +1794,21 @@ async function finishOAuthLogin(acc){
     currency:  acc.currency
   };
 
-  // Save Deriv connection info to Supabase (token stays local only)
+  // Persistir conexão Deriv no localStorage (por uid) para auto-reconexão
+  if(alphaUser?.uid){
+    try{
+      localStorage.setItem('drv_conn_' + alphaUser.uid, JSON.stringify({
+        loginid:   acc.loginid,
+        token:     acc.token,
+        appId:     DERIV_APP_ID,
+        accType:   acc.isVirtual ? 'demo' : 'real',
+        isVirtual: acc.isVirtual,
+        currency:  acc.currency,
+        savedAt:   Date.now()
+      }));
+    }catch(e){}
+  }
+  // Salvar metadados no Supabase (sem o token)
   if(window._sb && alphaUser?.uid){
     try{
       await window._sb.from('profiles').update({
