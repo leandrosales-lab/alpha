@@ -5,11 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DERIV · Sistema de Robôs</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<script>if(sessionStorage.getItem('alpha_session'))document.documentElement.classList.add('restoring-session');</script>
 <style>
-.restoring-session #screenLogin{visibility:hidden!important;}
-
 :root {
   --bg:#020b14; --surface:#041020; --surface2:#071828;
   --border:#0d3a5c; --accent:#00d4ff; --accent2:#00ff9f;
@@ -34,7 +30,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .btn-success{background:rgba(0,255,159,.15);color:var(--green);border:1px solid rgba(0,255,159,.4);}
 .btn-gold{background:rgba(255,184,0,.15);color:var(--gold);border:1px solid rgba(255,184,0,.4);}
 .btn-sm{padding:6px 14px;font-size:11px;}
-.btn.active{background:rgba(0,212,255,.15);color:var(--accent);border:1px solid var(--accent);}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden;}
 .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);}
 .mono{font-family:'Share Tech Mono',monospace;}
@@ -155,7 +150,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   display:flex;
   flex-direction:column;
   overflow:hidden;
-  align-self:start;
 }
 .dash-right-header{
   padding:12px 14px 8px;
@@ -170,7 +164,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   justify-content:space-between;
 }
 .dash-right-log{
-  height:520px;
+  flex:1;
   overflow-y:auto;
   padding:10px 12px;
   font-family:'Share Tech Mono',monospace;
@@ -220,26 +214,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .acc-field{display:flex;flex-direction:column;gap:2px;}
 .acc-field-label{font-size:9px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
 .acc-field-val{font-size:15px;font-weight:700;}
-#accBalanceD{font-size:22px!important;font-weight:900!important;}
-/* Toggle Auto/Manual */
-.mode-toggle{display:flex;align-items:center;gap:6px;}
-.mode-toggle-label{font-size:9px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;font-weight:700;transition:color .3s;}
-.toggle-track{width:46px;height:24px;border-radius:12px;background:rgba(0,255,159,.2);border:1px solid rgba(0,255,159,.5);cursor:pointer;position:relative;transition:all .3s;}
-.toggle-track.manual{background:rgba(0,212,255,.2);border-color:rgba(0,212,255,.5);}
-.toggle-knob{width:18px;height:18px;border-radius:50%;background:var(--green);position:absolute;top:2px;left:2px;transition:left .3s,background .3s;box-shadow:0 0 6px rgba(0,255,159,.6);}
-.toggle-track.manual .toggle-knob{left:24px;background:var(--accent);box-shadow:0 0 6px rgba(0,212,255,.6);}
-/* Chart timeframe scrollable bar */
-#chartTimeframes{overflow-x:auto;scrollbar-width:none;}
-#chartTimeframes::-webkit-scrollbar{display:none;}
-.chart-tf-btn{padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--dim);cursor:pointer;font-size:10px;font-weight:700;font-family:'Share Tech Mono',monospace;white-space:nowrap;transition:all .2s;}
-.chart-tf-btn:hover{border-color:var(--accent);color:var(--accent);}
-.chart-tf-btn.active{background:rgba(0,212,255,.15);color:var(--accent);border-color:var(--accent);}
-.chart-tf-sep{width:1px;height:18px;background:var(--border);margin:0 4px;flex-shrink:0;}
-/* Live ops table */
-#liveOpsPanel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;}
-.live-ops-row{display:grid;grid-template-columns:60px 1fr 60px 60px 70px;gap:6px;font-size:11px;font-family:'Share Tech Mono',monospace;padding:6px 0;border-bottom:1px solid var(--border);}
-.live-ops-row:last-child{border-bottom:none;}
-.live-ops-head{color:var(--dim);font-size:9px;letter-spacing:1px;}
 
 /* Boleta */
 .boleta{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
@@ -248,7 +222,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .boleta-stat{background:var(--surface2);border-radius:8px;padding:10px 12px;}
 .boleta-stat-label{font-size:9px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;}
 .boleta-stat-val{font-size:17px;font-weight:900;font-family:'Share Tech Mono',monospace;margin-top:3px;}
-#bPnl{font-size:26px!important;}
 .pnl-bar{height:6px;background:var(--surface2);border-radius:3px;margin-top:5px;overflow:hidden;}
 .pnl-fill{height:100%;border-radius:3px;transition:width .4s;}
 
@@ -350,9 +323,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       setTimeout(initSupabase, 100);
       return;
     }
-    const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON, {
-      auth: { persistSession: false, detectSessionInUrl: false }
-    });
+    const _supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
     window._sb  = _supa;
 
     _supa.auth.onAuthStateChange(async (event, session) => {
@@ -361,24 +332,22 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         try {
           const { data: profile } = await _supa
             .from('profiles')
-            .select('name, plan, is_admin')
+            .select('name, plan')
             .eq('id', user.id)
             .single();
 
           window._alphaUser = {
-            uid:      user.id,
-            email:    user.email,
-            name:     profile?.name || user.email.split('@')[0],
-            plan:     profile?.plan || 'free',
-            is_admin: profile?.is_admin || false,
+            uid:   user.id,
+            email: user.email,
+            name:  profile?.name || user.email.split('@')[0],
+            plan:  profile?.plan || 'free',
           };
         } catch(e) {
           window._alphaUser = {
-            uid:      user.id,
-            email:    user.email,
-            name:     user.email.split('@')[0],
-            plan:     'free',
-            is_admin: false,
+            uid:   user.id,
+            email: user.email,
+            name:  user.email.split('@')[0],
+            plan:  'free',
           };
         }
         window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
@@ -387,42 +356,19 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         window._onAlphaLogout && window._onAlphaLogout();
       }
     });
-    // Restore session via getUser (HTTP direto, sem Web Lock)
-    const _saved = sessionStorage.getItem('alpha_session');
-    if(_saved){
-      try {
-        const { access_token } = JSON.parse(_saved);
-        _supa.auth.getUser(access_token).then(async ({ data, error }) => {
-          if(data?.user && !error){
-            let profile = null;
-            try {
-              const resp = await fetch(
-                `${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=name,plan,is_admin&limit=1`,
-                { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${access_token}` } }
-              );
-              const rows = await resp.json();
-              profile = rows[0] || null;
-            } catch(e){}
-            window._alphaUser = {
-              uid:      data.user.id,
-              email:    data.user.email,
-              name:     profile?.name || data.user.email.split('@')[0],
-              plan:     profile?.plan || 'free',
-              is_admin: profile?.is_admin || false,
-            };
-            window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
-            document.documentElement.classList.remove('restoring-session');
-          } else {
-            sessionStorage.removeItem('alpha_session');
-            document.documentElement.classList.remove('restoring-session');
-          }
+    // Test connection immediately
+    _supa.auth.getSession().then(({ data, error }) => {
+      if(error){
+        console.error('❌ Supabase connection error:', error.message);
+        const errEls = document.querySelectorAll('[id$="LoginErr"]');
+        errEls.forEach(el => {
+          el.textContent = 'Erro de conexão: ' + error.message;
+          el.style.display = 'block';
         });
-      } catch(e) {
-        sessionStorage.removeItem('alpha_session');
-        document.documentElement.classList.remove('restoring-session');
+      } else {
+        console.log('✅ Supabase conectado. Sessão:', data.session ? 'ativa' : 'nenhuma');
       }
-    }
-
+    });
     console.log('✅ Supabase inicializado');
   }
 
@@ -460,6 +406,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       <div class="login-tabs" style="margin-bottom:16px;">
         <button class="login-tab active" id="tabAlphaLogin"  onclick="switchAlphaTab('login')">ENTRAR</button>
         <button class="login-tab"        id="tabAlphaSignup" onclick="switchAlphaTab('signup')">CADASTRAR</button>
+        <button class="login-tab"        id="tabAlphaAdmin"  onclick="switchAlphaTab('admin')" style="font-size:10px;padding:6px 10px;">🛠️ ADMIN</button>
       </div>
 
       <!-- LOGIN -->
@@ -490,15 +437,25 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div class="field"><label>Senha</label>
             <input type="password" id="alphaSignupPass" placeholder="Mínimo 6 caracteres">
           </div>
-          <div class="field"><label>Código de Acesso</label>
-            <input type="text" id="alphaSignupCode" placeholder="ALPHA-XXXXX"
-              oninput="this.value=this.value.toUpperCase()" style="letter-spacing:2px;font-family:'Share Tech Mono',monospace;">
-          </div>
           <button class="btn btn-primary" onclick="alphaSignup()" style="margin-top:4px;">✅ CRIAR CONTA</button>
           <div id="alphaSignupErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
         </div>
       </div>
 
+      <!-- ADMIN (local) -->
+      <div id="panelAdminLogin" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div class="field"><label>Usuário</label>
+            <input type="text" id="adminUser" placeholder="admin" autocomplete="username">
+          </div>
+          <div class="field"><label>Senha</label>
+            <input type="password" id="adminPass" placeholder="••••••••"
+              onkeydown="if(event.key==='Enter')loginAdmin()">
+          </div>
+          <button class="btn btn-primary" onclick="loginAdmin()">🔐 ENTRAR COMO ADMIN</button>
+          <div id="adminLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+        </div>
+      </div>
     </div>
 
 
@@ -515,7 +472,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     <div class="topnav-brand" id="adminTopnavBrand">⚡ DERIV ROBO SYSTEM · ADMIN</div>
     <div class="topnav-user" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="nav-pill active" id="adminTabBtnRobots" onclick="showAdminTab('robots')">🤖 Robôs</button>
-      <button class="nav-pill" id="adminTabBtnCodes" onclick="showAdminTab('codes')">🎟️ Códigos</button>
+      <button class="nav-pill" id="adminTabBtnAdmins" onclick="showAdminTab('admins')">👥 Admins</button>
       <button class="nav-pill" id="adminTabBtnBrand" onclick="showAdminTab('brand')">🎨 Marca</button>
       <span style="font-size:12px;color:var(--dim);" id="adminNavUser"></span>
       <button class="btn btn-gold btn-sm" onclick="goToDashboard()">📊 Trocar Conta</button>
@@ -624,20 +581,31 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       </div>
     </div>
 
-
-
-    <!-- CODES TAB -->
-    <div id="adminTabCodes" style="display:none;">
-      <div style="max-width:700px;">
+    <!-- ADMINS TAB -->
+    <div id="adminTabAdmins" style="display:none;">
+      <div style="max-width:600px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <h2 style="font-size:16px;font-weight:900;">🎟️ Códigos de Acesso</h2>
-          <button class="btn btn-success btn-sm" onclick="generateInviteCode()">+ Gerar Código</button>
+          <h2 style="font-size:16px;font-weight:900;">👥 Administradores</h2>
+          <button class="btn btn-success btn-sm" onclick="openAdminForm()">+ Novo Admin</button>
         </div>
-        <div id="codeList" style="display:flex;flex-direction:column;gap:10px;">
-          <div style="color:var(--dim);font-size:13px;text-align:center;padding:40px;">Nenhum código gerado ainda.</div>
+        <div id="adminList" style="display:flex;flex-direction:column;gap:10px;"></div>
+
+        <div class="card" id="adminFormCard" style="display:none;margin-top:16px;">
+          <div style="font-size:13px;font-weight:900;margin-bottom:14px;">➕ NOVO ADMINISTRADOR</div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="field"><label>Usuário</label><input type="text" id="afUser" placeholder="nome_usuario"></div>
+            <div class="field"><label>Senha</label><input type="password" id="afPass" placeholder="••••••••"></div>
+            <div class="field"><label>Confirmar Senha</label><input type="password" id="afPass2" placeholder="••••••••"></div>
+            <div style="display:flex;gap:10px;">
+              <button class="btn btn-primary btn-sm" onclick="saveAdmin()">Salvar</button>
+              <button class="btn btn-danger btn-sm" onclick="document.getElementById('adminFormCard').style.display='none'">Cancelar</button>
+            </div>
+            <div id="adminFormErr" style="color:var(--red);font-size:12px;display:none;"></div>
+          </div>
         </div>
       </div>
     </div>
+
 
     <!-- BRAND TAB -->
     <div id="adminTabBrand" style="display:none;">
@@ -771,7 +739,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div class="ping-label">PING (ms)</div>
         </div>
       </div>
-      <button class="nav-pill" id="btnChartNav" onclick="toggleChartPanel()">📈 Gráfico</button>
       <button class="nav-pill" onclick="showScreen('screenAdmin')" id="btnAdminNav" style="display:none;">🛠️ Admin</button>
 
       <!-- Profile icon with dropdown -->
@@ -856,54 +823,13 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     </div>
   </div>
 
-  <!-- ══ CHART PANEL ══ -->
-  <div id="chartPanel" style="display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:12px 16px;">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
-      <span style="font-size:11px;font-weight:900;letter-spacing:2px;color:var(--dim);font-family:'Share Tech Mono',monospace;">PREÇO AO VIVO</span>
-      <div style="display:flex;gap:6px;">
-        <button class="btn btn-sm active" id="chartBtnLine" onclick="setChartType('line')">〰️ Linha</button>
-        <button class="btn btn-sm" id="chartBtnCandle" onclick="setChartType('candle')">🕯️ Velas</button>
-      </div>
-      <div id="chartTimeframes" style="display:none;gap:4px;align-items:center;flex-wrap:nowrap;">
-        <button class="chart-tf-btn" data-tf="1"    onclick="setChartTf(1)">1s</button>
-        <button class="chart-tf-btn" data-tf="5"    onclick="setChartTf(5)">5s</button>
-        <button class="chart-tf-btn" data-tf="10"   onclick="setChartTf(10)">10s</button>
-        <button class="chart-tf-btn" data-tf="15"   onclick="setChartTf(15)">15s</button>
-        <button class="chart-tf-btn active" data-tf="30" onclick="setChartTf(30)">30s</button>
-        <div class="chart-tf-sep"></div>
-        <button class="chart-tf-btn" data-tf="60"   onclick="setChartTf(60)">1m</button>
-        <button class="chart-tf-btn" data-tf="120"  onclick="setChartTf(120)">2m</button>
-        <button class="chart-tf-btn" data-tf="180"  onclick="setChartTf(180)">3m</button>
-        <button class="chart-tf-btn" data-tf="300"  onclick="setChartTf(300)">5m</button>
-        <button class="chart-tf-btn" data-tf="600"  onclick="setChartTf(600)">10m</button>
-        <button class="chart-tf-btn" data-tf="900"  onclick="setChartTf(900)">15m</button>
-        <button class="chart-tf-btn" data-tf="1800" onclick="setChartTf(1800)">30m</button>
-        <div class="chart-tf-sep"></div>
-        <button class="chart-tf-btn" data-tf="3600"  onclick="setChartTf(3600)">1h</button>
-        <button class="chart-tf-btn" data-tf="7200"  onclick="setChartTf(7200)">2h</button>
-        <button class="chart-tf-btn" data-tf="14400" onclick="setChartTf(14400)">4h</button>
-      </div>
-      <span id="chartLastPrice" style="margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--accent);font-weight:700;"></span>
-    </div>
-    <div id="chartContainer" style="height:300px;border-radius:8px;overflow:hidden;"></div>
-  </div>
-
   <div class="dash-wrapper">
     <!-- ═══ LEFT PANEL ═══ -->
     <div class="dash-left">
 
         <!-- ── BOLETA DE OPERAÇÃO ── -->
         <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-            <div style="font-size:11px;letter-spacing:2px;color:var(--gold);font-family:'Share Tech Mono',monospace;">💼 BOLETA DE OPERAÇÃO</div>
-            <div class="mode-toggle">
-              <span class="mode-toggle-label" id="modeLabelAuto" style="color:var(--green);">AUTO</span>
-              <div class="toggle-track" id="modeToggle" onclick="toggleOperationMode()">
-                <div class="toggle-knob" id="modeKnob"></div>
-              </div>
-              <span class="mode-toggle-label" id="modeLabelManual" style="color:var(--dim);">MANUAL</span>
-            </div>
-          </div>
+          <div style="font-size:11px;letter-spacing:2px;color:var(--gold);font-family:'Share Tech Mono',monospace;margin-bottom:14px;">💼 BOLETA DE OPERAÇÃO</div>
 
           <!-- Robot dropdown selector -->
           <div class="field" style="margin-bottom:12px;">
@@ -967,55 +893,21 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           </div>
 
           <!-- Common boleta fields -->
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;margin-top:4px;align-items:end;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;margin-top:4px;">
             <div class="field">
               <label>Mercado</label>
-              <select id="boletaMarket" onchange="applyBoleta()" style="height:38px;">
-                <optgroup label="── Volatility (padrão)">
-                  <option value="R_10">Volatility 10</option>
-                  <option value="R_25">Volatility 25</option>
-                  <option value="R_50">Volatility 50</option>
-                  <option value="R_75">Volatility 75</option>
-                  <option value="R_100" selected>Volatility 100</option>
-                </optgroup>
-                <optgroup label="── Volatility (1s)">
-                  <option value="1HZ10V">Volatility 10 (1s)</option>
-                  <option value="1HZ25V">Volatility 25 (1s)</option>
-                  <option value="1HZ50V">Volatility 50 (1s)</option>
-                  <option value="1HZ75V">Volatility 75 (1s)</option>
-                  <option value="1HZ100V">Volatility 100 (1s)</option>
-                  <option value="1HZ150V">Volatility 150 (1s)</option>
-                  <option value="1HZ200V">Volatility 200 (1s)</option>
-                  <option value="1HZ250V">Volatility 250 (1s)</option>
-                  <option value="1HZ300V">Volatility 300 (1s)</option>
-                </optgroup>
-                <optgroup label="── Boom &amp; Crash">
-                  <option value="BOOM300N">Boom 300</option>
-                  <option value="BOOM500">Boom 500</option>
-                  <option value="BOOM1000">Boom 1000</option>
-                  <option value="CRASH300N">Crash 300</option>
-                  <option value="CRASH500">Crash 500</option>
-                  <option value="CRASH1000">Crash 1000</option>
-                </optgroup>
-                <optgroup label="── Range Break">
-                  <option value="RNGBULL100">Range Break 100 Bull</option>
-                  <option value="RNGBEAR100">Range Break 100 Bear</option>
-                  <option value="RNGBULL200">Range Break 200 Bull</option>
-                  <option value="RNGBEAR200">Range Break 200 Bear</option>
-                </optgroup>
-                <optgroup label="── Step &amp; Jump">
-                  <option value="STPIDX10">Step Index</option>
-                  <option value="JD10">Jump 10</option>
-                  <option value="JD25">Jump 25</option>
-                  <option value="JD50">Jump 50</option>
-                  <option value="JD75">Jump 75</option>
-                  <option value="JD100">Jump 100</option>
-                </optgroup>
+              <select id="boletaMarket" onchange="applyBoleta()">
+                <option value="R_100">Volatility 100</option>
+                <option value="R_10">Volatility 10</option>
+                <option value="R_25">Volatility 25</option>
+                <option value="R_50">Volatility 50</option>
+                <option value="R_75">Volatility 75</option>
+                <option value="1HZ100V">Vol 100 (1s)</option>
               </select>
             </div>
             <div class="field">
               <label>Entrada Base ($)</label>
-              <input type="number" id="boletaEntry" value="0.35" min="0.35" step="0.05" oninput="applyBoleta()" style="height:38px;">
+              <input type="number" id="boletaEntry" value="0.35" min="0.35" step="0.05" oninput="applyBoleta()">
             </div>
             <div class="field">
               <label>Stop Gain ($)</label>
@@ -1066,26 +958,6 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
             <div class="pnl-bar"><div class="pnl-fill" id="pnlFill" style="width:0%;background:var(--green);"></div></div>
           </div>
         </div>
-
-        <!-- ── OPERAÇÕES AO VIVO ── -->
-        <div id="liveOpsPanel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div style="font-size:11px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;">⚡ OPERAÇÕES AO VIVO</div>
-            <div style="display:flex;gap:10px;font-family:'Share Tech Mono',monospace;font-size:10px;">
-              <span>✅ <span id="liveWins" style="color:var(--green);">0</span></span>
-              <span>❌ <span id="liveLosses" style="color:var(--red);">0</span></span>
-              <span style="color:var(--dim);">|</span>
-              <span id="liveRate" style="color:var(--gold);">—%</span>
-            </div>
-          </div>
-          <div class="live-ops-row live-ops-head">
-            <span>HORA</span><span>ESTRATÉGIA</span><span>ENTRADA</span><span>RESULT.</span><span>P&L</span>
-          </div>
-          <div id="liveOpsList" style="max-height:220px;overflow-y:auto;">
-            <div style="text-align:center;color:var(--dim);font-size:11px;padding:20px;font-family:'Share Tech Mono',monospace;">Aguardando operações...</div>
-          </div>
-        </div>
-
     </div><!-- /dash-left -->
 
     <!-- ═══ CENTER PANEL ═══ -->
@@ -1283,6 +1155,7 @@ function store(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); } catch(e
 function load(k, def){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch(e){ return def; } }
 
 // Default admin
+let admins = load('drv_admins', [{ user: 'admin', pass: btoa('admin123') }]);
 const DEFAULT_ROBOTS = [
   {
     "id": "robot_gladiador",
@@ -1389,8 +1262,7 @@ let robots = load('drv_robots', null);
   const userRobots = stored.filter(function(r){ return !prebuiltIds.includes(r.id); });
   const merged = DEFAULT_ROBOTS.map(function(def){
     const existing = stored.find(function(r){ return r.id === def.id; });
-    // Preserve ALL stored values (admin changes); only fill missing keys from default
-    if(existing){ return Object.assign({}, def, existing); }
+    if(existing){ const copy = Object.assign({}, def); copy.running = existing.running; return copy; }
     return Object.assign({}, def);
   });
   robots = merged.concat(userRobots);
@@ -1529,10 +1401,18 @@ async function alphaLogin(){
 
   let loginResult;
   try {
-    loginResult = await window._sb.auth.signInWithPassword({ email, password: pass });
+    const timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 10000)
+    );
+    loginResult = await Promise.race([
+      window._sb.auth.signInWithPassword({ email, password: pass }),
+      timeout
+    ]);
   } catch(e) {
     if(btn){ btn.textContent='▶ ENTRAR'; btn.disabled=false; }
-    err.textContent = 'Erro inesperado: ' + e.message;
+    err.textContent = e.message === 'timeout'
+      ? 'Tempo esgotado. Verifique sua conexão e tente novamente.'
+      : 'Erro inesperado: ' + e.message;
     err.style.display='block';
     console.error('Login error:', e);
     return;
@@ -1557,33 +1437,25 @@ async function alphaLogin(){
   // Login OK — manually navigate (don't rely solely on onAuthStateChange)
   if(data?.user){
     console.log('✅ Login OK:', data.user.email);
-    if(data.session){
-      sessionStorage.setItem('alpha_session', JSON.stringify({
-        access_token:  data.session.access_token,
-        refresh_token: data.session.refresh_token
-      }));
-    }
     try {
       const { data: profile } = await window._sb
         .from('profiles')
-        .select('name, plan, is_admin')
+        .select('name, plan')
         .eq('id', data.user.id)
         .single();
 
       window._alphaUser = {
-        uid:      data.user.id,
-        email:    data.user.email,
-        name:     profile?.name || data.user.email.split('@')[0],
-        plan:     profile?.plan || 'free',
-        is_admin: profile?.is_admin || false,
+        uid:   data.user.id,
+        email: data.user.email,
+        name:  profile?.name || data.user.email.split('@')[0],
+        plan:  profile?.plan || 'free',
       };
     } catch(e) {
       window._alphaUser = {
-        uid:      data.user.id,
-        email:    data.user.email,
-        name:     data.user.email.split('@')[0],
-        plan:     'free',
-        is_admin: false,
+        uid:   data.user.id,
+        email: data.user.email,
+        name:  data.user.email.split('@')[0],
+        plan:  'free',
       };
     }
     window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
@@ -1591,77 +1463,53 @@ async function alphaLogin(){
 }
 
 async function alphaSignup(){
-  const name  = (document.getElementById('alphaSignupName')?.value  || '').trim();
-  const email = (document.getElementById('alphaSignupEmail')?.value || '').trim();
-  const pass  =  document.getElementById('alphaSignupPass')?.value  || '';
-  const code  = (document.getElementById('alphaSignupCode')?.value  || '').trim().toUpperCase();
-  const btn   =  document.querySelector('#panelAlphaSignup .btn-primary');
-  const err   =  document.getElementById('alphaSignupErr');
+  const name  = document.getElementById('alphaSignupName')?.value.trim();
+  const email = document.getElementById('alphaSignupEmail')?.value.trim();
+  const pass  = document.getElementById('alphaSignupPass')?.value;
+  const err   = document.getElementById('alphaSignupErr');
+  if(!name){  err.textContent='Informe seu nome.'; err.style.display='block'; return; }
+  if(!email){ err.textContent='Informe o e-mail.'; err.style.display='block'; return; }
+  if(!pass || pass.length < 6){ err.textContent='Senha deve ter mínimo 6 caracteres.'; err.style.display='block'; return; }
+  err.style.display='none';
 
-  const showErr = msg => {
-    err.style.color = 'var(--red)';
-    err.textContent = msg;
-    err.style.display = 'block';
-    if(btn){ btn.textContent='✅ CRIAR CONTA'; btn.disabled=false; }
-  };
+  if(!window._sb){ err.textContent='Supabase não inicializado — configure as credenciais.'; err.style.display='block'; return; }
 
-  if(!name)  return showErr('Informe seu nome.');
-  if(!email) return showErr('Informe o e-mail.');
-  if(!pass || pass.length < 6) return showErr('Senha deve ter mínimo 6 caracteres.');
-  if(!code)  return showErr('Informe o código de acesso.');
-  if(!window._sb) return showErr('Supabase não inicializado.');
-
-  err.style.display = 'none';
-  if(btn){ btn.textContent='Aguarde...'; btn.disabled=true; }
-
-  try {
-    // 1. Validate invite code
-    const { data: codeData, error: codeErr } = await window._sb
-      .from('invite_codes')
-      .select('id, used')
-      .eq('code', code)
-      .maybeSingle();
-    if(codeErr) return showErr('Erro ao validar código: ' + codeErr.message);
-    if(!codeData) return showErr('Código de acesso inválido.');
-    if(codeData.used) return showErr('Este código já foi utilizado.');
-
-    // 2. Create auth user
-    const { data, error: signUpErr } = await window._sb.auth.signUp({ email, password: pass });
-    if(signUpErr){
-      const msgs = {
-        'User already registered': 'E-mail já cadastrado. Faça login.',
-        'Password should be at least 6 characters': 'Senha deve ter mínimo 6 caracteres.',
-      };
-      return showErr(msgs[signUpErr.message] || signUpErr.message);
-    }
-
-    // 3. Insert profile
-    if(data?.user){
-      await window._sb.from('profiles').upsert({
-        id: data.user.id, name, email, plan: 'free',
-        created_at: new Date().toISOString()
-      });
-      // 4. Mark code as used
-      await window._sb.from('invite_codes').update({
-        used: true, used_by: email, used_at: new Date().toISOString()
-      }).eq('id', codeData.id);
-    }
-
-    if(btn){ btn.textContent='✅ CRIAR CONTA'; btn.disabled=false; }
-    err.style.color = 'var(--green)';
-    err.textContent = '✅ Conta criada! Verifique seu e-mail para confirmar o cadastro.';
-    err.style.display = 'block';
-
-  } catch(e) {
-    showErr('Erro inesperado: ' + e.message);
+  // 1. Create auth user
+  const { data, error } = await window._sb.auth.signUp({ email, password: pass });
+  if(error){
+    const msgs = {
+      'User already registered': 'E-mail já cadastrado. Faça login.',
+      'Password should be at least 6 characters': 'Senha deve ter mínimo 6 caracteres.',
+    };
+    err.textContent = msgs[error.message] || error.message;
+    err.style.display='block';
+    return;
   }
+
+  // 2. Insert profile into public.profiles table
+  if(data?.user){
+    await window._sb.from('profiles').upsert({
+      id:         data.user.id,
+      name:       name,
+      email:      email,
+      plan:       'free',
+      created_at: new Date().toISOString()
+    });
+  }
+
+  err.style.display='none';
+  // Show confirmation message if email confirmation required
+  const confirmMsg = document.getElementById('alphaSignupErr');
+  confirmMsg.style.color='var(--green)';
+  confirmMsg.textContent='✅ Conta criada! Verifique seu e-mail para confirmar o cadastro.';
+  confirmMsg.style.display='block';
+  // onAuthStateChange handles navigation if email confirmation is disabled
 }
 
 async function alphaLogout(){
   if(ws) disconnectDash();
   derivAccount = null; currentUser = null;
   if(window._sb) await window._sb.auth.signOut();
-  sessionStorage.removeItem('alpha_session');
   window._alphaUser = null;
   closeProfileDropdown();
   document.getElementById('panelAlphaAuth').style.display='block';
@@ -1670,14 +1518,9 @@ async function alphaLogout(){
 
 // Called by Supabase onAuthStateChange when user logs in
 window._onAlphaLogin = function(user){
-  currentUser = { user: user.name, isAdmin: user.is_admin || false };
+  // Go straight to dashboard
   updateProfileDropdown();
-  const btnAdmin = document.getElementById('btnAdminNav');
-  if(btnAdmin) btnAdmin.style.display = user.is_admin ? 'inline-block' : 'none';
-  if(user.is_admin){
-    safeSet('adminNavUser','textContent','👤 ' + user.name);
-    renderRobotList();
-  }
+  // If Deriv already connected keep it, otherwise show disconnected state
   if(!derivAccount){
     document.getElementById('pdDerivConnect').style.display='block';
     document.getElementById('pdDerivDisconnect').style.display='none';
@@ -1740,20 +1583,7 @@ function loginWithDeriv(){
   document.getElementById('oauthOverlay').classList.add('show');
   document.getElementById('oauthModalMsg').textContent = 'Complete o login na janela da Deriv que abriu';
 
-  // Recebe tokens via localStorage (funciona mesmo sem window.opener)
-  function onStorageOAuth(e){
-    if(e.key !== 'deriv_oauth_callback' || !e.newValue) return;
-    window.removeEventListener('storage', onStorageOAuth);
-    clearInterval(oauthPollTimer);
-    const search = e.newValue;
-    localStorage.removeItem('deriv_oauth_callback');
-    if(oauthPopup && !oauthPopup.closed) oauthPopup.close();
-    oauthPopup = null;
-    handleOAuthCallback(new URLSearchParams(search));
-  }
-  window.addEventListener('storage', onStorageOAuth);
-
-  // Poll popup URL for callback (fallback)
+  // Poll popup URL for callback
   oauthPollTimer = setInterval(()=>{
     try{
       if(!oauthPopup || oauthPopup.closed){
@@ -1898,15 +1728,11 @@ function showOAuthError(msg){
 (function checkOAuthOnLoad(){
   const params = new URLSearchParams(window.location.search);
   if(params.get('token1') && params.get('acct1')){
-    // Grava no localStorage para sinalizar a janela principal e fecha o popup
-    localStorage.setItem('deriv_oauth_callback', window.location.search);
-    window.close();
-    // Fallback: se não fechou (não é popup), processa como redirect na própria janela
+    // Switch to trader tab and process
     setTimeout(()=>{
-      localStorage.removeItem('deriv_oauth_callback');
       switchLoginTab('trader');
       handleOAuthCallback(params);
-    }, 500);
+    }, 300);
   }
 })();
 
@@ -1918,6 +1744,25 @@ function showTokenHint(input){
   else { hint.textContent=`✅ ${val.length} chars — OK`; hint.style.color='var(--green)'; }
 }
 
+function loginAdmin(){
+  const u = document.getElementById('adminUser').value.trim();
+  const p = document.getElementById('adminPass').value;
+  const err = document.getElementById('adminLoginErr');
+  if(!err){ return; }
+  const found = admins.find(a => a.user === u && a.pass === btoa(p));
+  if(!found){ err.textContent='Usuário ou senha incorretos.'; err.style.display='block'; return; }
+  err.style.display='none';
+  currentUser = { user: u, isAdmin: true };
+  window._alphaUser = { uid: null, email: u, name: u, plan: 'admin' };
+  safeSet('adminNavUser','textContent','👤 ' + u);
+  safeSet('btnAdminNav','style.display','inline-block');
+  const btnAdmin = document.getElementById('btnAdminNav');
+  if(btnAdmin) btnAdmin.style.display = 'inline-block';
+  updateProfileDropdown();
+  renderRobotList();
+  renderAdminList();
+  showScreen('screenAdmin');
+}
 
 function loginTrader(){
   const loginId = document.getElementById('derivLoginId').value.trim().toUpperCase();
@@ -2152,184 +1997,14 @@ document.addEventListener('input', function(e){
 
 function showAdminTab(tab){
   document.getElementById('adminTabRobots').style.display = tab==='robots'?'block':'none';
-  document.getElementById('adminTabCodes').style.display  = tab==='codes'?'block':'none';
-  document.getElementById('adminTabBrand').style.display  = tab==='brand'?'block':'none';
+  document.getElementById('adminTabAdmins').style.display = tab==='admins'?'block':'none';
   document.getElementById('adminTabBtnRobots')?.classList.toggle('active', tab==='robots');
-  document.getElementById('adminTabBtnCodes')?.classList.toggle('active',  tab==='codes');
-  document.getElementById('adminTabBtnBrand')?.classList.toggle('active',  tab==='brand');
-  if(tab==='codes') renderCodeList();
+  document.getElementById('adminTabBtnAdmins')?.classList.toggle('active', tab==='admins');
 }
 
 ['rfEntry','rfFactor','rfLevels'].forEach(id=>{
   // will attach after DOM ready
 });
-
-// ════════════════════════════════════════
-// CHART (TradingView Lightweight Charts)
-// ════════════════════════════════════════
-let _chart=null, _lineSeries=null, _candleSeries=null;
-let _chartType='line', _chartTf=10, _currentCandle=null, _chartReady=false;
-
-function toggleChartPanel(){
-  const panel=document.getElementById('chartPanel');
-  const btn=document.getElementById('btnChartNav');
-  if(!panel) return;
-  const visible=panel.style.display!=='none';
-  panel.style.display=visible?'none':'block';
-  btn?.classList.toggle('active',!visible);
-  if(!visible){
-    setTimeout(()=>{
-      initChart();
-      if(_chart) _chart.applyOptions({width:document.getElementById('chartContainer').clientWidth});
-      if(window._chartPendingHistory){
-        feedChartHistory(window._chartPendingHistory.prices, window._chartPendingHistory.times);
-        window._chartPendingHistory=null;
-      }
-    },50);
-  }
-}
-
-function initChart(){
-  if(_chart) return;
-  const container=document.getElementById('chartContainer');
-  if(!container||typeof LightweightCharts==='undefined') return;
-  _chart=LightweightCharts.createChart(container,{
-    width:container.clientWidth, height:300,
-    layout:{background:{color:'#020b14'},textColor:'#c8e6f5'},
-    grid:{vertLines:{color:'#0d3a5c'},horzLines:{color:'#0d3a5c'}},
-    crosshair:{mode:LightweightCharts.CrosshairMode.Normal},
-    rightPriceScale:{borderColor:'#0d3a5c'},
-    timeScale:{borderColor:'#0d3a5c',timeVisible:true,secondsVisible:true},
-    handleScroll:{mouseWheel:true,pressedMouseMove:true},
-    handleScale:{axisPressedMouseMove:true,mouseWheel:true,pinch:true},
-  });
-  _lineSeries=_chart.addLineSeries({color:'#00d4ff',lineWidth:2,lastValueVisible:true,priceLineVisible:true});
-  _candleSeries=_chart.addCandlestickSeries({
-    upColor:'#00ff9f',downColor:'#ff3b6b',
-    borderUpColor:'#00ff9f',borderDownColor:'#ff3b6b',
-    wickUpColor:'#00ff9f',wickDownColor:'#ff3b6b',
-  });
-  setChartType('line');
-  window.addEventListener('resize',()=>{
-    if(_chart) _chart.applyOptions({width:document.getElementById('chartContainer').clientWidth});
-  });
-}
-
-function setChartType(type){
-  _chartType=type;
-  _lineSeries?.applyOptions({visible:type==='line'});
-  _candleSeries?.applyOptions({visible:type==='candle'});
-  document.getElementById('chartBtnLine')?.classList.toggle('active',type==='line');
-  document.getElementById('chartBtnCandle')?.classList.toggle('active',type==='candle');
-  const tfBar=document.getElementById('chartTimeframes');
-  if(tfBar) tfBar.style.display=type==='candle'?'flex':'none';
-}
-
-function setChartTf(seconds){
-  _chartTf=seconds;
-  _currentCandle=null;
-  document.querySelectorAll('.chart-tf-btn').forEach(b=>{
-    b.classList.toggle('active', parseInt(b.dataset.tf)===seconds);
-  });
-}
-
-function feedChartHistory(prices,times){
-  if(!_chart) initChart();
-  if(!_chart) return;
-  const lineData=[], candleMap={};
-  for(let i=0;i<prices.length;i++){
-    const t=times[i], v=parseFloat(prices[i]);
-    lineData.push({time:t,value:v});
-    const bucket=Math.floor(t/_chartTf)*_chartTf;
-    if(!candleMap[bucket]) candleMap[bucket]={time:bucket,open:v,high:v,low:v,close:v};
-    else{
-      if(v>candleMap[bucket].high) candleMap[bucket].high=v;
-      if(v<candleMap[bucket].low)  candleMap[bucket].low=v;
-      candleMap[bucket].close=v;
-    }
-  }
-  const candleData=Object.values(candleMap).sort((a,b)=>a.time-b.time);
-  _lineSeries?.setData(lineData);
-  _candleSeries?.setData(candleData);
-  if(candleData.length) _currentCandle={...candleData[candleData.length-1]};
-  _chartReady=true;
-}
-
-function updateChart(price,time){
-  if(!_chart||!_chartReady) return;
-  const v=parseFloat(price);
-  const t=time||Math.floor(Date.now()/1000);
-  _lineSeries?.update({time:t,value:v});
-  const bucket=Math.floor(t/_chartTf)*_chartTf;
-  if(!_currentCandle||_currentCandle.time!==bucket){
-    _currentCandle={time:bucket,open:v,high:v,low:v,close:v};
-  } else {
-    if(v>_currentCandle.high) _currentCandle.high=v;
-    if(v<_currentCandle.low)  _currentCandle.low=v;
-    _currentCandle.close=v;
-  }
-  _candleSeries?.update({..._currentCandle});
-  const el=document.getElementById('chartLastPrice');
-  if(el) el.textContent=price;
-}
-
-// ════════════════════════════════════════
-// INVITE CODES
-// ════════════════════════════════════════
-function _genCodeStr(){
-  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let s='ALPHA-';
-  for(let i=0;i<5;i++) s+=chars[Math.floor(Math.random()*chars.length)];
-  return s;
-}
-
-async function generateInviteCode(){
-  if(!window._sb) return;
-  const code = _genCodeStr();
-  const { error } = await window._sb.from('invite_codes').insert({ code });
-  if(error){ alert('Erro ao gerar código: '+error.message); return; }
-  renderCodeList();
-}
-
-async function renderCodeList(){
-  const list = document.getElementById('codeList');
-  if(!list || !window._sb) return;
-  list.innerHTML = '<div style="color:var(--dim);font-size:12px;text-align:center;padding:20px;">Carregando...</div>';
-  const { data, error } = await window._sb
-    .from('invite_codes')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if(error || !data?.length){
-    list.innerHTML='<div style="color:var(--dim);font-size:13px;text-align:center;padding:40px;">Nenhum código gerado ainda.</div>';
-    return;
-  }
-  list.innerHTML = data.map(c=>`
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span class="mono" style="font-size:15px;letter-spacing:2px;color:${c.used?'var(--dim)':'var(--accent)'};">${c.code}</span>
-        <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:700;background:${c.used?'rgba(255,59,107,.15)':'rgba(0,255,159,.15)'};color:${c.used?'var(--red)':'var(--green)'};">
-          ${c.used?'USADO':'DISPONÍVEL'}
-        </span>
-        ${c.used?`<span style="font-size:11px;color:var(--dim);">${c.used_by||''}</span>`:''}
-      </div>
-      <div style="display:flex;gap:8px;">
-        ${!c.used?`<button class="btn btn-sm btn-success" onclick="copyCode('${c.code}')">📋 Copiar</button>`:''}
-        <button class="btn btn-sm btn-danger" onclick="deleteCode('${c.id}')">🗑️</button>
-      </div>
-    </div>`).join('');
-}
-
-function copyCode(code){
-  navigator.clipboard.writeText(code).then(()=>{
-    alert('Código copiado: '+code);
-  });
-}
-
-async function deleteCode(id){
-  if(!confirm('Deletar este código?')) return;
-  await window._sb.from('invite_codes').delete().eq('id', id);
-  renderCodeList();
-}
 
 function updateMartPreview(){
   const entry = parseFloat(document.getElementById('rfEntry').value)||0.35;
@@ -2394,14 +2069,6 @@ function saveRobot(){
 
   if(editingRobotId){
     robots=robots.map(r=>r.id===editingRobotId?robot:r);
-    // Se o robô editado é o selecionado atualmente, atualiza referência e UI
-    if(selectedRobot && selectedRobot.id===editingRobotId){
-      selectedRobot=robots.find(r=>r.id===editingRobotId);
-      buildMartTable();
-      renderMartTable();
-      updateVdots();
-      updateBoletaDisplay();
-    }
   } else {
     robots.push(robot);
   }
@@ -2447,6 +2114,46 @@ function renderRobotList(){
   }).join('');
 }
 
+// ════════════════════════════════════════
+// ADMIN — ADMINS CRUD
+// ════════════════════════════════════════
+function openAdminForm(){ document.getElementById('adminFormCard').style.display='block'; }
+
+function saveAdmin(){
+  const u=document.getElementById('afUser').value.trim();
+  const p=document.getElementById('afPass').value;
+  const p2=document.getElementById('afPass2').value;
+  const err=document.getElementById('adminFormErr');
+  if(!u){ err.textContent='Usuário obrigatório.'; err.style.display='block'; return; }
+  if(p.length<4){ err.textContent='Senha mínima: 4 caracteres.'; err.style.display='block'; return; }
+  if(p!==p2){ err.textContent='Senhas não conferem.'; err.style.display='block'; return; }
+  if(admins.find(a=>a.user===u)){ err.textContent='Usuário já existe.'; err.style.display='block'; return; }
+  admins.push({ user: u, pass: btoa(p) });
+  store('drv_admins', admins);
+  err.style.display='none';
+  document.getElementById('adminFormCard').style.display='none';
+  renderAdminList();
+}
+
+function deleteAdmin(u){
+  if(u===currentUser?.user){ alert('Você não pode deletar seu próprio usuário.'); return; }
+  if(!confirm('Deletar admin "'+u+'"?')) return;
+  admins=admins.filter(a=>a.user!==u);
+  store('drv_admins', admins);
+  renderAdminList();
+}
+
+function renderAdminList(){
+  const list=document.getElementById('adminList');
+  list.innerHTML=admins.map(a=>`
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <span style="font-weight:700;">👤 ${a.user}</span>
+        ${a.user===currentUser?.user?'<span class="badge badge-gold" style="margin-left:8px;">VOCÊ</span>':''}
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="deleteAdmin('${a.user}')" ${a.user===currentUser?.user?'disabled':''}>🗑️ Remover</button>
+    </div>`).join('');
+}
 
 // ════════════════════════════════════════
 // DASHBOARD STATE
@@ -2887,7 +2594,6 @@ function connectDash(){
     if(data.msg_type==='history' && data.history && connState==='LOADING'){
       connState='LIVE';
       const prices=data.history.prices||[];
-      const times=data.history.times||[];
       log(`📦 Carregando ${prices.length} dígitos históricos...`,'info');
       prices.forEach(p=>{
         const s=p.toString(), parts=s.split('.');
@@ -2898,9 +2604,6 @@ function connectDash(){
       updateDiagnostics(); updateOUTable();
 updateMartRefTable(); updateFreqGrid(); updateMartRefTable();
       updateLastDigit(digits[digits.length-1]??0);
-      // Feed chart with history
-      if(document.getElementById('chartPanel')?.style.display!=='none') feedChartHistory(prices,times);
-      else { window._chartPendingHistory={prices,times}; }
       // Subscribe ticks ONCE
       ws.send(JSON.stringify({ticks:market,subscribe:1}));
       schedulePayout();
@@ -2911,7 +2614,6 @@ updateMartRefTable(); updateFreqGrid(); updateMartRefTable();
       const s=data.tick.quote.toString(), parts=s.split('.');
       const d=parts.length>1?parseInt(parts[1].slice(-1)):parseInt(s.slice(-1));
       processDigit(d);
-      updateChart(data.tick.quote, data.tick.epoch);
     }
 
     // ── Trade responses ──
@@ -2999,54 +2701,6 @@ function loadHistory(market){
 // ════════════════════════════════════════
 // AUTO-TRADE
 // ════════════════════════════════════════
-// ── Toggle Auto / Manual mode ──
-let _modeManual = false;
-function toggleOperationMode(){
-  _modeManual = !_modeManual;
-  document.getElementById('modeToggle')?.classList.toggle('manual', _modeManual);
-  document.getElementById('modeLabelAuto').style.color  = _modeManual ? 'var(--dim)'   : 'var(--green)';
-  document.getElementById('modeLabelManual').style.color= _modeManual ? 'var(--accent)': 'var(--dim)';
-  // Em modo manual, mostra campos manuais; em auto, usa o robô selecionado
-  const manualFields = document.getElementById('manualFields');
-  if(manualFields) manualFields.style.display = _modeManual ? 'block' : 'none';
-  const robotDrop = document.getElementById('robotDropdown');
-  if(robotDrop) robotDrop.closest('.field').style.display = _modeManual ? 'none' : 'block';
-  log(_modeManual ? '🖐 Modo MANUAL ativado' : '🤖 Modo AUTOMÁTICO ativado', 'warning');
-}
-
-// ── Live ops tracking ──
-let _liveWins=0, _liveLosses=0;
-function addLiveOp(strategy, entry, result, pnl){
-  _liveWins   += result==='WIN' ? 1 : 0;
-  _liveLosses += result==='LOSS'? 1 : 0;
-  const total = _liveWins + _liveLosses;
-  const rate  = total>0 ? Math.round(_liveWins/total*100) : 0;
-  document.getElementById('liveWins').textContent   = _liveWins;
-  document.getElementById('liveLosses').textContent = _liveLosses;
-  document.getElementById('liveRate').textContent   = rate+'%';
-  const list = document.getElementById('liveOpsList');
-  if(!list) return;
-  const isFirst = list.querySelector('.live-ops-placeholder');
-  if(isFirst) list.innerHTML='';
-  const now = new Date();
-  const hh  = now.getHours().toString().padStart(2,'0');
-  const mm  = now.getMinutes().toString().padStart(2,'0');
-  const ss  = now.getSeconds().toString().padStart(2,'0');
-  const color = result==='WIN' ? 'var(--green)' : 'var(--red)';
-  const sign  = pnl>=0 ? '+' : '';
-  const row = document.createElement('div');
-  row.className='live-ops-row';
-  row.innerHTML=`
-    <span class="mono" style="color:var(--dim);">${hh}:${mm}:${ss}</span>
-    <span style="font-size:10px;">${strategy||'—'}</span>
-    <span class="mono">$${parseFloat(entry).toFixed(2)}</span>
-    <span style="color:${color};font-weight:700;">${result}</span>
-    <span class="mono" style="color:${color};">${sign}$${Math.abs(pnl).toFixed(2)}</span>`;
-  list.insertBefore(row, list.firstChild);
-  // Keep max 50 rows
-  while(list.children.length > 50) list.removeChild(list.lastChild);
-}
-
 function toggleAutoTrade(){
   autoTradeEnabled=!autoTradeEnabled;
   const btn=document.getElementById('tradeToggleBtn');
@@ -3116,8 +2770,6 @@ function placeTrade(amount){
   }
   const contract=getContractType();
   const market=selectedRobot?.market||derivAccount?.market||'R_100';
-  window._lastStrategy = contract.type+' '+contract.barrier;
-  window._lastEntry    = parseFloat(amount);
   pendingBuyReqId=Date.now();
   tradeInProgress=true;
   ws.send(JSON.stringify({buy:1,price:parseFloat(amount).toFixed(2),parameters:{
@@ -3192,7 +2844,6 @@ function handleContract(data){
     if(isWin){
       try{playWin();}catch(e){}
       addPnl(profit);
-      addLiveOp(window._lastStrategy||'—', window._lastEntry||0, 'WIN', profit);
       const pnlSign=sessionPnl>=0?'+':'';
       log(`🏆 GANHOU! +$${profit.toFixed(2)} | Sessão: ${pnlSign}$${sessionPnl.toFixed(2)} | Saldo: $${bal.toFixed(2)}`,'success');
       // Recolor trigger chip to BLUE (win)
@@ -3212,7 +2863,6 @@ function handleContract(data){
       try{playLoss();}catch(e){}
       const lost=Math.abs(profit);
       addPnl(-lost);
-      addLiveOp(window._lastStrategy||'—', window._lastEntry||0, 'LOSS', -lost);
       martingaleLevel++;
       const pnlSign=sessionPnl>=0?'+':'';
       const balMsg=bal<0?` | ⚠️ SALDO NEGATIVO: $${bal.toFixed(2)}`:`| Saldo: $${bal.toFixed(2)}`;
