@@ -4476,7 +4476,7 @@ function freqHandleMsg(evt){
     const prices = data.history?.prices || [];
     const recent = prices.slice(-25);
     freqBuffer = recent.map(p => freqGetLastDigit(parseFloat(p), freqMarket));
-    freqRenderChart();
+    freqRenderChart(true); // force=true: ignora throttle no carregamento inicial
     // Só agora assina ticks live
     if(!freqTicksSubscribed){
       freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
@@ -4505,13 +4505,15 @@ function freqOnTick(tick){
 }
 
 // ── Atualiza stream de dígitos ────────────
+let _freqLastStream = 0;
 function freqUpdateStream(d){
-  // Último dígito em destaque
+  const isUnder = FREQ_UNDER_DIGITS.includes(d);
+  const isOver  = FREQ_OVER_DIGITS.includes(d);
+
+  // Box grande: atualiza sempre (operação barata — essencial para parecer vivo)
   const box    = document.getElementById('freqLastDigitBox');
   const result = document.getElementById('freqLastDigitResult');
   const total  = document.getElementById('freqTotalDigits');
-  const isUnder = FREQ_UNDER_DIGITS.includes(d);
-  const isOver  = FREQ_OVER_DIGITS.includes(d);
   if(box){
     box.textContent = d;
     if(isUnder){ box.style.background='rgba(74,222,128,.15)'; box.style.color='var(--fq-under)'; }
@@ -4525,17 +4527,20 @@ function freqUpdateStream(d){
   }
   if(total) total.textContent = freqTotalDigits.toLocaleString('pt-BR');
 
-  // Chip no stream
+  // Chips no stream: throttle 200ms — evita flood de DOM em V100 (100 ticks/s)
+  const now = Date.now();
+  if(now - _freqLastStream < 200) return;
+  _freqLastStream = now;
+
   const stream = document.getElementById('freqDigitStream');
   if(!stream) return;
-  // Remove destaque do chip anterior
   const prev = stream.querySelector('.freq-latest');
   if(prev) prev.classList.remove('freq-latest');
   const chip = document.createElement('div');
   chip.textContent = d;
   chip.className = 'digit-chip ' + (isUnder ? 'win' : isOver ? 'freq-over' : 'neutral') + ' freq-latest';
   stream.appendChild(chip);
-  if(stream.children.length > 200) stream.removeChild(stream.firstChild);
+  if(stream.children.length > 60) stream.removeChild(stream.firstChild);
   stream.scrollTop = stream.scrollHeight;
 }
 
@@ -4589,8 +4594,12 @@ function freqRenderBars(elId, n){
   barsEl.innerHTML = html;
 }
 
-// ── Renderiza só o gráfico ativo ─────────
-function freqRenderChart(){
+// ── Renderiza só o gráfico ativo (throttled a 250ms p/ V100) ──
+let _freqLastRender = 0;
+function freqRenderChart(force){
+  const now = Date.now();
+  if(!force && now - _freqLastRender < 250) return;
+  _freqLastRender = now;
   freqRenderBars('freqBars' + freqAnalysisSize, freqAnalysisSize);
   const { counts, total } = freqCalcFreq(freqAnalysisSize);
   freqUpdateCards(counts, total, freqBuffer.length >= freqAnalysisSize);
@@ -4964,7 +4973,7 @@ function freqStartRobot(){
     const el = document.getElementById(id);
     if(el){ el.disabled = true; el.style.opacity = '0.5'; }
   });
-  document.querySelectorAll('#freqMarketBtns .nav-pill, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  document.querySelectorAll('#freqMarketBtns button, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
   // Se WS já está conectado e com ticks fluindo → só autoriza para trading
   if(freqWs && freqWs.readyState === 1){
@@ -5005,7 +5014,7 @@ function freqStopRobot(){
     const el = document.getElementById(id);
     if(el){ el.disabled = false; el.style.opacity = '1'; }
   });
-  document.querySelectorAll('#freqMarketBtns .nav-pill, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+  document.querySelectorAll('#freqMarketBtns button, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
 
   const uBadge = document.getElementById('freqBadgeUnder');
   const oBadge = document.getElementById('freqBadgeOver');
