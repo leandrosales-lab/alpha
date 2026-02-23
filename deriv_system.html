@@ -4719,7 +4719,10 @@ function freqHandleContract(data){
     freqMartLevel++;
     const statusEl = document.getElementById('freqStatusTxt');
     if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel}/${FREQ_MAX_LEVELS}`;
-    // SL NÃO interrompe chain ativa — robô joga até green ou nível 5
+    // Verifica Stop Loss em USD
+    const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
+    if(freqSessionPnl <= -sl){ freqShowResult('loss'); return; }
+    // Verifica máximo de martingales
     if(freqMartLevel >= FREQ_MAX_LEVELS){ freqShowResult('martingale'); return; }
     freqUpdateLevelDisplay();
     freqUpdateOpIndicator(); // atualiza nível no logo
