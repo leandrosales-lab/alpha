@@ -3177,12 +3177,14 @@ updateMartRefTable(); updateFreqGrid(); updateMartRefTable();
       log(`❌ Erro API: ${msg} (${code})`,'error');
       if(code==='InvalidAppID')
         log('💡 App ID inválido. Crie um em: developers.deriv.com → Dashboard → Register App','warning');
-      else if(code==='InvalidToken')
-        log('💡 Token inválido ou expirado. Gere novo em: app.deriv.com/account/api-token (permissões: Read + Trade)','warning');
-      else if(code==='WrongResponse')
-        log('💡 WrongResponse: verifique se o App ID e Token correspondem à mesma conta Deriv.','warning');
-      else if(code==='AuthorizationRequired')
-        log('💡 Autorização necessária. Verifique o token.','warning');
+      else if(code==='InvalidToken' || code==='WrongResponse' || code==='AuthorizationRequired'){
+        // Token expirado/inválido — limpa localStorage e solicita nova autenticação OAuth
+        const _uid = window._alphaUser?.uid;
+        if(_uid){ try{ localStorage.removeItem('drv_conn_' + _uid); }catch(e){} }
+        derivAccount = null;
+        updateProfileDropdown();
+        log('🔐 Sessão Deriv expirada. Clique em "Conectar Deriv" no menu de perfil para reconectar.','warning');
+      }
       else if(code==='RateLimit')
         log('💡 Muitas requisições. Aguarde alguns segundos e tente novamente.','warning');
       // Reset and close for fatal errors
