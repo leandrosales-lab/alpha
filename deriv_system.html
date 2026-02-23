@@ -1367,13 +1367,13 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div style="font-size:14px;font-weight:700;color:var(--green);">📉 UNDER 3</div>
           <span class="freq-status-badge aguard" id="freqBadgeUnder">AGUARDANDO</span>
         </div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--green);">0, 1, 2, 3</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}</div>
+        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--green);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}</div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin:8px 0 4px;">
-          <span>Martingale</span><span style="color:var(--text);">1.6× — 5 níveis</span>
+          <span>Martingale</span><span style="color:var(--text);">1.6× — 8 níveis</span>
         </div>
         <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:4px;">
           <span>Nível atual</span>
-          <span id="freqUnderLevel" style="color:var(--gold);font-family:'Share Tech Mono',monospace;">0 / 5</span>
+          <span id="freqUnderLevel" style="color:var(--gold);font-family:'Share Tech Mono',monospace;">1 / 8</span>
         </div>
         <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:8px;">
           <span>Próxima entrada</span>
@@ -1388,13 +1388,13 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div style="font-size:14px;font-weight:700;color:var(--accent);">📈 OVER 6</div>
           <span class="freq-status-badge aguard" id="freqBadgeOver">AGUARDANDO</span>
         </div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--accent);">6, 7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}</div>
+        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--accent);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}</div>
         <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin:8px 0 4px;">
-          <span>Martingale</span><span style="color:var(--text);">1.9× — 5 níveis</span>
+          <span>Martingale</span><span style="color:var(--text);">1.9× — 8 níveis</span>
         </div>
         <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:4px;">
           <span>Nível atual</span>
-          <span id="freqOverLevel" style="color:var(--gold);font-family:'Share Tech Mono',monospace;">0 / 5</span>
+          <span id="freqOverLevel" style="color:var(--gold);font-family:'Share Tech Mono',monospace;">1 / 8</span>
         </div>
         <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:8px;">
           <span>Próxima entrada</span>
@@ -1432,7 +1432,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     <div id="freqOpIndicator" style="display:none;text-align:center;padding:16px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
       <div id="freqOpIcon" style="font-size:38px;margin-bottom:4px;line-height:1;">📉</div>
       <div id="freqOpLabel" style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:4px;">UNDER 3</div>
-      <div id="freqOpLevel" style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 5 — $0.35</div>
+      <div id="freqOpLevel" style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 8 — $0.35</div>
     </div>
 
     <!-- Session stats -->
@@ -4739,7 +4739,10 @@ function freqHandleContract(data){
   if(!c.is_expired && !c.is_sold) return;
   if(freqProcessedContracts.has(c.contract_id)) return;
   freqProcessedContracts.add(c.contract_id);
-  if(freqProcessedContracts.size > 20) freqProcessedContracts.clear();
+  if(freqProcessedContracts.size > 20){
+    // Remove apenas o mais antigo em vez de limpar tudo (evita reprocessar contratos recentes)
+    freqProcessedContracts.delete(freqProcessedContracts.values().next().value);
+  }
 
   freqTradeActive       = false;
   freqCurrentContractId = null;
