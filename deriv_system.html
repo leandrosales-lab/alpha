@@ -344,6 +344,8 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(2,11,20,.96);z-index:9999;display:flex;align-items:center;justify-content:center;}
 .overlay-box{background:#041020;border-radius:16px;padding:40px;max-width:480px;width:90%;text-align:center;}
 
+.digit-chip.freq-over{background:rgba(0,212,255,.15);color:var(--accent);}
+.digit-chip.freq-latest{outline:2px solid var(--gold);outline-offset:1px;}
 /* ── ROBÔ FREQUÊNCIA DE DÍGITOS ── */
 #screenFreq{flex-direction:column;}
 .freq-chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;}
@@ -1321,6 +1323,21 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       <span style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;">ANÁLISE DO ROBÔ:</span>
       <button class="nav-pill active" id="freqBtnSize10" onclick="freqSetSize(10)">10 dígitos</button>
       <button class="nav-pill"        id="freqBtnSize25" onclick="freqSetSize(25)">25 dígitos</button>
+    </div>
+
+    <!-- Stream de dígitos em tempo real -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+        <div id="freqLastDigitBox" style="width:54px;height:54px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;font-family:'Share Tech Mono',monospace;flex-shrink:0;transition:background .2s,color .2s;">—</div>
+        <div>
+          <div id="freqLastDigitResult" style="font-size:13px;font-weight:700;color:var(--dim);margin-bottom:2px;">—</div>
+          <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:2px;">
+            <span style="color:var(--green);">■ UNDER 3</span> (0,1,2) &nbsp;·&nbsp; <span style="color:var(--accent);">■ OVER 6</span> (7,8,9)
+          </div>
+          <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;">Total: <span id="freqTotalDigits">0</span> dígitos</div>
+        </div>
+      </div>
+      <div class="digit-stream" id="freqDigitStream" style="max-height:90px;"></div>
     </div>
 
     <!-- Cards UNDER + OVER -->
@@ -4269,6 +4286,7 @@ let freqWs               = null;
 let freqMarket           = 'R_10';
 let freqBuffer           = [];       // últimos 25 dígitos
 let freqAnalysisSize     = 10;       // tamanho usado pelo robô: 10 ou 25
+let freqTotalDigits      = 0;        // contador total de dígitos recebidos
 let freqRobotActive      = false;
 let freqTradeActive      = false;
 let freqCurrentContractId= null;
@@ -4285,6 +4303,7 @@ function freqSelectMarket(sym, btn){
   document.querySelectorAll('#freqMarketBtns .nav-pill').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   freqBuffer = [];
+  freqResetStream();
   freqRenderChart();
   if(freqWs && freqWs.readyState === 1){
     freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
@@ -4325,10 +4344,60 @@ function freqOnTick(tick){
   const lastDigit = freqGetLastDigit(tick.quote, freqMarket);
   freqBuffer.push(lastDigit);
   if(freqBuffer.length > 25) freqBuffer.shift();
+  freqTotalDigits++;
   freqRenderChart();
+  freqUpdateStream(lastDigit);
   if(freqRobotActive && !freqTradeActive && freqBuffer.length >= freqAnalysisSize){
     freqCheckEntry();
   }
+}
+
+// ── Atualiza stream de dígitos ────────────
+function freqUpdateStream(d){
+  // Último dígito em destaque
+  const box    = document.getElementById('freqLastDigitBox');
+  const result = document.getElementById('freqLastDigitResult');
+  const total  = document.getElementById('freqTotalDigits');
+  const isUnder = FREQ_UNDER_DIGITS.includes(d);
+  const isOver  = FREQ_OVER_DIGITS.includes(d);
+  if(box){
+    box.textContent = d;
+    if(isUnder){ box.style.background='rgba(0,255,159,.15)'; box.style.color='var(--green)'; }
+    else if(isOver){ box.style.background='rgba(0,212,255,.15)'; box.style.color='var(--accent)'; }
+    else { box.style.background='var(--surface2)'; box.style.color='var(--dim)'; }
+  }
+  if(result){
+    if(isUnder){ result.textContent='✅ UNDER 3'; result.style.color='var(--green)'; }
+    else if(isOver){ result.textContent='✅ OVER 6'; result.style.color='var(--accent)'; }
+    else { result.textContent='— NEUTRO ('+d+')'; result.style.color='var(--dim)'; }
+  }
+  if(total) total.textContent = freqTotalDigits.toLocaleString('pt-BR');
+
+  // Chip no stream
+  const stream = document.getElementById('freqDigitStream');
+  if(!stream) return;
+  // Remove destaque do chip anterior
+  const prev = stream.querySelector('.freq-latest');
+  if(prev) prev.classList.remove('freq-latest');
+  const chip = document.createElement('div');
+  chip.textContent = d;
+  chip.className = 'digit-chip ' + (isUnder ? 'win' : isOver ? 'freq-over' : 'neutral') + ' freq-latest';
+  stream.appendChild(chip);
+  if(stream.children.length > 200) stream.removeChild(stream.firstChild);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+// ── Reseta stream ─────────────────────────
+function freqResetStream(){
+  freqTotalDigits = 0;
+  const stream = document.getElementById('freqDigitStream');
+  if(stream) stream.innerHTML = '';
+  const box = document.getElementById('freqLastDigitBox');
+  if(box){ box.textContent='—'; box.style.background='var(--surface2)'; box.style.color='var(--dim)'; }
+  const result = document.getElementById('freqLastDigitResult');
+  if(result){ result.textContent='—'; result.style.color='var(--dim)'; }
+  const total = document.getElementById('freqTotalDigits');
+  if(total) total.textContent='0';
 }
 
 // ── Calcula frequência dos últimos N dígitos ─
@@ -4375,7 +4444,8 @@ function freqRenderChart(){
 function freqSetSize(n){
   if(freqRobotActive) return; // não muda durante operação
   freqAnalysisSize = n;
-  freqBuffer = []; // limpa buffer ao trocar
+  freqBuffer = [];
+  freqResetStream();
   document.getElementById('freqBtnSize10').classList.toggle('active', n === 10);
   document.getElementById('freqBtnSize25').classList.toggle('active', n === 25);
   // Mostra só o gráfico correspondente
@@ -4673,6 +4743,7 @@ function freqStartRobot(){
   freqMode           = null;
   freqTradeActive    = false;
   freqBuffer         = [];
+  freqResetStream();
   freqProcessedContracts.clear();
   freqUpdateStats();
   freqSetToggleBtn(true);
