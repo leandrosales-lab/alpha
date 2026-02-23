@@ -3109,7 +3109,7 @@ function connectDash(){
   log(`🔌 Conectando: ${creds?.loginid||creds?.loginId||'—'} | ${market} | ${modeLabel}`,'info');
 
   connectTimeout=setTimeout(()=>{
-    log('⏱️ Timeout 10s — sem resposta da Deriv. Verifique App ID, internet e tente novamente.','error');
+    log('⏱️ Timeout 15s — sem resposta da Deriv. Verifique App ID, internet e tente novamente.','error');
     resetConnectBtn(); if(ws) ws.close();
   },15000);
 
@@ -3255,7 +3255,7 @@ updateMartRefTable(); updateFreqGrid(); updateMartRefTable();
   ws.onclose=(e)=>{
     clearTimeout(connectTimeout);
     stopPing();
-    if(ws){ ws.onmessage=null; ws.onerror=null; }
+    if(ws){ ws.onmessage=null; ws.onerror=null; ws.onopen=null; ws.onclose=null; ws=null; }
     if(cycleState==='TRIGGERED'){ cycleState='IDLE'; tradeInProgress=false; }
     log(`🔌 Conexão encerrada (${e.code}). Reconecte para operar.`,'warning');
     resetConnectBtn();
