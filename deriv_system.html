@@ -4688,13 +4688,9 @@ function freqHandleContract(data){
     freqMode      = null;  // reseta modo — aguarda próximo sinal
     freqMartLevel = 0;
     freqUpdateOpIndicator(); // esconde logo
-    const statusEl = document.getElementById('freqStatusTxt');
-    if(statusEl) statusEl.textContent = '✅ GANHOU — Monitorando...';
-    // SG e SL só verificados entre chains (após win)
-    const sg = parseFloat(document.getElementById('freqSG')?.value || 10);
-    const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-    if(freqSessionPnl >= sg){ freqShowResult('gain'); return; }
-    if(freqSessionPnl < 0 && Math.abs(freqSessionPnl) >= sl){ freqShowResult('loss'); return; }
+    // Para IMEDIATAMENTE ao dar green — mostra overlay de resultado
+    freqShowResult('gain');
+    return;
   } else {
     try{playLoss();}catch(e){}
     freqSessionLosses++;
