@@ -4744,9 +4744,7 @@ function freqSetToggleBtn(active){
 function freqStartRobot(){
   if(!derivAccount){ alert('Conecte sua conta Deriv primeiro!'); return; }
   freqRobotActive    = true;
-  freqSessionWins    = 0;
-  freqSessionLosses  = 0;
-  freqSessionPnl     = 0;
+  // saldo acumulativo — NÃO zera wins/losses/pnl ao reiniciar
   freqMartLevel      = 0;
   freqMode           = null;
   freqTradeActive    = false;
