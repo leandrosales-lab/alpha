@@ -4308,7 +4308,7 @@ const FREQ_UNDER_DIGITS = [0,1,2];          // monitora 0,1,2 → contrato UNDER
 const FREQ_OVER_DIGITS  = [7,8,9];          // monitora 7,8,9 → contrato OVER 6
 const FREQ_UNDER_FACTOR = 1.6;
 const FREQ_OVER_FACTOR  = 1.9;
-const FREQ_MAX_LEVELS   = 5;
+const FREQ_MAX_LEVELS   = 8;
 // Casas decimais por mercado — determina o último dígito da cotação
 const FREQ_DECIMALS = { 'R_10':3, 'R_25':3, 'R_50':4, 'R_75':4, 'R_100':2 };
 function freqGetLastDigit(price, market){
@@ -4584,16 +4584,16 @@ function freqUpdateLevelDisplay(){
   if(freqMode === 'under'){
     if(uLevel) uLevel.textContent = (freqMartLevel + 1) + ' / ' + FREQ_MAX_LEVELS;
     if(uNext)  uNext.textContent  = '$' + freqGetEntry(freqMartLevel).toFixed(2);
-    if(oLevel) oLevel.textContent = '1 / 5';
+    if(oLevel) oLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
     if(oNext)  oNext.textContent  = '$' + base.toFixed(2);
   } else if(freqMode === 'over'){
     if(oLevel) oLevel.textContent = (freqMartLevel + 1) + ' / ' + FREQ_MAX_LEVELS;
     if(oNext)  oNext.textContent  = '$' + freqGetEntry(freqMartLevel).toFixed(2);
-    if(uLevel) uLevel.textContent = '1 / 5';
+    if(uLevel) uLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
     if(uNext)  uNext.textContent  = '$' + base.toFixed(2);
   } else {
-    if(uLevel) uLevel.textContent = '1 / 5';
-    if(oLevel) oLevel.textContent = '1 / 5';
+    if(uLevel) uLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
+    if(oLevel) oLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
     if(uNext)  uNext.textContent  = '$' + base.toFixed(2);
     if(oNext)  oNext.textContent  = '$' + base.toFixed(2);
   }
