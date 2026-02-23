@@ -1301,24 +1301,20 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       <div id="freqConnStatus" style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-left:auto;">⬤ Desconectado</div>
     </div>
 
-    <!-- Frequency charts — dois gráficos lado a lado -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-      <!-- Chart 10 dígitos -->
-      <div class="freq-chart-wrap" style="margin-bottom:0;">
-        <div style="font-size:9px;color:var(--dim);letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-          <span>📊 ÚLTIMOS 10 &nbsp;<span style="color:var(--green);">■</span> <span style="color:var(--accent);">■</span></span>
-          <span id="freqRobotBadge10" style="font-size:9px;padding:2px 7px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:10px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;">🤖 ROBÔ</span>
-        </div>
-        <div class="freq-bars" id="freqBars10"></div>
+    <!-- Frequency chart — exibe apenas o selecionado -->
+    <div id="freqChart10Wrap" class="freq-chart-wrap">
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+        <span>📊 ÚLTIMOS 10 &nbsp;<span style="color:var(--green);">■ UNDER</span> &nbsp;<span style="color:var(--accent);">■ OVER</span></span>
+        <span style="font-size:9px;padding:2px 7px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:10px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;">🤖 ROBÔ</span>
       </div>
-      <!-- Chart 25 dígitos -->
-      <div class="freq-chart-wrap" style="margin-bottom:0;">
-        <div style="font-size:9px;color:var(--dim);letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-          <span>📊 ÚLTIMOS 25 &nbsp;<span style="color:var(--green);">■</span> <span style="color:var(--accent);">■</span></span>
-          <span id="freqRobotBadge25" style="font-size:9px;padding:2px 7px;background:rgba(0,212,255,.08);color:var(--dim);border-radius:10px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;display:none;">🤖 ROBÔ</span>
-        </div>
-        <div class="freq-bars" id="freqBars25"></div>
+      <div class="freq-bars" id="freqBars10"></div>
+    </div>
+    <div id="freqChart25Wrap" class="freq-chart-wrap" style="display:none;">
+      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
+        <span>📊 ÚLTIMOS 25 &nbsp;<span style="color:var(--green);">■ UNDER</span> &nbsp;<span style="color:var(--accent);">■ OVER</span></span>
+        <span style="font-size:9px;padding:2px 7px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:10px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;">🤖 ROBÔ</span>
       </div>
+      <div class="freq-bars" id="freqBars25"></div>
     </div>
     <!-- Seletor de análise do robô -->
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
@@ -4368,25 +4364,23 @@ function freqRenderBars(elId, n){
   barsEl.innerHTML = html;
 }
 
-// ── Renderiza ambos os gráficos ──────────
+// ── Renderiza só o gráfico ativo ─────────
 function freqRenderChart(){
-  freqRenderBars('freqBars10', 10);
-  freqRenderBars('freqBars25', 25);
-  // Atualiza cards usando o tamanho de análise selecionado
+  freqRenderBars('freqBars' + freqAnalysisSize, freqAnalysisSize);
   const { counts, total } = freqCalcFreq(freqAnalysisSize);
   freqUpdateCards(counts, total, freqBuffer.length >= freqAnalysisSize);
 }
 
 // ── Alterna tamanho de análise do robô ───
 function freqSetSize(n){
+  if(freqRobotActive) return; // não muda durante operação
   freqAnalysisSize = n;
+  freqBuffer = []; // limpa buffer ao trocar
   document.getElementById('freqBtnSize10').classList.toggle('active', n === 10);
   document.getElementById('freqBtnSize25').classList.toggle('active', n === 25);
-  // Badge "ROBÔ" no gráfico ativo
-  const b10 = document.getElementById('freqRobotBadge10');
-  const b25 = document.getElementById('freqRobotBadge25');
-  if(b10){ b10.style.display = n === 10 ? 'inline-block' : 'none'; }
-  if(b25){ b25.style.display = n === 25 ? 'inline-block' : 'none'; }
+  // Mostra só o gráfico correspondente
+  document.getElementById('freqChart10Wrap').style.display = n === 10 ? 'block' : 'none';
+  document.getElementById('freqChart25Wrap').style.display = n === 25 ? 'block' : 'none';
   freqRenderChart();
 }
 
