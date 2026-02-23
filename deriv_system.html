@@ -4562,17 +4562,19 @@ function freqCheckEntry(){
   const underZeros = FREQ_UNDER_DIGITS.filter(d => counts[d] === 0);
   const overZeros  = FREQ_OVER_DIGITS.filter(d => counts[d] === 0);
 
-  // Em cadeia ativa: ignora o outro grupo por completo — só monitora o modo atual
+  // ── Em cadeia ativa (pós-loss): entra imediatamente no próximo tick ──
+  // O 0% foi o GATILHO de entrada. Uma vez disparado, o robô opera até
+  // green ou nível 5 — sem verificar frequência novamente.
   if(freqMode === 'under'){
-    if(underZeros.length === 1) freqEnterTrade('under'); // OVER não importa
+    freqEnterTrade('under');
     return;
   }
   if(freqMode === 'over'){
-    if(overZeros.length === 1) freqEnterTrade('over'); // UNDER não importa
+    freqEnterTrade('over');
     return;
   }
 
-  // Estado neutro — verifica sinal novo (exatamente 1 zero em apenas 1 grupo)
+  // ── Estado neutro: aguarda gatilho (exatamente 1 zero em 1 grupo) ──
   if(underZeros.length === 1 && overZeros.length === 0){
     freqMode = 'under'; freqMartLevel = 0;
     freqEnterTrade('under');
@@ -4580,7 +4582,7 @@ function freqCheckEntry(){
     freqMode = 'over'; freqMartLevel = 0;
     freqEnterTrade('over');
   }
-  // 0 zeros ou 2+ zeros em qualquer grupo → aguarda
+  // Dois grupos zerados ao mesmo tempo, ou nenhum → aguarda
 }
 
 // ── Som de entrada ────────────────────────
