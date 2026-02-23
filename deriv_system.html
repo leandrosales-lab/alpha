@@ -1407,7 +1407,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 
     <!-- Config & controls -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
         <div>
           <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">ENTRADA (USD)</div>
           <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
@@ -1419,6 +1419,10 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <div>
           <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">STOP LOSS (USD)</div>
           <input type="number" id="freqSL" value="5" step="0.50" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">DIG. QUENTE (%)</div>
+          <input type="number" id="freqHotThreshold" value="40" step="5" min="10" max="90" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
         </div>
       </div>
       <button id="freqToggleBtn" onclick="freqToggleRobot()" style="width:100%;padding:13px;background:linear-gradient(135deg,rgba(0,255,159,.15),rgba(0,212,255,.08));border:1px solid rgba(0,255,159,.4);border-radius:10px;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;letter-spacing:1px;transition:all .2s;">▶ INICIAR ROBÔ</button>
@@ -4602,33 +4606,44 @@ function freqUpdateLevelDisplay(){
 // ── Verifica condição de entrada ─────────
 function freqCheckEntry(){
   if(!freqRobotActive || freqTradeActive) return;
-  const { counts } = freqCalcFreq(freqAnalysisSize);
-  const underZeros = FREQ_UNDER_DIGITS.filter(d => counts[d] === 0);
-  const overZeros  = FREQ_OVER_DIGITS.filter(d => counts[d] === 0);
 
   // ── Em cadeia ativa (pós-loss): entra imediatamente no próximo tick ──
-  // O 0% foi o GATILHO de entrada. Uma vez disparado, o robô opera até
-  // green ou nível 5 — sem verificar frequência novamente.
-  if(freqMode === 'under'){
-    freqEnterTrade('under');
-    return;
-  }
-  if(freqMode === 'over'){
-    freqEnterTrade('over');
-    return;
-  }
+  if(freqMode === 'under'){ freqEnterTrade('under'); return; }
+  if(freqMode === 'over'){  freqEnterTrade('over');  return; }
 
-  // ── Estado neutro: aguarda gatilho (exatamente 1 zero em 1 grupo) ──
-  if(underZeros.length === 1 && overZeros.length === 0){
+  // ── Estado neutro: avalia gatilho com filtro de dígito quente ──
+  const { counts, total } = freqCalcFreq(freqAnalysisSize);
+  if(total === 0) return;
+
+  const threshold = parseFloat(document.getElementById('freqHotThreshold')?.value || 40) / 100;
+
+  // Under: exatamente 1 dígito do grupo (0,1,2) em 0%
+  //        E pelo menos 1 outro dígito do mesmo grupo acima do threshold
+  const underZeros = FREQ_UNDER_DIGITS.filter(d => counts[d] === 0);
+  const underHot   = FREQ_UNDER_DIGITS.filter(d => counts[d] / total >= threshold);
+  const underQualifies = underZeros.length === 1 && underHot.length >= 1;
+
+  // Over: exatamente 1 dígito do grupo (7,8,9) em 0%
+  //       E pelo menos 1 outro dígito do mesmo grupo acima do threshold
+  const overZeros = FREQ_OVER_DIGITS.filter(d => counts[d] === 0);
+  const overHot   = FREQ_OVER_DIGITS.filter(d => counts[d] / total >= threshold);
+  const overQualifies = overZeros.length === 1 && overHot.length >= 1;
+
+  // Ambos qualificam → mercado ambíguo, aguarda
+  if(underQualifies && overQualifies) return;
+
+  if(underQualifies){
     freqMode = 'under'; freqMartLevel = 0;
-    freqLog(`🎯 Gatilho UNDER 3 — dígito ${underZeros[0]} em 0%`, 'warning');
+    const hotPct = Math.round(counts[underHot[0]] / total * 100);
+    freqLog(`🎯 Gatilho UNDER 3 — dígito ${underZeros[0]} em 0% | dígito ${underHot[0]} em ${hotPct}%`, 'warning');
     freqEnterTrade('under');
-  } else if(overZeros.length === 1 && underZeros.length === 0){
+  } else if(overQualifies){
     freqMode = 'over'; freqMartLevel = 0;
-    freqLog(`🎯 Gatilho OVER 6 — dígito ${overZeros[0]} em 0%`, 'warning');
+    const hotPct = Math.round(counts[overHot[0]] / total * 100);
+    freqLog(`🎯 Gatilho OVER 6 — dígito ${overZeros[0]} em 0% | dígito ${overHot[0]} em ${hotPct}%`, 'warning');
     freqEnterTrade('over');
   }
-  // Dois grupos zerados ao mesmo tempo, ou nenhum → aguarda
+  // Nenhum qualifica → aguarda próximo tick
 }
 
 // ── Som de entrada ────────────────────────
@@ -4822,10 +4837,11 @@ function freqStartRobot(){
   document.getElementById('freqStatusTxt').textContent = 'MONITORANDO...';
   const sg = parseFloat(document.getElementById('freqSG')?.value||10);
   const sl = parseFloat(document.getElementById('freqSL')?.value||5);
-  freqLog(`🤖 Robô iniciado | Entrada: $${parseFloat(document.getElementById('freqEntry')?.value||0.35).toFixed(2)} | SG: $${sg} | SL: $${sl}`, 'success');
+  const hot = parseFloat(document.getElementById('freqHotThreshold')?.value||40);
+  freqLog(`🤖 Robô iniciado | Entrada: $${parseFloat(document.getElementById('freqEntry')?.value||0.35).toFixed(2)} | SG: $${sg} | SL: $${sl} | Quente: ${hot}%`, 'success');
 
   // Bloqueia inputs e seletor de mercado
-  ['freqEntry','freqSG','freqSL'].forEach(id => {
+  ['freqEntry','freqSG','freqSL','freqHotThreshold'].forEach(id => {
     const el = document.getElementById(id);
     if(el){ el.disabled = true; el.style.opacity = '0.5'; }
   });
@@ -4866,7 +4882,7 @@ function freqStopRobot(){
   document.getElementById('freqStatusTxt').textContent = 'PARADO';
 
   // Desbloqueia inputs
-  ['freqEntry','freqSG','freqSL'].forEach(id => {
+  ['freqEntry','freqSG','freqSL','freqHotThreshold'].forEach(id => {
     const el = document.getElementById(id);
     if(el){ el.disabled = false; el.style.opacity = '1'; }
   });
