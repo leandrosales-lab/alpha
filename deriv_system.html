@@ -4399,38 +4399,58 @@ function freqUpdateCards(counts, total, ready){
   const uZeroEl = document.getElementById('freqUnderZeroDigit');
   const uBadge  = document.getElementById('freqBadgeUnder');
   const uCard   = document.getElementById('freqCardUnder');
-  if(!ready){ uZeroEl.textContent='—'; uBadge.textContent='AGUARDANDO'; uBadge.className='freq-status-badge aguard'; uCard.classList.remove('active'); }
-  else if(underZeros.length === 1 && overZeros.length === 0){
-    uZeroEl.textContent = underZeros[0];
-    uBadge.textContent = '⚡ SINAL'; uBadge.className = 'freq-status-badge sinal';
-    uCard.classList.add('active');
-  } else if(underZeros.length > 1){
-    uZeroEl.textContent = underZeros.join(', ');
-    uBadge.textContent = '⚠️ DUPLO'; uBadge.className = 'freq-status-badge duplo';
-    uCard.classList.remove('active');
-  } else {
+
+  if(freqMode === 'over'){
+    // UNDER pausado — robô está em chain OVER
     uZeroEl.textContent = '—';
-    uBadge.textContent = 'AGUARDANDO'; uBadge.className = 'freq-status-badge aguard';
+    uBadge.textContent = '⏸ PAUSADO'; uBadge.className = 'freq-status-badge aguard';
     uCard.classList.remove('active');
+    uCard.style.opacity = '0.45';
+  } else {
+    uCard.style.opacity = '1';
+    if(!ready){ uZeroEl.textContent='—'; uBadge.textContent='AGUARDANDO'; uBadge.className='freq-status-badge aguard'; uCard.classList.remove('active'); }
+    else if(underZeros.length === 1){
+      uZeroEl.textContent = underZeros[0];
+      uBadge.textContent = '⚡ SINAL'; uBadge.className = 'freq-status-badge sinal';
+      uCard.classList.add('active');
+    } else if(underZeros.length > 1){
+      uZeroEl.textContent = underZeros.join(', ');
+      uBadge.textContent = '⚠️ DUPLO'; uBadge.className = 'freq-status-badge duplo';
+      uCard.classList.remove('active');
+    } else {
+      uZeroEl.textContent = '—';
+      uBadge.textContent = 'AGUARDANDO'; uBadge.className = 'freq-status-badge aguard';
+      uCard.classList.remove('active');
+    }
   }
 
   // OVER card
   const oZeroEl = document.getElementById('freqOverZeroDigit');
   const oBadge  = document.getElementById('freqBadgeOver');
   const oCard   = document.getElementById('freqCardOver');
-  if(!ready){ oZeroEl.textContent='—'; oBadge.textContent='AGUARDANDO'; oBadge.className='freq-status-badge aguard'; oCard.classList.remove('active'); }
-  else if(overZeros.length === 1 && underZeros.length === 0){
-    oZeroEl.textContent = overZeros[0];
-    oBadge.textContent = '⚡ SINAL'; oBadge.className = 'freq-status-badge sinal';
-    oCard.classList.add('active');
-  } else if(overZeros.length > 1){
-    oZeroEl.textContent = overZeros.join(', ');
-    oBadge.textContent = '⚠️ DUPLO'; oBadge.className = 'freq-status-badge duplo';
-    oCard.classList.remove('active');
-  } else {
+
+  if(freqMode === 'under'){
+    // OVER pausado — robô está em chain UNDER
     oZeroEl.textContent = '—';
-    oBadge.textContent = 'AGUARDANDO'; oBadge.className = 'freq-status-badge aguard';
+    oBadge.textContent = '⏸ PAUSADO'; oBadge.className = 'freq-status-badge aguard';
     oCard.classList.remove('active');
+    oCard.style.opacity = '0.45';
+  } else {
+    oCard.style.opacity = '1';
+    if(!ready){ oZeroEl.textContent='—'; oBadge.textContent='AGUARDANDO'; oBadge.className='freq-status-badge aguard'; oCard.classList.remove('active'); }
+    else if(overZeros.length === 1){
+      oZeroEl.textContent = overZeros[0];
+      oBadge.textContent = '⚡ SINAL'; oBadge.className = 'freq-status-badge sinal';
+      oCard.classList.add('active');
+    } else if(overZeros.length > 1){
+      oZeroEl.textContent = overZeros.join(', ');
+      oBadge.textContent = '⚠️ DUPLO'; oBadge.className = 'freq-status-badge duplo';
+      oCard.classList.remove('active');
+    } else {
+      oZeroEl.textContent = '—';
+      oBadge.textContent = 'AGUARDANDO'; oBadge.className = 'freq-status-badge aguard';
+      oCard.classList.remove('active');
+    }
   }
 
   freqUpdateLevelDisplay();
@@ -4478,13 +4498,13 @@ function freqCheckEntry(){
   const underZeros = FREQ_UNDER_DIGITS.filter(d => counts[d] === 0);
   const overZeros  = FREQ_OVER_DIGITS.filter(d => counts[d] === 0);
 
-  // Se estiver em cadeia de martingale, aguarda sinal do mesmo modo
+  // Em cadeia ativa: ignora o outro grupo por completo — só monitora o modo atual
   if(freqMode === 'under'){
-    if(underZeros.length === 1 && overZeros.length === 0) freqEnterTrade('under');
+    if(underZeros.length === 1) freqEnterTrade('under'); // OVER não importa
     return;
   }
   if(freqMode === 'over'){
-    if(overZeros.length === 1 && underZeros.length === 0) freqEnterTrade('over');
+    if(overZeros.length === 1) freqEnterTrade('over'); // UNDER não importa
     return;
   }
 
