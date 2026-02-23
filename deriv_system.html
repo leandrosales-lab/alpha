@@ -4345,7 +4345,10 @@ function freqSelectMarket(sym, btn){
   freqResetStream();
   freqRenderChart();
   if(freqWs && freqWs.readyState === 1){
-    freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
+    // Cancela ticks do mercado anterior e recarrega histórico do novo
+    freqTicksSubscribed = false;
+    freqWs.send(JSON.stringify({forget_all: 'ticks'}));
+    freqWs.send(JSON.stringify({ticks_history: freqMarket, count: 30, end: 'latest', style: 'ticks'}));
   }
 }
 
@@ -4358,7 +4361,8 @@ function freqInitChart(){
   freqWs.onopen = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Conectado';
     document.getElementById('freqConnStatus').style.color = 'var(--green)';
-    freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
+    // Carrega histórico primeiro; ticks live só após buffer populado
+    freqWs.send(JSON.stringify({ticks_history: freqMarket, count: 30, end: 'latest', style: 'ticks'}));
   };
   freqWs.onclose = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Desconectado';
@@ -4373,7 +4377,18 @@ function freqHandleMsg(evt){
   const data = JSON.parse(evt.data);
   if(data.error) return; // ignora erros silenciosamente
   if(data.msg_type === 'authorize'){
-    // Só assina ticks se ainda não estiverem fluindo
+    // Após auth: pede histórico se ticks ainda não estiverem fluindo
+    if(!freqTicksSubscribed){
+      freqWs.send(JSON.stringify({ticks_history: freqMarket, count: 30, end: 'latest', style: 'ticks'}));
+    }
+  }
+  if(data.msg_type === 'history'){
+    // Pré-popula buffer com histórico → garante que robô começa com dados prontos
+    const prices = data.history?.prices || [];
+    const recent = prices.slice(-25);
+    freqBuffer = recent.map(p => freqGetLastDigit(parseFloat(p), freqMarket));
+    freqRenderChart();
+    // Só agora assina ticks live
     if(!freqTicksSubscribed){
       freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
     }
