@@ -1389,10 +1389,14 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <input type="number" id="freqSL" value="5" step="0.50" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
         </div>
       </div>
-      <div style="display:flex;gap:10px;">
-        <button id="freqStartBtn" onclick="freqStartRobot()" style="flex:1;padding:12px;background:linear-gradient(135deg,rgba(0,255,159,.15),rgba(0,212,255,.08));border:1px solid rgba(0,255,159,.4);border-radius:10px;color:var(--green);font-weight:700;font-size:13px;cursor:pointer;letter-spacing:1px;">▶ INICIAR ROBÔ</button>
-        <button id="freqStopBtn" onclick="freqStopRobot()" disabled style="flex:1;padding:12px;background:rgba(255,59,107,.08);border:1px solid rgba(255,59,107,.4);border-radius:10px;color:var(--red);font-weight:700;font-size:13px;cursor:pointer;letter-spacing:1px;">⏹ PARAR</button>
-      </div>
+      <button id="freqToggleBtn" onclick="freqToggleRobot()" style="width:100%;padding:13px;background:linear-gradient(135deg,rgba(0,255,159,.15),rgba(0,212,255,.08));border:1px solid rgba(0,255,159,.4);border-radius:10px;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;letter-spacing:1px;transition:all .2s;">▶ INICIAR ROBÔ</button>
+    </div>
+
+    <!-- Indicador da operação ativa -->
+    <div id="freqOpIndicator" style="display:none;text-align:center;padding:16px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
+      <div id="freqOpIcon" style="font-size:38px;margin-bottom:4px;line-height:1;">📉</div>
+      <div id="freqOpLabel" style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:4px;">UNDER 3</div>
+      <div id="freqOpLevel" style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 5 — $0.35</div>
     </div>
 
     <!-- Session stats -->
@@ -4253,11 +4257,17 @@ function log(msg,type='info'){
 // ════════════════════════════════════════
 // ROBÔ FREQUÊNCIA DE DÍGITOS
 // ════════════════════════════════════════
-const FREQ_UNDER_DIGITS = [0,1,2,3];
-const FREQ_OVER_DIGITS  = [6,7,8,9];
+const FREQ_UNDER_DIGITS = [0,1,2];          // monitora 0,1,2 → contrato UNDER 3
+const FREQ_OVER_DIGITS  = [7,8,9];          // monitora 7,8,9 → contrato OVER 6
 const FREQ_UNDER_FACTOR = 1.6;
 const FREQ_OVER_FACTOR  = 1.9;
 const FREQ_MAX_LEVELS   = 5;
+// Casas decimais por mercado — determina o último dígito da cotação
+const FREQ_DECIMALS = { 'R_10':3, 'R_25':3, 'R_50':4, 'R_75':4, 'R_100':2 };
+function freqGetLastDigit(price, market){
+  const d = FREQ_DECIMALS[market] || 2;
+  return Math.round(parseFloat(price) * Math.pow(10, d)) % 10;
+}
 
 let freqWs               = null;
 let freqMarket           = 'R_10';
@@ -4316,8 +4326,7 @@ function freqHandleMsg(evt){
 // ── Processa cada tick ───────────────────
 function freqOnTick(tick){
   if(!tick || tick.quote == null) return;
-  const price     = parseFloat(tick.quote);
-  const lastDigit = Math.round(price * 100) % 10;
+  const lastDigit = freqGetLastDigit(tick.quote, freqMarket);
   freqBuffer.push(lastDigit);
   if(freqBuffer.length > 25) freqBuffer.shift();
   freqRenderChart();
@@ -4490,6 +4499,34 @@ function freqCheckEntry(){
   // 0 zeros ou 2+ zeros em qualquer grupo → aguarda
 }
 
+// ── Som de entrada ────────────────────────
+function playFreqEntry(){
+  try{
+    [0, 0.13].forEach((d,i)=>{
+      const o=audioCtx.createOscillator(),g=audioCtx.createGain();
+      o.connect(g);g.connect(audioCtx.destination);
+      o.type='sine';o.frequency.setValueAtTime(i?1100:800,audioCtx.currentTime+d);
+      g.gain.setValueAtTime(0.25,audioCtx.currentTime+d);
+      g.gain.exponentialRampToValueAtTime(0.001,audioCtx.currentTime+d+0.18);
+      o.start(audioCtx.currentTime+d);o.stop(audioCtx.currentTime+d+0.18);
+    });
+  }catch(e){}
+}
+
+// ── Atualiza logo da operação ─────────────
+function freqUpdateOpIndicator(){
+  const el = document.getElementById('freqOpIndicator');
+  if(!freqTradeActive || !freqMode){ if(el) el.style.display='none'; return; }
+  if(el) el.style.display='block';
+  const isUnder = freqMode === 'under';
+  const icon  = document.getElementById('freqOpIcon');
+  const label = document.getElementById('freqOpLabel');
+  const level = document.getElementById('freqOpLevel');
+  if(icon)  icon.textContent  = isUnder ? '📉' : '📈';
+  if(label){ label.textContent=isUnder?'UNDER 3':'OVER 6'; label.style.color=isUnder?'var(--green)':'var(--accent)'; }
+  if(level){ const amt=freqGetEntry(freqMartLevel); level.textContent=`Nível ${freqMartLevel+1} / ${FREQ_MAX_LEVELS} — $${amt.toFixed(2)}`; }
+}
+
 // ── Envia ordem de compra ─────────────────
 function freqEnterTrade(mode){
   if(!freqWs || freqWs.readyState !== 1) return;
@@ -4498,6 +4535,8 @@ function freqEnterTrade(mode){
   const contractType = mode === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
   const barrier      = mode === 'under' ? '3' : '6';
   freqTradeActive    = true;
+  playFreqEntry();
+  freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
   if(statusEl) statusEl.textContent = mode === 'under' ? `📉 UNDER 3 — $${amount}` : `📈 OVER 6 — $${amount}`;
   freqWs.send(JSON.stringify({
@@ -4546,29 +4585,32 @@ function freqHandleContract(data){
   const isWin  = profit > 0;
 
   if(isWin){
+    try{playWin();}catch(e){}
     freqSessionWins++;
     freqSessionPnl += profit;
     freqUpdateStats();
     freqMode      = null;  // reseta modo — aguarda próximo sinal
     freqMartLevel = 0;
+    freqUpdateOpIndicator(); // esconde logo
     const statusEl = document.getElementById('freqStatusTxt');
     if(statusEl) statusEl.textContent = '✅ GANHOU — Monitorando...';
+    // SG e SL só verificados entre chains (após win)
     const sg = parseFloat(document.getElementById('freqSG')?.value || 10);
-    if(freqSessionPnl >= sg) { freqShowResult('gain'); return; }
+    const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
+    if(freqSessionPnl >= sg){ freqShowResult('gain'); return; }
+    if(freqSessionPnl < 0 && Math.abs(freqSessionPnl) >= sl){ freqShowResult('loss'); return; }
   } else {
+    try{playLoss();}catch(e){}
     freqSessionLosses++;
     freqSessionPnl += profit; // profit < 0
     freqUpdateStats();
     freqMartLevel++;
     const statusEl = document.getElementById('freqStatusTxt');
     if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel}/${FREQ_MAX_LEVELS}`;
-    // Check SL
-    const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-    if(freqSessionPnl < 0 && Math.abs(freqSessionPnl) >= sl){ freqShowResult('loss'); return; }
-    // Check max martingale
+    // SL NÃO interrompe chain ativa — robô joga até green ou nível 5
     if(freqMartLevel >= FREQ_MAX_LEVELS){ freqShowResult('martingale'); return; }
-    // Continua aguardando próximo sinal do mesmo modo
     freqUpdateLevelDisplay();
+    freqUpdateOpIndicator(); // atualiza nível no logo
   }
 }
 
@@ -4585,6 +4627,27 @@ function freqUpdateStats(){
   }
 }
 
+// ── Toggle único INICIAR / PARAR ──────────
+function freqToggleRobot(){
+  if(freqRobotActive) freqStopRobot(); else freqStartRobot();
+}
+
+function freqSetToggleBtn(active){
+  const btn = document.getElementById('freqToggleBtn');
+  if(!btn) return;
+  if(active){
+    btn.textContent = '⏹ PARAR ROBÔ';
+    btn.style.background = 'rgba(255,59,107,.1)';
+    btn.style.borderColor = 'rgba(255,59,107,.5)';
+    btn.style.color = 'var(--red)';
+  } else {
+    btn.textContent = '▶ INICIAR ROBÔ';
+    btn.style.background = 'linear-gradient(135deg,rgba(0,255,159,.15),rgba(0,212,255,.08))';
+    btn.style.borderColor = 'rgba(0,255,159,.4)';
+    btn.style.color = 'var(--green)';
+  }
+}
+
 // ── Inicia robô ──────────────────────────
 function freqStartRobot(){
   if(!derivAccount){ alert('Conecte sua conta Deriv primeiro!'); return; }
@@ -4598,9 +4661,7 @@ function freqStartRobot(){
   freqBuffer         = [];
   freqProcessedContracts.clear();
   freqUpdateStats();
-
-  document.getElementById('freqStartBtn').disabled = true;
-  document.getElementById('freqStopBtn').disabled  = false;
+  freqSetToggleBtn(true);
   document.getElementById('freqStatusTxt').textContent = 'MONITORANDO...';
 
   // Bloqueia inputs e seletor de mercado
@@ -4608,7 +4669,7 @@ function freqStartRobot(){
     const el = document.getElementById(id);
     if(el){ el.disabled = true; el.style.opacity = '0.5'; }
   });
-  document.querySelectorAll('#freqMarketBtns .nav-pill').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+  document.querySelectorAll('#freqMarketBtns .nav-pill, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
   // Reconecta WS com autorização para trading
   if(freqWs && freqWs.readyState <= 1) freqWs.close();
@@ -4616,7 +4677,6 @@ function freqStartRobot(){
   freqWs.onopen = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Conectado';
     document.getElementById('freqConnStatus').style.color = 'var(--green)';
-    // Autoriza para poder fazer trades
     freqWs.send(JSON.stringify({authorize: derivAccount.token}));
   };
   freqWs.onclose = () => {
@@ -4632,9 +4692,8 @@ function freqStopRobot(){
   freqMode        = null;
   freqMartLevel   = 0;
   freqTradeActive = false;
-
-  document.getElementById('freqStartBtn').disabled = false;
-  document.getElementById('freqStopBtn').disabled  = true;
+  freqSetToggleBtn(false);
+  freqUpdateOpIndicator(); // esconde logo
   document.getElementById('freqStatusTxt').textContent = 'PARADO';
 
   // Desbloqueia inputs
@@ -4642,9 +4701,8 @@ function freqStopRobot(){
     const el = document.getElementById(id);
     if(el){ el.disabled = false; el.style.opacity = '1'; }
   });
-  document.querySelectorAll('#freqMarketBtns .nav-pill').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+  document.querySelectorAll('#freqMarketBtns .nav-pill, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
 
-  // Mantém WS aberto apenas para visualização (sem autorização)
   const uBadge = document.getElementById('freqBadgeUnder');
   const oBadge = document.getElementById('freqBadgeOver');
   if(uBadge){ uBadge.textContent='AGUARDANDO'; uBadge.className='freq-status-badge aguard'; }
@@ -4661,10 +4719,13 @@ function freqShowResult(type){
   const detail  = document.getElementById('freqResDetail');
   if(type === 'gain'){
     icon.textContent = '🏆'; title.textContent = 'STOP GAIN'; title.style.color = 'var(--green)'; value.style.color = 'var(--green)';
+    try{playStopGain();}catch(e){}
   } else if(type === 'loss'){
     icon.textContent = '❌'; title.textContent = 'STOP LOSS'; title.style.color = 'var(--red)'; value.style.color = 'var(--red)';
+    try{playStopLoss();}catch(e){}
   } else {
     icon.textContent = '🚨'; title.textContent = 'STOP MARTINGALE'; title.style.color = 'var(--red)'; value.style.color = 'var(--red)';
+    try{playStopLoss();}catch(e){}
   }
   value.textContent  = (freqSessionPnl >= 0 ? '+' : '') + '$' + freqSessionPnl.toFixed(2);
   detail.textContent = `${freqSessionWins} wins · ${freqSessionLosses} losses`;
