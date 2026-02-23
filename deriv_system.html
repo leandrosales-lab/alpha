@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DERIV · Sistema de Robôs</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@300;400;600;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <script>if(sessionStorage.getItem('alpha_session'))document.documentElement.classList.add('restoring-session');</script>
 <style>
@@ -376,6 +376,74 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .freq-overlay{position:fixed;inset:0;z-index:9100;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);}
 .freq-overlay.show{display:flex;}
 .freq-overlay-box{background:var(--surface);border-radius:20px;padding:36px 48px;text-align:center;min-width:280px;border:1px solid var(--border);}
+
+/* ══════════════════════════════════════════
+   FREQ DÍGITOS — REDESIGN (fq-* namespace)
+══════════════════════════════════════════ */
+#screenFreq{
+  --fq-bg:#12131b;--fq-surface:#1c1e2d;--fq-surface2:#252839;
+  --fq-border:#32364a;--fq-text:#dde2f0;--fq-dim:#7a81a0;
+  --fq-under:#4ade80;--fq-over:#60a5fa;
+  --fq-red:#f87171;--fq-gold:#fbbf24;
+  background:var(--fq-bg);font-family:'Inter',sans-serif;
+}
+.fq-sidebar{width:268px;flex-shrink:0;display:flex;flex-direction:column;gap:12px;}
+.fq-panel{background:var(--fq-surface);border:1px solid var(--fq-border);border-radius:14px;padding:16px;}
+.fq-label{font-size:10px;letter-spacing:1.5px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-bottom:10px;text-transform:uppercase;}
+/* Market buttons */
+.fq-mkt-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+.fq-mkt-btn{padding:8px 4px;background:var(--fq-surface2);border:1px solid var(--fq-border);border-radius:8px;color:var(--fq-dim);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;font-family:'Inter',sans-serif;}
+.fq-mkt-btn.active{background:rgba(96,165,250,.15);border-color:rgba(96,165,250,.55);color:var(--fq-over);}
+.fq-mkt-btn:hover{border-color:var(--fq-over);color:var(--fq-text);}
+/* Size buttons */
+.fq-size-btns{display:flex;gap:6px;}
+.fq-size-btn{flex:1;padding:8px;background:var(--fq-surface2);border:1px solid var(--fq-border);border-radius:8px;color:var(--fq-dim);font-size:11px;cursor:pointer;text-align:center;transition:all .2s;font-family:'Share Tech Mono',monospace;letter-spacing:.5px;}
+.fq-size-btn.active{background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.45);color:var(--fq-over);}
+/* Config inputs */
+.fq-input-group{margin-bottom:10px;}
+.fq-input-label{font-size:9.5px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;letter-spacing:.5px;}
+.fq-input{width:100%;background:var(--fq-surface2);border:1px solid var(--fq-border);color:var(--fq-text);padding:8px 10px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;outline:none;transition:border-color .2s;box-sizing:border-box;}
+.fq-input:focus{border-color:var(--fq-over);}
+/* Start / Stop */
+.fq-start-btn{width:100%;padding:13px;border:1px solid rgba(74,222,128,.35);border-radius:10px;background:rgba(74,222,128,.08);color:var(--fq-under);font-size:14px;font-weight:700;cursor:pointer;letter-spacing:1px;transition:all .2s;font-family:'Inter',sans-serif;margin-top:4px;}
+.fq-start-btn.stop{background:rgba(248,113,113,.08);border-color:rgba(248,113,113,.4);color:var(--fq-red);}
+/* Session stats */
+.fq-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.fq-stat{background:var(--fq-surface2);border-radius:10px;padding:10px;text-align:center;}
+.fq-stat-label{font-size:9px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-bottom:5px;letter-spacing:1px;}
+.fq-stat-value{font-size:21px;font-weight:700;font-family:'Inter',sans-serif;line-height:1;}
+/* Digit chips */
+.fq-chips{display:flex;gap:7px;flex-wrap:nowrap;}
+.fq-chip{flex:1;background:var(--fq-surface2);border:1px solid var(--fq-border);border-radius:12px;padding:11px 4px 9px;text-align:center;transition:border-color .3s,background .3s;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;}
+.fq-chip.chip-under{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.06);}
+.fq-chip.chip-over{border-color:rgba(96,165,250,.3);background:rgba(96,165,250,.06);}
+.fq-chip.chip-neutral{border-color:var(--fq-border);}
+.fq-chip.chip-hot{border-color:rgba(251,191,36,.65);background:rgba(251,191,36,.09);}
+.fq-chip.chip-zero{border-color:rgba(248,113,113,.75);background:rgba(248,113,113,.11);animation:fqZeroPulse .85s ease infinite;}
+@keyframes fqZeroPulse{0%,100%{opacity:1;}50%{opacity:.25;}}
+.fq-chip-num{font-size:21px;font-weight:900;font-family:'Share Tech Mono',monospace;line-height:1;}
+.fq-chip-pct{font-size:12px;font-family:'Share Tech Mono',monospace;line-height:1;}
+.fq-chip.chip-under .fq-chip-num{color:var(--fq-under);}
+.fq-chip.chip-under .fq-chip-pct{color:rgba(74,222,128,.7);}
+.fq-chip.chip-over .fq-chip-num{color:var(--fq-over);}
+.fq-chip.chip-over .fq-chip-pct{color:rgba(96,165,250,.7);}
+.fq-chip.chip-neutral .fq-chip-num{color:var(--fq-dim);}
+.fq-chip.chip-neutral .fq-chip-pct{color:var(--fq-dim);}
+.fq-chip.chip-hot .fq-chip-num{color:var(--fq-gold);}
+.fq-chip.chip-hot .fq-chip-pct{color:var(--fq-gold);}
+.fq-chip.chip-zero .fq-chip-num{color:var(--fq-red);}
+.fq-chip.chip-zero .fq-chip-pct{color:var(--fq-red);}
+/* Trade cards */
+.fq-trade-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+.fq-trade-card{background:var(--fq-surface);border:1px solid var(--fq-border);border-radius:14px;padding:16px;transition:border-color .3s,box-shadow .3s;}
+.fq-trade-card.fq-under-card.active{border-color:rgba(74,222,128,.55);box-shadow:0 0 20px rgba(74,222,128,.09);}
+.fq-trade-card.fq-over-card.active{border-color:rgba(96,165,250,.55);box-shadow:0 0 20px rgba(96,165,250,.09);}
+/* freq-status-badge keeps working (reused) */
+#screenFreq .freq-status-badge.sinal{background:rgba(74,222,128,.15);color:var(--fq-under);}
+#screenFreq .freq-status-badge.operando{background:rgba(96,165,250,.15);color:var(--fq-over);}
+#screenFreq .freq-status-badge.duplo{background:rgba(251,191,36,.12);color:var(--fq-gold);}
+#screenFreq .freq-status-badge.mart{background:rgba(251,191,36,.15);color:var(--fq-gold);}
+#screenFreq .freq-status-badge.aguard{background:rgba(255,255,255,.04);color:var(--fq-dim);}
 </style>
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1299,182 +1367,199 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
      SCREEN: ROBÔ FREQUÊNCIA DE DÍGITOS
 ════════════════════════════════════════════ -->
 <div id="screenFreq" class="screen">
-  <div class="topnav">
-    <div class="topnav-brand">🎯 ROBÔ — FREQUÊNCIA DE DÍGITOS</div>
+  <!-- Top nav -->
+  <div class="topnav" style="background:#1c1e2d;border-bottom:1px solid #32364a;">
+    <div class="topnav-brand" style="color:#60a5fa;">🎯 FREQ. DÍGITOS</div>
     <div style="display:flex;gap:10px;align-items:center;">
       <button class="nav-pill" onclick="showScreen('screenDashboard')">◀ Dashboard</button>
     </div>
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:16px;padding:20px;width:100%;overflow-y:auto;flex:1;box-sizing:border-box;align-items:flex-start;">
-  <!-- LEFT COLUMN -->
-  <div style="flex:1;min-width:0;max-width:860px;">
 
-    <!-- Market selector -->
-    <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
-      <span style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;">MERCADO:</span>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="freqMarketBtns">
-        <button class="nav-pill active" data-sym="R_10"  onclick="freqSelectMarket('R_10',this)">V10</button>
-        <button class="nav-pill"        data-sym="R_25"  onclick="freqSelectMarket('R_25',this)">V25</button>
-        <button class="nav-pill"        data-sym="R_50"  onclick="freqSelectMarket('R_50',this)">V50</button>
-        <button class="nav-pill"        data-sym="R_75"  onclick="freqSelectMarket('R_75',this)">V75</button>
-        <button class="nav-pill"        data-sym="R_100" onclick="freqSelectMarket('R_100',this)">V100</button>
-      </div>
-      <div id="freqConnStatus" style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-left:auto;">⬤ Desconectado</div>
-    </div>
+  <!-- Main layout -->
+  <div style="display:flex;gap:14px;padding:18px;width:100%;overflow-y:auto;flex:1;box-sizing:border-box;align-items:flex-start;">
 
-    <!-- Frequency chart — exibe apenas o selecionado -->
-    <div id="freqChart10Wrap" class="freq-chart-wrap">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-        <span>📊 ÚLTIMOS 10 &nbsp;<span style="color:var(--green);">■ UNDER</span> &nbsp;<span style="color:var(--accent);">■ OVER</span></span>
-        <span style="font-size:9px;padding:2px 7px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:10px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;">🤖 ROBÔ</span>
-      </div>
-      <div class="freq-bars" id="freqBars10"></div>
-    </div>
-    <div id="freqChart25Wrap" class="freq-chart-wrap" style="display:none;">
-      <div style="font-size:9px;color:var(--dim);letter-spacing:1px;font-family:'Share Tech Mono',monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">
-        <span>📊 ÚLTIMOS 25 &nbsp;<span style="color:var(--green);">■ UNDER</span> &nbsp;<span style="color:var(--accent);">■ OVER</span></span>
-        <span style="font-size:9px;padding:2px 7px;background:rgba(0,212,255,.15);color:var(--accent);border-radius:10px;letter-spacing:1px;font-family:'Share Tech Mono',monospace;">🤖 ROBÔ</span>
-      </div>
-      <div class="freq-bars" id="freqBars25"></div>
-    </div>
-    <!-- Seletor de análise do robô -->
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
-      <span style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;letter-spacing:1px;">ANÁLISE DO ROBÔ:</span>
-      <button class="nav-pill active" id="freqBtnSize10" onclick="freqSetSize(10)">10 dígitos</button>
-      <button class="nav-pill"        id="freqBtnSize25" onclick="freqSetSize(25)">25 dígitos</button>
-    </div>
+    <!-- ── SIDEBAR ── -->
+    <div class="fq-sidebar">
 
-    <!-- Stream de dígitos em tempo real -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
-        <div id="freqLastDigitBox" style="width:54px;height:54px;border-radius:10px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;font-family:'Share Tech Mono',monospace;flex-shrink:0;transition:background .2s,color .2s;">—</div>
-        <div>
-          <div id="freqLastDigitResult" style="font-size:13px;font-weight:700;color:var(--dim);margin-bottom:2px;">—</div>
-          <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:2px;">
-            <span style="color:var(--green);">■ UNDER 3</span> (0,1,2) &nbsp;·&nbsp; <span style="color:var(--accent);">■ OVER 6</span> (7,8,9)
+      <!-- Market -->
+      <div class="fq-panel">
+        <div class="fq-label">Mercado</div>
+        <div class="fq-mkt-grid" id="freqMarketBtns">
+          <button class="fq-mkt-btn active" data-sym="R_10"  onclick="freqSelectMarket('R_10',this)">V10</button>
+          <button class="fq-mkt-btn"        data-sym="R_25"  onclick="freqSelectMarket('R_25',this)">V25</button>
+          <button class="fq-mkt-btn"        data-sym="R_50"  onclick="freqSelectMarket('R_50',this)">V50</button>
+          <button class="fq-mkt-btn"        data-sym="R_75"  onclick="freqSelectMarket('R_75',this)">V75</button>
+          <button class="fq-mkt-btn"        data-sym="R_100" onclick="freqSelectMarket('R_100',this)">V100</button>
+        </div>
+        <div id="freqConnStatus" style="font-size:10px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-top:10px;text-align:center;">⬤ Desconectado</div>
+      </div>
+
+      <!-- Analysis size -->
+      <div class="fq-panel">
+        <div class="fq-label">Análise do Robô</div>
+        <div class="fq-size-btns">
+          <button class="fq-size-btn active" id="freqBtnSize10" onclick="freqSetSize(10)">10 dígitos</button>
+          <button class="fq-size-btn"        id="freqBtnSize25" onclick="freqSetSize(25)">25 dígitos</button>
+        </div>
+      </div>
+
+      <!-- Config -->
+      <div class="fq-panel">
+        <div class="fq-label">Configuração</div>
+        <div class="fq-input-group">
+          <div class="fq-input-label">ENTRADA (USD)</div>
+          <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" class="fq-input">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="fq-input-group">
+            <div class="fq-input-label">STOP GAIN</div>
+            <input type="number" id="freqSG" value="10" step="0.50" class="fq-input">
           </div>
-          <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;">Total: <span id="freqTotalDigits">0</span> dígitos</div>
+          <div class="fq-input-group">
+            <div class="fq-input-label">STOP LOSS</div>
+            <input type="number" id="freqSL" value="5" step="0.50" class="fq-input">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="fq-input-group">
+            <div class="fq-input-label">DIG. QUENTE %</div>
+            <input type="number" id="freqHotThreshold" value="40" step="5" min="10" max="90" class="fq-input">
+          </div>
+          <div class="fq-input-group">
+            <div class="fq-input-label">EQUIL. OPOSTO %</div>
+            <input type="number" id="freqOppMinThreshold" value="20" step="5" min="0" max="60" class="fq-input">
+          </div>
+        </div>
+        <button id="freqToggleBtn" onclick="freqToggleRobot()" class="fq-start-btn">▶ INICIAR ROBÔ</button>
+      </div>
+
+      <!-- Session stats -->
+      <div class="fq-panel">
+        <div class="fq-label">Sessão</div>
+        <div class="fq-stats">
+          <div class="fq-stat">
+            <div class="fq-stat-label">WINS</div>
+            <div class="fq-stat-value" style="color:var(--fq-under);" id="freqWins">0</div>
+          </div>
+          <div class="fq-stat">
+            <div class="fq-stat-label">LOSSES</div>
+            <div class="fq-stat-value" style="color:var(--fq-red);" id="freqLosses">0</div>
+          </div>
+          <div class="fq-stat" style="grid-column:1/-1;">
+            <div class="fq-stat-label">P&L</div>
+            <div class="fq-stat-value" style="color:var(--fq-over);font-size:22px;" id="freqPnl">$0.00</div>
+          </div>
+          <div class="fq-stat" style="grid-column:1/-1;">
+            <div class="fq-stat-label">STATUS</div>
+            <div style="font-size:11px;font-weight:700;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;" id="freqStatusTxt">INATIVO</div>
+          </div>
         </div>
       </div>
-      <div class="digit-stream" id="freqDigitStream" style="max-height:90px;"></div>
+
+    </div><!-- /sidebar -->
+
+    <!-- ── MAIN CONTENT ── -->
+    <div style="flex:1;min-width:0;">
+
+      <!-- Digit chips -->
+      <div class="fq-panel" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">
+            📊 FREQUÊNCIA &nbsp;<span style="color:var(--fq-under);">■ UNDER</span> &nbsp;<span style="color:var(--fq-over);">■ OVER</span> &nbsp;<span style="color:var(--fq-gold);">■ QUENTE</span> &nbsp;<span style="color:var(--fq-red);">■ ZERO</span>
+          </div>
+        </div>
+        <div id="freqChart10Wrap">
+          <div class="fq-chips" id="freqBars10"></div>
+        </div>
+        <div id="freqChart25Wrap" style="display:none;">
+          <div class="fq-chips" id="freqBars25"></div>
+        </div>
+      </div>
+
+      <!-- Live stream -->
+      <div class="fq-panel" style="margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+          <div id="freqLastDigitBox" style="width:52px;height:52px;border-radius:10px;background:var(--fq-surface2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;font-family:'Share Tech Mono',monospace;flex-shrink:0;transition:background .2s,color .2s;border:1px solid var(--fq-border);">—</div>
+          <div>
+            <div id="freqLastDigitResult" style="font-size:13px;font-weight:700;color:var(--fq-dim);margin-bottom:3px;">—</div>
+            <div style="font-size:10px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-bottom:2px;">
+              <span style="color:var(--fq-under);">■ UNDER 3</span> (0,1,2) &nbsp;·&nbsp; <span style="color:var(--fq-over);">■ OVER 6</span> (7,8,9)
+            </div>
+            <div style="font-size:10px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">Total: <span id="freqTotalDigits">0</span> dígitos</div>
+          </div>
+        </div>
+        <div class="digit-stream" id="freqDigitStream" style="max-height:80px;"></div>
+      </div>
+
+      <!-- Trade cards UNDER + OVER -->
+      <div class="fq-trade-cards">
+        <!-- UNDER 3 -->
+        <div class="fq-trade-card fq-under-card" id="freqCardUnder">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:var(--fq-under);">📉 UNDER 3</div>
+            <span class="freq-status-badge aguard" id="freqBadgeUnder">AGUARDANDO</span>
+          </div>
+          <div style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--fq-under);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fq-dim);margin:6px 0;">
+            <span>Martingale</span><span style="color:var(--fq-text);">1.6× — 8 níveis</span>
+          </div>
+          <div style="font-size:11px;color:var(--fq-dim);display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span>Nível atual</span>
+            <span id="freqUnderLevel" style="color:var(--fq-gold);font-family:'Share Tech Mono',monospace;">1 / 8</span>
+          </div>
+          <div style="font-size:11px;color:var(--fq-dim);display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span>Próxima entrada</span>
+            <span id="freqUnderNextEntry" style="color:var(--fq-under);font-family:'Share Tech Mono',monospace;">—</span>
+          </div>
+          <div style="font-size:10px;color:var(--fq-dim);margin-bottom:4px;">Dígito(s) em 0%:</div>
+          <div id="freqUnderZeroDigit" style="font-size:26px;font-weight:700;color:var(--fq-under);font-family:'Share Tech Mono',monospace;text-align:center;padding:4px 0;">—</div>
+        </div>
+        <!-- OVER 6 -->
+        <div class="fq-trade-card fq-over-card" id="freqCardOver">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div style="font-size:14px;font-weight:700;color:var(--fq-over);">📈 OVER 6</div>
+            <span class="freq-status-badge aguard" id="freqBadgeOver">AGUARDANDO</span>
+          </div>
+          <div style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--fq-over);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fq-dim);margin:6px 0;">
+            <span>Martingale</span><span style="color:var(--fq-text);">1.9× — 8 níveis</span>
+          </div>
+          <div style="font-size:11px;color:var(--fq-dim);display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span>Nível atual</span>
+            <span id="freqOverLevel" style="color:var(--fq-gold);font-family:'Share Tech Mono',monospace;">1 / 8</span>
+          </div>
+          <div style="font-size:11px;color:var(--fq-dim);display:flex;justify-content:space-between;margin-bottom:10px;">
+            <span>Próxima entrada</span>
+            <span id="freqOverNextEntry" style="color:var(--fq-over);font-family:'Share Tech Mono',monospace;">—</span>
+          </div>
+          <div style="font-size:10px;color:var(--fq-dim);margin-bottom:4px;">Dígito(s) em 0%:</div>
+          <div id="freqOverZeroDigit" style="font-size:26px;font-weight:700;color:var(--fq-over);font-family:'Share Tech Mono',monospace;text-align:center;padding:4px 0;">—</div>
+        </div>
+      </div>
+
+      <!-- Active trade indicator -->
+      <div id="freqOpIndicator" style="display:none;text-align:center;padding:16px;margin-top:12px;background:var(--fq-surface);border:1px solid var(--fq-border);border-radius:14px;">
+        <div id="freqOpIcon" style="font-size:36px;margin-bottom:4px;line-height:1;">📉</div>
+        <div id="freqOpLabel" style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--fq-under);margin-bottom:4px;">UNDER 3</div>
+        <div id="freqOpLevel" style="font-size:11px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 8 — $0.35</div>
+      </div>
+
+    </div><!-- /main -->
+
+    <!-- ── LOG PANEL ── -->
+    <div style="width:240px;flex-shrink:0;position:sticky;top:0;">
+      <div class="fq-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:10px;letter-spacing:2px;color:var(--fq-over);font-family:'Share Tech Mono',monospace;">📋 LOG</div>
+          <button onclick="freqClearLog()" style="background:none;border:1px solid var(--fq-border);color:var(--fq-dim);font-size:10px;cursor:pointer;font-family:'Share Tech Mono',monospace;padding:2px 7px;border-radius:4px;">limpar</button>
+        </div>
+        <div id="freqLogArea" style="font-family:'Share Tech Mono',monospace;font-size:10px;display:flex;flex-direction:column;gap:3px;max-height:600px;overflow-y:auto;">
+          <div id="freqLogEmpty" style="color:var(--fq-dim);font-size:10px;text-align:center;padding:20px 0;line-height:1.6;">Inicie o robô<br>para ver os logs aqui.</div>
+        </div>
+      </div>
     </div>
 
-    <!-- Cards UNDER + OVER -->
-    <div class="freq-cards" style="margin-bottom:14px;">
-      <!-- UNDER 3 -->
-      <div class="freq-card fc-under" id="freqCardUnder">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div style="font-size:14px;font-weight:700;color:var(--green);">📉 UNDER 3</div>
-          <span class="freq-status-badge aguard" id="freqBadgeUnder">AGUARDANDO</span>
-        </div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--green);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}</div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin:8px 0 4px;">
-          <span>Martingale</span><span style="color:var(--text);">1.6× — 8 níveis</span>
-        </div>
-        <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span>Nível atual</span>
-          <span id="freqUnderLevel" style="color:var(--gold);font-family:'Share Tech Mono',monospace;">1 / 8</span>
-        </div>
-        <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:8px;">
-          <span>Próxima entrada</span>
-          <span id="freqUnderNextEntry" style="color:var(--green);font-family:'Share Tech Mono',monospace;">—</span>
-        </div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:2px;">Dígito(s) em 0%:</div>
-        <div id="freqUnderZeroDigit" style="font-size:22px;font-weight:700;color:var(--green);font-family:'Share Tech Mono',monospace;text-align:center;padding:4px 0;">—</div>
-      </div>
-      <!-- OVER 6 -->
-      <div class="freq-card fc-over" id="freqCardOver">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div style="font-size:14px;font-weight:700;color:var(--accent);">📈 OVER 6</div>
-          <span class="freq-status-badge aguard" id="freqBadgeOver">AGUARDANDO</span>
-        </div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">Monitora: <span style="color:var(--accent);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}</div>
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--dim);margin:8px 0 4px;">
-          <span>Martingale</span><span style="color:var(--text);">1.9× — 8 níveis</span>
-        </div>
-        <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:4px;">
-          <span>Nível atual</span>
-          <span id="freqOverLevel" style="color:var(--gold);font-family:'Share Tech Mono',monospace;">1 / 8</span>
-        </div>
-        <div style="font-size:11px;color:var(--dim);display:flex;justify-content:space-between;margin-bottom:8px;">
-          <span>Próxima entrada</span>
-          <span id="freqOverNextEntry" style="color:var(--accent);font-family:'Share Tech Mono',monospace;">—</span>
-        </div>
-        <div style="font-size:10px;color:var(--dim);margin-bottom:2px;">Dígito(s) em 0%:</div>
-        <div id="freqOverZeroDigit" style="font-size:22px;font-weight:700;color:var(--accent);font-family:'Share Tech Mono',monospace;text-align:center;padding:4px 0;">—</div>
-      </div>
-    </div>
-
-    <!-- Config & controls -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-        <div>
-          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">ENTRADA (USD)</div>
-          <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">STOP GAIN (USD)</div>
-          <input type="number" id="freqSG" value="10" step="0.50" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">STOP LOSS (USD)</div>
-          <input type="number" id="freqSL" value="5" step="0.50" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">DIG. QUENTE (%)</div>
-          <input type="number" id="freqHotThreshold" value="40" step="5" min="10" max="90" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
-        </div>
-        <div style="grid-column:1/-1;">
-          <div style="font-size:10px;color:var(--dim);margin-bottom:4px;font-family:'Share Tech Mono',monospace;">EQUIL. OPOSTO (%) <span style="color:var(--dim);font-size:9px;">— mín. do grupo oposto p/ entrar</span></div>
-          <input type="number" id="freqOppMinThreshold" value="20" step="5" min="0" max="60" style="width:100%;box-sizing:border-box;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:8px;border-radius:8px;font-family:'Share Tech Mono',monospace;font-size:13px;text-align:center;">
-        </div>
-      </div>
-      <button id="freqToggleBtn" onclick="freqToggleRobot()" style="width:100%;padding:13px;background:linear-gradient(135deg,rgba(0,255,159,.15),rgba(0,212,255,.08));border:1px solid rgba(0,255,159,.4);border-radius:10px;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;letter-spacing:1px;transition:all .2s;">▶ INICIAR ROBÔ</button>
-    </div>
-
-    <!-- Indicador da operação ativa -->
-    <div id="freqOpIndicator" style="display:none;text-align:center;padding:16px;margin-bottom:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;">
-      <div id="freqOpIcon" style="font-size:38px;margin-bottom:4px;line-height:1;">📉</div>
-      <div id="freqOpLabel" style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--green);margin-bottom:4px;">UNDER 3</div>
-      <div id="freqOpLevel" style="font-size:11px;color:var(--dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 8 — $0.35</div>
-    </div>
-
-    <!-- Session stats -->
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;">WINS</div>
-        <div style="font-size:22px;font-weight:700;color:var(--green);" id="freqWins">0</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;">LOSSES</div>
-        <div style="font-size:22px;font-weight:700;color:var(--red);" id="freqLosses">0</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;">P&L</div>
-        <div style="font-size:18px;font-weight:700;color:var(--accent);" id="freqPnl">$0.00</div>
-      </div>
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;">
-        <div style="font-size:10px;color:var(--dim);font-family:'Share Tech Mono',monospace;margin-bottom:4px;">STATUS</div>
-        <div style="font-size:11px;font-weight:700;color:var(--dim);" id="freqStatusTxt">INATIVO</div>
-      </div>
-    </div>
-
-  </div><!-- /left column -->
-
-  <!-- RIGHT COLUMN: LOG -->
-  <div style="width:260px;flex-shrink:0;position:sticky;top:0;">
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="font-size:10px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;">📋 LOG</div>
-        <button onclick="freqClearLog()" style="background:none;border:none;color:var(--dim);font-size:10px;cursor:pointer;font-family:'Share Tech Mono',monospace;padding:2px 6px;border-radius:4px;border:1px solid var(--border);">limpar</button>
-      </div>
-      <div id="freqLogArea" style="font-family:'Share Tech Mono',monospace;font-size:10px;display:flex;flex-direction:column;gap:3px;max-height:520px;overflow-y:auto;">
-        <div id="freqLogEmpty" style="color:var(--dim);font-size:10px;text-align:center;padding:20px 0;line-height:1.6;">Inicie o robô<br>para ver os logs aqui.</div>
-      </div>
-    </div>
-  </div>
-
-  </div><!-- /outer flex -->
+  </div><!-- /main layout -->
 </div>
 
 <!-- Freq Result Overlay -->
@@ -4343,7 +4428,7 @@ let freqProcessedContracts = new Set();
 // ── Mercado ──────────────────────────────
 function freqSelectMarket(sym, btn){
   freqMarket = sym;
-  document.querySelectorAll('#freqMarketBtns .nav-pill').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#freqMarketBtns button').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   freqBuffer = [];
   freqResetStream();
@@ -4429,14 +4514,14 @@ function freqUpdateStream(d){
   const isOver  = FREQ_OVER_DIGITS.includes(d);
   if(box){
     box.textContent = d;
-    if(isUnder){ box.style.background='rgba(0,255,159,.15)'; box.style.color='var(--green)'; }
-    else if(isOver){ box.style.background='rgba(0,212,255,.15)'; box.style.color='var(--accent)'; }
-    else { box.style.background='var(--surface2)'; box.style.color='var(--dim)'; }
+    if(isUnder){ box.style.background='rgba(74,222,128,.15)'; box.style.color='var(--fq-under)'; }
+    else if(isOver){ box.style.background='rgba(96,165,250,.15)'; box.style.color='var(--fq-over)'; }
+    else { box.style.background='var(--fq-surface2)'; box.style.color='var(--fq-dim)'; }
   }
   if(result){
-    if(isUnder){ result.textContent='✅ UNDER 3'; result.style.color='var(--green)'; }
-    else if(isOver){ result.textContent='✅ OVER 6'; result.style.color='var(--accent)'; }
-    else { result.textContent='— NEUTRO ('+d+')'; result.style.color='var(--dim)'; }
+    if(isUnder){ result.textContent='✅ UNDER 3'; result.style.color='var(--fq-under)'; }
+    else if(isOver){ result.textContent='✅ OVER 6'; result.style.color='var(--fq-over)'; }
+    else { result.textContent='— NEUTRO ('+d+')'; result.style.color='var(--fq-dim)'; }
   }
   if(total) total.textContent = freqTotalDigits.toLocaleString('pt-BR');
 
@@ -4460,9 +4545,9 @@ function freqResetStream(){
   const stream = document.getElementById('freqDigitStream');
   if(stream) stream.innerHTML = '';
   const box = document.getElementById('freqLastDigitBox');
-  if(box){ box.textContent='—'; box.style.background='var(--surface2)'; box.style.color='var(--dim)'; }
+  if(box){ box.textContent='—'; box.style.background='var(--fq-surface2)'; box.style.color='var(--fq-dim)'; }
   const result = document.getElementById('freqLastDigitResult');
-  if(result){ result.textContent='—'; result.style.color='var(--dim)'; }
+  if(result){ result.textContent='—'; result.style.color='var(--fq-dim)'; }
   const total = document.getElementById('freqTotalDigits');
   if(total) total.textContent='0';
 }
@@ -4476,25 +4561,29 @@ function freqCalcFreq(n){
   return { counts: c, total: slice.length };
 }
 
-// ── Renderiza um gráfico de barras num elemento ──
+// ── Renderiza chips de dígitos ──
 function freqRenderBars(elId, n){
   const barsEl = document.getElementById(elId);
   if(!barsEl) return;
   const { counts, total } = freqCalcFreq(n);
   const ready = freqBuffer.length >= n;
+  const threshold = parseFloat(document.getElementById('freqHotThreshold')?.value || 40) / 100;
   let html = '';
   for(let d=0;d<=9;d++){
-    const pct    = total > 0 ? Math.round((counts[d] / total) * 100) : 0;
-    const hPct   = Math.max(4, pct);
+    const pct     = total > 0 ? Math.round((counts[d] / total) * 100) : 0;
     const isUnder = FREQ_UNDER_DIGITS.includes(d);
     const isOver  = FREQ_OVER_DIGITS.includes(d);
     const isZero  = ready && counts[d] === 0;
-    const barClass = isZero ? 'b-zero' : (isUnder ? 'b-under' : (isOver ? 'b-over' : 'b-neutral'));
-    const lblClass = isUnder ? 'lbl-under' : (isOver ? 'lbl-over' : 'lbl-neutral');
-    html += `<div class="freq-bar-col">
-      <div class="freq-pct">${ready ? pct+'%' : ''}</div>
-      <div class="freq-bar-inner"><div class="freq-bar ${barClass}" style="height:${hPct}%;"></div></div>
-      <div class="freq-digit-lbl ${lblClass}">${d}</div>
+    const isHot   = ready && !isZero && total > 0 && (counts[d] / total) >= threshold;
+    let cls = 'fq-chip ';
+    if(isZero)       cls += 'chip-zero';
+    else if(isHot)   cls += 'chip-hot';
+    else if(isUnder) cls += 'chip-under';
+    else if(isOver)  cls += 'chip-over';
+    else             cls += 'chip-neutral';
+    html += `<div class="${cls}">
+      <div class="fq-chip-num">${d}</div>
+      <div class="fq-chip-pct">${ready ? pct+'%' : '—'}</div>
     </div>`;
   }
   barsEl.innerHTML = html;
@@ -4698,7 +4787,7 @@ function freqUpdateOpIndicator(){
   const label = document.getElementById('freqOpLabel');
   const level = document.getElementById('freqOpLevel');
   if(icon)  icon.textContent  = isUnder ? '📉' : '📈';
-  if(label){ label.textContent=isUnder?'UNDER 3':'OVER 6'; label.style.color=isUnder?'var(--green)':'var(--accent)'; }
+  if(label){ label.textContent=isUnder?'UNDER 3':'OVER 6'; label.style.color=isUnder?'var(--fq-under)':'var(--fq-over)'; }
   if(level){ const amt=freqGetEntry(freqMartLevel); level.textContent=`Nível ${freqMartLevel+1} / ${FREQ_MAX_LEVELS} — $${amt.toFixed(2)}`; }
 }
 
@@ -4844,14 +4933,12 @@ function freqSetToggleBtn(active){
   if(!btn) return;
   if(active){
     btn.textContent = '⏹ PARAR ROBÔ';
-    btn.style.background = 'rgba(255,59,107,.1)';
-    btn.style.borderColor = 'rgba(255,59,107,.5)';
-    btn.style.color = 'var(--red)';
+    btn.classList.add('stop');
+    btn.style.cssText = '';
   } else {
     btn.textContent = '▶ INICIAR ROBÔ';
-    btn.style.background = 'linear-gradient(135deg,rgba(0,255,159,.15),rgba(0,212,255,.08))';
-    btn.style.borderColor = 'rgba(0,255,159,.4)';
-    btn.style.color = 'var(--green)';
+    btn.classList.remove('stop');
+    btn.style.cssText = '';
   }
 }
 
