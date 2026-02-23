@@ -4133,15 +4133,15 @@ function renderReports(){
   // Group by date
   const byDate = {};
   trades.forEach(t=>{ if(!byDate[t.date]) byDate[t.date]=[]; byDate[t.date].push(t); });
-  const dates = Object.keys(byDate).reverse();
-  // Summary cards for today (first date)
+  const dates = Object.keys(byDate); // newest date first (unshift order)
+  // Summary cards for today (first date = most recent)
   const todayTrades = byDate[dates[0]] || [];
   const todayWins   = todayTrades.filter(t=>t.result==='WIN').length;
   const todayTotal  = todayTrades.length;
   const todayPnl    = todayTrades.reduce((s,t)=>s+t.pnl,0);
   const todayRate   = todayTotal>0 ? Math.round(todayWins/todayTotal*100) : 0;
   const pnlColor    = todayPnl>=0 ? 'var(--green)' : 'var(--red)';
-  const pnlSign     = todayPnl>=0 ? '+' : '';
+  const pnlSign     = todayPnl>=0 ? '+' : '-';
   if(summary) summary.innerHTML=`
     <div class="card" style="text-align:center;padding:14px;">
       <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">OPERAÇÕES</div>
