@@ -4287,6 +4287,7 @@ let freqMarket           = 'R_10';
 let freqBuffer           = [];       // últimos 25 dígitos
 let freqAnalysisSize     = 10;       // tamanho usado pelo robô: 10 ou 25
 let freqTotalDigits      = 0;        // contador total de dígitos recebidos
+let freqTicksSubscribed  = false;    // flag: tick subscription ativa no freqWs
 let freqRobotActive      = false;
 let freqTradeActive      = false;
 let freqCurrentContractId= null;
@@ -4312,8 +4313,9 @@ function freqSelectMarket(sym, btn){
 
 // ── Inicializa WS de gráfico (visualização, sem trading) ──
 function freqInitChart(){
-  freqRenderChart(); // render empty bars
+  freqRenderChart();
   if(freqWs && freqWs.readyState <= 1) return; // já conectado
+  freqTicksSubscribed = false;
   freqWs = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`);
   freqWs.onopen = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Conectado';
@@ -4323,6 +4325,7 @@ function freqInitChart(){
   freqWs.onclose = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Desconectado';
     document.getElementById('freqConnStatus').style.color = 'var(--dim)';
+    freqTicksSubscribed = false;
   };
   freqWs.onmessage = freqHandleMsg;
 }
@@ -4330,10 +4333,17 @@ function freqInitChart(){
 // ── Handler de mensagens WS ──────────────
 function freqHandleMsg(evt){
   const data = JSON.parse(evt.data);
+  if(data.error) return; // ignora erros silenciosamente
   if(data.msg_type === 'authorize'){
-    freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
+    // Só assina ticks se ainda não estiverem fluindo
+    if(!freqTicksSubscribed){
+      freqWs.send(JSON.stringify({ticks: freqMarket, subscribe: 1}));
+    }
   }
-  if(data.msg_type === 'tick') freqOnTick(data.tick);
+  if(data.msg_type === 'tick'){
+    freqTicksSubscribed = true; // confirma que ticks estão ativos
+    freqOnTick(data.tick);
+  }
   if(data.msg_type === 'buy')  freqHandleBuy(data);
   if(data.msg_type === 'proposal_open_contract') freqHandleContract(data);
 }
@@ -4744,8 +4754,7 @@ function freqStartRobot(){
   freqMartLevel      = 0;
   freqMode           = null;
   freqTradeActive    = false;
-  freqBuffer         = [];
-  freqResetStream();
+  // NÃO limpa buffer nem stream — ticks continuam fluindo normalmente
   freqProcessedContracts.clear();
   freqUpdateStats();
   freqSetToggleBtn(true);
@@ -4758,8 +4767,15 @@ function freqStartRobot(){
   });
   document.querySelectorAll('#freqMarketBtns .nav-pill, #freqBtnSize10, #freqBtnSize25').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
-  // Reconecta WS com autorização para trading
-  if(freqWs && freqWs.readyState <= 1) freqWs.close();
+  // Se WS já está conectado e com ticks fluindo → só autoriza para trading
+  if(freqWs && freqWs.readyState === 1){
+    freqWs.send(JSON.stringify({authorize: derivAccount.token}));
+    return;
+  }
+
+  // WS não está pronto → abre novo com auth (vai assinar ticks após authorize)
+  freqTicksSubscribed = false;
+  if(freqWs){ freqWs.onclose = null; freqWs.close(); }
   freqWs = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`);
   freqWs.onopen = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Conectado';
@@ -4769,6 +4785,7 @@ function freqStartRobot(){
   freqWs.onclose = () => {
     document.getElementById('freqConnStatus').textContent = '⬤ Desconectado';
     document.getElementById('freqConnStatus').style.color = 'var(--dim)';
+    freqTicksSubscribed = false;
   };
   freqWs.onmessage = freqHandleMsg;
 }
