@@ -3582,6 +3582,7 @@ function continueSession(){
   sessionStopped=false; sessionPnl=0; sessionOps=0;
   updatePnlUI();
   log('▶ Sessão continuada! Contadores resetados.','info');
+  if(!autoTradeEnabled) toggleAutoTrade();
 }
 
 function stopSession(){
