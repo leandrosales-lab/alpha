@@ -1842,8 +1842,13 @@ async function alphaSignup(){
 }
 
 async function alphaLogout(){
+  stopPing();
   if(ws) disconnectDash();
-  derivAccount = null; currentUser = null;
+  if(freqWs){ freqWs.onclose=null; freqWs.onerror=null; freqWs.onmessage=null; freqWs.close(); freqWs=null; }
+  derivAccount = null; currentUser = null; selectedRobot = null;
+  try{ resetSessionState(); }catch(e){}
+  safeSet('digitStream','innerHTML','');
+  safeSet('logArea','innerHTML','');
   if(window._sb) await window._sb.auth.signOut();
   sessionStorage.removeItem('alpha_session');
   window._alphaUser = null;
@@ -2373,13 +2378,18 @@ async function deleteCode(id){
   renderCodeList();
 }
 
-function logoutAll(){
-  // Hard close WebSocket
+async function logoutAll(){
+  // Hard close WebSockets
   stopPing();
   if(ws){
     ws.onclose=null; ws.onerror=null; ws.onmessage=null; ws.onopen=null;
     ws.close(); ws=null;
   }
+  if(freqWs){ freqWs.onclose=null; freqWs.onerror=null; freqWs.onmessage=null; freqWs.close(); freqWs=null; }
+  // Supabase signOut
+  if(window._sb) try{ await window._sb.auth.signOut(); }catch(e){}
+  sessionStorage.removeItem('alpha_session');
+  window._alphaUser = null;
   currentUser = null; derivAccount = null; selectedRobot = null;
   digits=[]; freqMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
   try{ resetSessionState(); }catch(e){}
