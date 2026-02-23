@@ -444,6 +444,28 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 #screenFreq .freq-status-badge.duplo{background:rgba(251,191,36,.12);color:var(--fq-gold);}
 #screenFreq .freq-status-badge.mart{background:rgba(251,191,36,.15);color:var(--fq-gold);}
 #screenFreq .freq-status-badge.aguard{background:rgba(255,255,255,.04);color:var(--fq-dim);}
+/* ── Relógio Virtual ── */
+.fq-clock{background:var(--fq-surface);border:1px solid var(--fq-border);border-radius:14px;padding:16px;margin-top:12px;text-align:center;transition:border-color .4s,box-shadow .4s;animation:fqClockIn .3s ease;}
+@keyframes fqClockIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+.fq-clock.clk-win{border-color:rgba(74,222,128,.55);box-shadow:0 0 22px rgba(74,222,128,.1);}
+.fq-clock.clk-loss{border-color:rgba(248,113,113,.55);box-shadow:0 0 22px rgba(248,113,113,.1);}
+.fq-clock.clk-mart{border-color:rgba(251,191,36,.55);box-shadow:0 0 22px rgba(251,191,36,.1);}
+.fq-clock.clk-hide{animation:fqClockOut .5s ease forwards;}
+@keyframes fqClockOut{from{opacity:1;}to{opacity:0;transform:translateY(4px);}}
+.fq-clock-lbl{font-size:9px;letter-spacing:2px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-bottom:8px;}
+.fq-clock-time{font-size:44px;font-weight:900;font-family:'Share Tech Mono',monospace;letter-spacing:5px;color:var(--fq-text);line-height:1;transition:color .4s;}
+.fq-clock.clk-win  .fq-clock-time{color:var(--fq-under);}
+.fq-clock.clk-loss .fq-clock-time{color:var(--fq-red);}
+.fq-clock.clk-mart .fq-clock-time{color:var(--fq-gold);}
+.fq-clock-sep{display:inline-block;animation:fqSepBlink .9s step-end infinite;}
+@keyframes fqSepBlink{0%,100%{opacity:1;}50%{opacity:.1;}}
+.fq-clock.clk-win  .fq-clock-sep,
+.fq-clock.clk-loss .fq-clock-sep,
+.fq-clock.clk-mart .fq-clock-sep{animation:none;opacity:1;}
+.fq-clock-result{font-size:11px;font-family:'Share Tech Mono',monospace;letter-spacing:1px;margin-top:8px;padding:4px 12px;border-radius:20px;display:inline-block;}
+.fq-clock.clk-win  .fq-clock-result{background:rgba(74,222,128,.12);color:var(--fq-under);}
+.fq-clock.clk-loss .fq-clock-result{background:rgba(248,113,113,.12);color:var(--fq-red);}
+.fq-clock.clk-mart .fq-clock-result{background:rgba(251,191,36,.12);color:var(--fq-gold);}
 </style>
 <!-- Supabase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1542,6 +1564,15 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <div id="freqOpIcon" style="font-size:36px;margin-bottom:4px;line-height:1;">📉</div>
         <div id="freqOpLabel" style="font-size:15px;font-weight:700;letter-spacing:2px;color:var(--fq-under);margin-bottom:4px;">UNDER 3</div>
         <div id="freqOpLevel" style="font-size:11px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 8 — $0.35</div>
+      </div>
+
+      <!-- Relógio virtual da operação -->
+      <div id="freqClockWrap" class="fq-clock" style="display:none;">
+        <div class="fq-clock-lbl">⏱ DURAÇÃO DA OPERAÇÃO</div>
+        <div class="fq-clock-time">
+          <span id="freqClockMin">00</span><span class="fq-clock-sep">:</span><span id="freqClockSec">00</span>
+        </div>
+        <div id="freqClockResult" class="fq-clock-result" style="display:none;"></div>
       </div>
 
     </div><!-- /main -->
@@ -4800,6 +4831,62 @@ function freqUpdateOpIndicator(){
   if(level){ const amt=freqGetEntry(freqMartLevel); level.textContent=`Nível ${freqMartLevel+1} / ${FREQ_MAX_LEVELS} — $${amt.toFixed(2)}`; }
 }
 
+// ══════════════════════════════════════════
+// ── Relógio virtual da operação ──────────
+// ══════════════════════════════════════════
+let freqClockStart_ts  = null;  // timestamp de início da operação
+let freqClockInterval  = null;  // referência do setInterval
+
+function freqClockTick(){
+  if(!freqClockStart_ts) return;
+  const elapsed = Math.floor((Date.now() - freqClockStart_ts) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  const mEl = document.getElementById('freqClockMin');
+  const sEl = document.getElementById('freqClockSec');
+  if(mEl) mEl.textContent = m;
+  if(sEl) sEl.textContent = s;
+}
+
+function freqClockShow(){
+  freqClockStart_ts = Date.now();
+  clearInterval(freqClockInterval);
+  freqClockInterval = setInterval(freqClockTick, 1000);
+  const wrap = document.getElementById('freqClockWrap');
+  if(!wrap) return;
+  wrap.style.display = 'block';
+  wrap.className = 'fq-clock'; // reset classes
+  const res = document.getElementById('freqClockResult');
+  if(res){ res.style.display='none'; res.textContent=''; }
+  const mEl = document.getElementById('freqClockMin');
+  const sEl = document.getElementById('freqClockSec');
+  if(mEl) mEl.textContent = '00';
+  if(sEl) sEl.textContent = '00';
+}
+
+function freqClockStop(type, extra){
+  clearInterval(freqClockInterval);
+  freqClockInterval = null;
+  freqClockTick(); // atualiza display com tempo final
+  const wrap = document.getElementById('freqClockWrap');
+  const res  = document.getElementById('freqClockResult');
+  if(!wrap) return;
+  const labels = {
+    win:       '✅ WIN ' + (extra || ''),
+    loss:      '🛑 STOP LOSS',
+    martingale:'🚨 LIMITE DE GALE',
+    stopped:   '⏹ PARADO'
+  };
+  const cls = type === 'win' ? 'clk-win' : (type === 'loss' ? 'clk-loss' : 'clk-mart');
+  wrap.className = 'fq-clock ' + cls;
+  if(res){ res.textContent = labels[type] || ''; res.style.display = 'inline-block'; }
+  // Auto-oculta após 5s com animação
+  setTimeout(() => {
+    if(wrap){ wrap.classList.add('clk-hide'); }
+    setTimeout(() => { if(wrap) wrap.style.display='none'; }, 550);
+  }, 5000);
+}
+
 // ── Envia ordem de compra ─────────────────
 function freqEnterTrade(mode){
   if(!freqWs || freqWs.readyState !== 1) return;
@@ -4808,6 +4895,7 @@ function freqEnterTrade(mode){
   const contractType = mode === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
   const barrier      = mode === 'under' ? '3' : '6';
   freqTradeActive    = true;
+  if(freqMartLevel === 0) freqClockShow(); // inicia relógio apenas na 1ª entrada
   playFreqEntry();
   freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
@@ -4870,6 +4958,7 @@ function freqHandleContract(data){
     freqMartLevel = 0;
     freqUpdateOpIndicator();
     freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
+    freqClockStop('win', `+$${profit.toFixed(2)}`);
     freqShowResult('gain');
     return;
   } else {
@@ -4885,11 +4974,13 @@ function freqHandleContract(data){
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(freqSessionPnl <= -sl){
       freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
+      freqClockStop('loss');
       freqShowResult('loss'); return;
     }
     // Verifica máximo de martingales
     if(freqMartLevel >= FREQ_MAX_LEVELS){
       freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
+      freqClockStop('martingale');
       freqShowResult('martingale'); return;
     }
     freqUpdateLevelDisplay();
@@ -5005,6 +5096,8 @@ function freqStopRobot(){
   freqMode        = null;
   freqMartLevel   = 0;
   freqTradeActive = false;
+  if(freqClockInterval){ freqClockStop('stopped'); }
+  freqClockStart_ts = null;
   freqSetToggleBtn(false);
   freqUpdateOpIndicator();
   document.getElementById('freqStatusTxt').textContent = 'PARADO';
