@@ -1305,7 +1305,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       <button class="nav-pill" onclick="showScreen('screenDashboard')">◀ Dashboard</button>
     </div>
   </div>
-  <div style="display:flex;gap:16px;padding:20px;width:100%;overflow-y:auto;flex:1;box-sizing:border-box;align-items:flex-start;">
+  <div style="display:flex;flex-wrap:wrap;gap:16px;padding:20px;width:100%;overflow-y:auto;flex:1;box-sizing:border-box;align-items:flex-start;">
   <!-- LEFT COLUMN -->
   <div style="flex:1;min-width:0;max-width:860px;">
 
@@ -1460,7 +1460,9 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <div style="font-size:10px;letter-spacing:2px;color:var(--accent);font-family:'Share Tech Mono',monospace;">📋 LOG</div>
         <button onclick="freqClearLog()" style="background:none;border:none;color:var(--dim);font-size:10px;cursor:pointer;font-family:'Share Tech Mono',monospace;padding:2px 6px;border-radius:4px;border:1px solid var(--border);">limpar</button>
       </div>
-      <div id="freqLogArea" style="font-family:'Share Tech Mono',monospace;font-size:10px;display:flex;flex-direction:column;gap:3px;max-height:520px;overflow-y:auto;"></div>
+      <div id="freqLogArea" style="font-family:'Share Tech Mono',monospace;font-size:10px;display:flex;flex-direction:column;gap:3px;max-height:520px;overflow-y:auto;">
+        <div id="freqLogEmpty" style="color:var(--dim);font-size:10px;text-align:center;padding:20px 0;line-height:1.6;">Inicie o robô<br>para ver os logs aqui.</div>
+      </div>
     </div>
   </div>
 
@@ -4768,6 +4770,9 @@ function freqUpdateStats(){
 function freqLog(msg, type='info'){
   const area = document.getElementById('freqLogArea');
   if(!area) return;
+  // Remove placeholder na primeira mensagem
+  const empty = document.getElementById('freqLogEmpty');
+  if(empty) empty.remove();
   const t = new Date().toLocaleTimeString('pt-BR');
   const colors = { info:'var(--dim)', success:'var(--green)', error:'var(--red)', warning:'var(--gold)' };
   const line = document.createElement('div');
@@ -4780,7 +4785,7 @@ function freqLog(msg, type='info'){
 }
 function freqClearLog(){
   const area = document.getElementById('freqLogArea');
-  if(area) area.innerHTML = '';
+  if(area) area.innerHTML = '<div id="freqLogEmpty" style="color:var(--dim);font-size:10px;text-align:center;padding:20px 0;line-height:1.6;">Inicie o robô<br>para ver os logs aqui.</div>';
 }
 
 // ── Toggle único INICIAR / PARAR ──────────
