@@ -4582,18 +4582,18 @@ function freqUpdateLevelDisplay(){
   const base   = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
 
   if(freqMode === 'under'){
-    if(uLevel) uLevel.textContent = freqMartLevel + ' / ' + FREQ_MAX_LEVELS;
+    if(uLevel) uLevel.textContent = (freqMartLevel + 1) + ' / ' + FREQ_MAX_LEVELS;
     if(uNext)  uNext.textContent  = '$' + freqGetEntry(freqMartLevel).toFixed(2);
-    if(oLevel) oLevel.textContent = '0 / 5';
+    if(oLevel) oLevel.textContent = '1 / 5';
     if(oNext)  oNext.textContent  = '$' + base.toFixed(2);
   } else if(freqMode === 'over'){
-    if(oLevel) oLevel.textContent = freqMartLevel + ' / ' + FREQ_MAX_LEVELS;
+    if(oLevel) oLevel.textContent = (freqMartLevel + 1) + ' / ' + FREQ_MAX_LEVELS;
     if(oNext)  oNext.textContent  = '$' + freqGetEntry(freqMartLevel).toFixed(2);
-    if(uLevel) uLevel.textContent = '0 / 5';
+    if(uLevel) uLevel.textContent = '1 / 5';
     if(uNext)  uNext.textContent  = '$' + base.toFixed(2);
   } else {
-    if(uLevel) uLevel.textContent = '0 / 5';
-    if(oLevel) oLevel.textContent = '0 / 5';
+    if(uLevel) uLevel.textContent = '1 / 5';
+    if(oLevel) oLevel.textContent = '1 / 5';
     if(uNext)  uNext.textContent  = '$' + base.toFixed(2);
     if(oNext)  oNext.textContent  = '$' + base.toFixed(2);
   }
@@ -4735,8 +4735,8 @@ function freqHandleContract(data){
     freqUpdateStats();
     freqMartLevel++;
     const statusEl = document.getElementById('freqStatusTxt');
-    if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel}/${FREQ_MAX_LEVELS}`;
-    freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | Mart. nível ${freqMartLevel}/${FREQ_MAX_LEVELS} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
+    if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS}`;
+    freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | Mart. nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
     // Verifica Stop Loss em USD
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(freqSessionPnl <= -sl){
