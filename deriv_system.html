@@ -4455,6 +4455,8 @@ let freqSessionWins      = 0;
 let freqSessionLosses    = 0;
 let freqSessionPnl       = 0;
 let freqProcessedContracts = new Set();
+let freqTickHandledId  = null; // ID do contrato já resolvido pelo tick (POC só faz P&L)
+let freqEntryTick      = 0;    // freqTotalDigits no momento da entrada
 
 // ── Mercado ──────────────────────────────
 function freqSelectMarket(sym, btn){
@@ -4530,8 +4532,13 @@ function freqOnTick(tick){
   freqTotalDigits++;
   freqRenderChart();
   freqUpdateStream(lastDigit);
-  if(freqRobotActive && !freqTradeActive && freqBuffer.length >= freqAnalysisSize){
-    freqCheckEntry();
+  if(freqRobotActive && freqBuffer.length >= freqAnalysisSize){
+    if(freqMode && freqTradeActive && freqTotalDigits > freqEntryTick){
+      // Tick de resolução do contrato 1-tick: calcula resultado agora sem esperar POC
+      freqResolveOnTick(lastDigit);
+    } else if(!freqTradeActive){
+      freqCheckEntry();
+    }
   }
 }
 
@@ -4751,6 +4758,60 @@ function freqUpdateLevelDisplay(){
   }
 }
 
+// ── Resolve contrato 1-tick diretamente pelo dígito (sem esperar POC) ────────
+function freqResolveOnTick(digit){
+  const isWin = (freqMode === 'under') ? FREQ_UNDER_DIGITS.includes(digit)
+                                       : FREQ_OVER_DIGITS.includes(digit);
+  // Marca como resolvido pelo tick → POC só fará atualização de P&L exato
+  freqTickHandledId = freqCurrentContractId;
+  if(freqCurrentContractId) freqProcessedContracts.add(freqCurrentContractId);
+  freqTradeActive       = false;
+  freqCurrentContractId = null;
+
+  if(isWin){
+    try{playWin();}catch(e){}
+    freqSessionWins++;
+    freqUpdateStats();
+    freqMode      = null;
+    freqMartLevel = 0;
+    freqUpdateOpIndicator();
+    freqLog(`🏆 WIN | P&L atualizado em breve...`, 'success');
+    freqClockStop('win', '');
+    freqShowResult('gain');
+  } else {
+    try{playLoss();}catch(e){}
+    freqSessionLosses++;
+    freqUpdateStats();
+    freqMartLevel++;
+    const statusEl = document.getElementById('freqStatusTxt');
+    if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel+1}/${FREQ_MAX_LEVELS}`;
+    freqLog(`💸 LOSS | Mart. nível ${freqMartLevel+1}/${FREQ_MAX_LEVELS} | P&L atualizado em breve...`, 'error');
+    // Verifica Stop Loss estimado com base na stake perdida
+    const lostStake = freqGetEntry(freqMartLevel - 1);
+    const estimatedPnl = freqSessionPnl - lostStake;
+    const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
+    if(estimatedPnl <= -sl){
+      freqLog(`🛑 STOP LOSS estimado atingido (~$${Math.abs(estimatedPnl).toFixed(2)})`, 'error');
+      freqClockStop('loss');
+      freqShowResult('loss');
+      freqRobotActive = false;
+      freqSetToggleBtn(false);
+      return;
+    }
+    if(freqMartLevel >= FREQ_MAX_LEVELS){
+      freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
+      freqClockStop('martingale');
+      freqShowResult('martingale');
+      freqRobotActive = false;
+      freqSetToggleBtn(false);
+      return;
+    }
+    freqUpdateLevelDisplay();
+    freqUpdateOpIndicator();
+    freqEnterTrade(freqMode); // re-entra IMEDIATAMENTE no mesmo tick
+  }
+}
+
 // ── Verifica condição de entrada ─────────
 function freqCheckEntry(){
   if(!freqRobotActive || freqTradeActive) return;
@@ -4895,6 +4956,7 @@ function freqEnterTrade(mode){
   const contractType = mode === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
   const barrier      = mode === 'under' ? '3' : '6';
   freqTradeActive    = true;
+  freqEntryTick      = freqTotalDigits;   // registra tick de entrada para resolver no próximo tick
   if(freqMartLevel === 0) freqClockShow(); // inicia relógio apenas na 1ª entrada
   playFreqEntry();
   freqUpdateOpIndicator();
@@ -4934,12 +4996,36 @@ function freqHandleBuy(data){
 function freqHandleContract(data){
   const c = data.proposal_open_contract;
   if(!c) return;
-  if(freqCurrentContractId && c.contract_id !== freqCurrentContractId) return;
   if(!c.is_expired && !c.is_sold) return;
+
+  // Contrato já resolvido pelo tick → só atualiza P&L exato
+  if(c.contract_id === freqTickHandledId){
+    freqTickHandledId = null;
+    const profit = parseFloat(c.profit || 0);
+    freqSessionPnl += profit;
+    freqUpdateStats();
+    if(profit > 0){
+      freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
+      freqClockStop('win', `+$${profit.toFixed(2)}`);
+    } else {
+      freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
+      // Verifica Stop Loss com valor exato
+      const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
+      if(freqSessionPnl <= -sl && freqRobotActive){
+        freqRobotActive = false;
+        freqSetToggleBtn(false);
+        freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
+        freqClockStop('loss');
+      }
+    }
+    return;
+  }
+
+  // Fallback: contrato não foi resolvido pelo tick (latência extrema ou edge case)
+  if(freqCurrentContractId && c.contract_id !== freqCurrentContractId) return;
   if(freqProcessedContracts.has(c.contract_id)) return;
   freqProcessedContracts.add(c.contract_id);
   if(freqProcessedContracts.size > 20){
-    // Remove apenas o mais antigo em vez de limpar tudo (evita reprocessar contratos recentes)
     freqProcessedContracts.delete(freqProcessedContracts.values().next().value);
   }
 
@@ -4970,14 +5056,12 @@ function freqHandleContract(data){
     const statusEl = document.getElementById('freqStatusTxt');
     if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS}`;
     freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | Mart. nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
-    // Verifica Stop Loss em USD
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(freqSessionPnl <= -sl){
       freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
       freqClockStop('loss');
       freqShowResult('loss'); return;
     }
-    // Verifica máximo de martingales
     if(freqMartLevel >= FREQ_MAX_LEVELS){
       freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
       freqClockStop('martingale');
@@ -4985,7 +5069,6 @@ function freqHandleContract(data){
     }
     freqUpdateLevelDisplay();
     freqUpdateOpIndicator();
-    // Re-entra imediatamente sem esperar o próximo tick (evita pular dígito)
     freqEnterTrade(freqMode);
   }
 }
