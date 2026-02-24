@@ -4775,9 +4775,8 @@ function freqResolveOnTick(digit){
     freqMode      = null;
     freqMartLevel = 0;
     freqUpdateOpIndicator();
-    freqLog(`🏆 WIN | P&L atualizado em breve...`, 'success');
-    freqClockStop('win', '');
-    freqShowResult('gain');
+    freqLog(`🏆 WIN | aguardando P&L exato do servidor...`, 'success');
+    // freqShowResult e freqClockStop são chamados no freqHandleContract após P&L ser somado
   } else {
     try{playLoss();}catch(e){}
     freqSessionLosses++;
@@ -5007,6 +5006,7 @@ function freqHandleContract(data){
     if(profit > 0){
       freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
       freqClockStop('win', `+$${profit.toFixed(2)}`);
+      freqShowResult('gain');
     } else {
       freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
       // Verifica Stop Loss com valor exato
