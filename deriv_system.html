@@ -1568,7 +1568,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 
       <!-- Relógio virtual da operação -->
       <div id="freqClockWrap" class="fq-clock" style="display:none;">
-        <div class="fq-clock-lbl">⏱ DURAÇÃO DA OPERAÇÃO</div>
+        <div class="fq-clock-lbl">⏱ DURAÇÃO DA SESSÃO</div>
         <div class="fq-clock-time">
           <span id="freqClockMin">00</span><span class="fq-clock-sep">:</span><span id="freqClockSec">00</span>
         </div>
@@ -4776,7 +4776,7 @@ function freqResolveOnTick(digit){
     freqMartLevel = 0;
     freqUpdateOpIndicator();
     freqLog(`🏆 WIN | aguardando P&L exato do servidor...`, 'success');
-    // freqShowResult e freqClockStop são chamados no freqHandleContract após P&L ser somado
+    // freqShowResult chamado no freqHandleContract após P&L ser somado
   } else {
     try{playLoss();}catch(e){}
     freqSessionLosses++;
@@ -4932,7 +4932,7 @@ function freqClockStop(type, extra){
   const res  = document.getElementById('freqClockResult');
   if(!wrap) return;
   const labels = {
-    win:       '✅ WIN ' + (extra || ''),
+    win:       '✅ STOP GAIN ' + (extra || ''),
     loss:      '🛑 STOP LOSS',
     martingale:'🚨 LIMITE DE GALE',
     stopped:   '⏹ PARADO'
@@ -4940,11 +4940,7 @@ function freqClockStop(type, extra){
   const cls = type === 'win' ? 'clk-win' : (type === 'loss' ? 'clk-loss' : 'clk-mart');
   wrap.className = 'fq-clock ' + cls;
   if(res){ res.textContent = labels[type] || ''; res.style.display = 'inline-block'; }
-  // Auto-oculta após 5s com animação
-  setTimeout(() => {
-    if(wrap){ wrap.classList.add('clk-hide'); }
-    setTimeout(() => { if(wrap) wrap.style.display='none'; }, 550);
-  }, 5000);
+  // Relógio permanece visível na tela (não some)
 }
 
 // ── Envia ordem de compra ─────────────────
@@ -4956,7 +4952,6 @@ function freqEnterTrade(mode){
   const barrier      = mode === 'under' ? '3' : '6';
   freqTradeActive    = true;
   freqEntryTick      = freqTotalDigits;   // registra tick de entrada para resolver no próximo tick
-  if(freqMartLevel === 0) freqClockShow(); // inicia relógio apenas na 1ª entrada
   playFreqEntry();
   freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
@@ -5005,8 +5000,15 @@ function freqHandleContract(data){
     freqUpdateStats();
     if(profit > 0){
       freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
-      freqClockStop('win', `+$${profit.toFixed(2)}`);
       freqShowResult('gain');
+      // Verifica Stop Gain
+      const sg = parseFloat(document.getElementById('freqSG')?.value || 10);
+      if(freqSessionPnl >= sg && freqRobotActive){
+        freqRobotActive = false;
+        freqSetToggleBtn(false);
+        freqLog(`🎯 STOP GAIN atingido: +$${freqSessionPnl.toFixed(2)}`, 'success');
+        freqClockStop('win', `+$${freqSessionPnl.toFixed(2)}`);
+      }
     } else {
       freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
       // Verifica Stop Loss com valor exato
@@ -5044,8 +5046,15 @@ function freqHandleContract(data){
     freqMartLevel = 0;
     freqUpdateOpIndicator();
     freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
-    freqClockStop('win', `+$${profit.toFixed(2)}`);
     freqShowResult('gain');
+    // Verifica Stop Gain
+    const sgFb = parseFloat(document.getElementById('freqSG')?.value || 10);
+    if(freqSessionPnl >= sgFb && freqRobotActive){
+      freqRobotActive = false;
+      freqSetToggleBtn(false);
+      freqLog(`🎯 STOP GAIN atingido: +$${freqSessionPnl.toFixed(2)}`, 'success');
+      freqClockStop('win', `+$${freqSessionPnl.toFixed(2)}`);
+    }
     return;
   } else {
     try{playLoss();}catch(e){}
@@ -5130,6 +5139,7 @@ function freqSetToggleBtn(active){
 // ── Inicia robô ──────────────────────────
 function freqStartRobot(){
   if(!derivAccount){ alert('Conecte sua conta Deriv primeiro!'); return; }
+  freqClockShow(); // inicia/zera relógio de sessão
   freqRobotActive    = true;
   freqMartLevel      = 0;
   freqMode           = null;
@@ -5181,8 +5191,7 @@ function freqStopRobot(){
   freqMode        = null;
   freqMartLevel   = 0;
   freqTradeActive = false;
-  if(freqClockInterval){ freqClockStop('stopped'); }
-  freqClockStart_ts = null;
+  freqClockStop('stopped'); // para contagem mas mantém visível na tela
   freqSetToggleBtn(false);
   freqUpdateOpIndicator();
   document.getElementById('freqStatusTxt').textContent = 'PARADO';
