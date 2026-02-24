@@ -1398,6 +1398,22 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     </div>
   </div>
 
+  <!-- Account bar -->
+  <div id="freqAccBar" style="display:none;background:var(--surface);border-bottom:1px solid #32364a;padding:8px 18px;gap:20px;align-items:center;flex-wrap:wrap;">
+    <div class="acc-field">
+      <span class="acc-field-label">CONTA</span>
+      <span class="acc-field-val mono" id="freqAccLoginId" style="color:var(--accent);font-size:13px;">—</span>
+    </div>
+    <div class="acc-field">
+      <span class="acc-field-label">TIPO</span>
+      <span class="acc-field-val" id="freqAccType" style="font-size:13px;">—</span>
+    </div>
+    <div class="acc-field">
+      <span class="acc-field-label">SALDO</span>
+      <span class="acc-field-val mono" id="freqAccBalance" style="color:var(--green);font-size:13px;">—</span>
+    </div>
+  </div>
+
   <!-- Main layout -->
   <div style="display:flex;gap:14px;padding:18px;width:100%;overflow-y:auto;flex:1;box-sizing:border-box;align-items:flex-start;">
 
@@ -2533,6 +2549,7 @@ async function logoutAll(){
   try{ resetSessionState(); }catch(e){}
   // Reset dashboard UI safely (may not exist if coming from admin screen)
   safeSet('accBar','style','display:none');
+  safeSet('freqAccBar','style','display:none');
   safeSet('digitStream','innerHTML','');
   safeSet('logArea','innerHTML','');
   safeSet('robotDropdownLabel','textContent','⚡ Selecione um robô...');
@@ -3308,6 +3325,15 @@ function connectDash(){
       document.getElementById('accTypeD').textContent=isVirt?'📊 DEMO':'💰 REAL';
       document.getElementById('accTypeD').style.color=isVirt?'var(--accent)':'var(--gold)';
       document.getElementById('accBar').style.display='flex';
+      // Freq. Dígitos account bar
+      const fqBar=document.getElementById('freqAccBar');
+      if(fqBar){
+        document.getElementById('freqAccLoginId').textContent=auth.loginid;
+        const fqType=document.getElementById('freqAccType');
+        fqType.textContent=isVirt?'📊 DEMO':'💰 REAL';
+        fqType.style.color=isVirt?'var(--accent)':'var(--gold)';
+        fqBar.style.display='flex';
+      }
       log(`✅ Autenticado: ${auth.loginid} (${isVirt?'DEMO':'REAL'}) | ${auth.currency}`,'success');
       if(!isVirt) log('🚨 CONTA REAL ATIVA — opere com cuidado!','error');
       // Subscribe balance ONCE
@@ -3678,9 +3704,12 @@ function updatePnlUI(){
 
 function updateBalanceUI(bal){
   accountBalance=bal;
+  const txt=(bal<0?'-$'+Math.abs(bal).toFixed(2):'$'+bal.toFixed(2));
+  const clr=bal<0?'var(--red)':'var(--green)';
   const el=document.getElementById('accBalanceD');
-  el.textContent=(bal<0?'-$'+Math.abs(bal).toFixed(2):'$'+bal.toFixed(2));
-  el.style.color=bal<0?'var(--red)':'var(--green)';
+  el.textContent=txt; el.style.color=clr;
+  const fqBal=document.getElementById('freqAccBalance');
+  if(fqBal){ fqBal.textContent=txt; fqBal.style.color=clr; }
 }
 
 function checkStops(){
