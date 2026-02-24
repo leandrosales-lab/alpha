@@ -1566,13 +1566,22 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <div id="freqOpLevel" style="font-size:11px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">Nível 1 / 8 — $0.35</div>
       </div>
 
-      <!-- Relógio virtual da operação -->
+      <!-- Relógio 1: sessão do robô -->
       <div id="freqClockWrap" class="fq-clock" style="display:none;">
         <div class="fq-clock-lbl">⏱ DURAÇÃO DA SESSÃO</div>
         <div class="fq-clock-time">
           <span id="freqClockMin">00</span><span class="fq-clock-sep">:</span><span id="freqClockSec">00</span>
         </div>
         <div id="freqClockResult" class="fq-clock-result" style="display:none;"></div>
+      </div>
+
+      <!-- Relógio 2: duração da operação (entrada → resultado) -->
+      <div id="freqOpClockWrap" class="fq-clock" style="display:none;">
+        <div class="fq-clock-lbl">⚡ DURAÇÃO DA OPERAÇÃO</div>
+        <div class="fq-clock-time">
+          <span id="freqOpClockMin">00</span><span class="fq-clock-sep">:</span><span id="freqOpClockSec">00</span>
+        </div>
+        <div id="freqOpClockResult" class="fq-clock-result" style="display:none;"></div>
       </div>
 
     </div><!-- /main -->
@@ -4836,7 +4845,7 @@ function freqResolveOnTick(digit){
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(estimatedPnl <= -sl){
       freqLog(`🛑 STOP LOSS estimado atingido (~$${Math.abs(estimatedPnl).toFixed(2)})`, 'error');
-      freqClockStop('loss');
+      freqClockStop('loss'); freqOpClockStop('loss');
       freqShowResult('loss');
       freqRobotActive = false;
       freqSetToggleBtn(false);
@@ -4844,7 +4853,7 @@ function freqResolveOnTick(digit){
     }
     if(freqMartLevel >= FREQ_MAX_LEVELS){
       freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
-      freqClockStop('martingale');
+      freqClockStop('martingale'); freqOpClockStop('martingale');
       freqShowResult('martingale');
       freqRobotActive = false;
       freqSetToggleBtn(false);
@@ -4939,8 +4948,10 @@ function freqUpdateOpIndicator(){
 // ══════════════════════════════════════════
 // ── Relógio virtual da operação ──────────
 // ══════════════════════════════════════════
-let freqClockStart_ts  = null;  // timestamp de início da operação
-let freqClockInterval  = null;  // referência do setInterval
+let freqClockStart_ts  = null;
+let freqClockInterval  = null;
+let freqOpClockStart_ts = null;
+let freqOpClockInterval = null;
 
 function freqClockTick(){
   if(!freqClockStart_ts) return;
@@ -4988,6 +4999,60 @@ function freqClockStop(type, extra){
   // Relógio permanece visível na tela (não some)
 }
 
+// ── Relógio 2: duração da operação ───────
+function freqOpClockTick(){
+  if(!freqOpClockStart_ts) return;
+  const elapsed = Math.floor((Date.now() - freqOpClockStart_ts) / 1000);
+  const m = String(Math.floor(elapsed / 60)).padStart(2,'0');
+  const s = String(elapsed % 60).padStart(2,'0');
+  const mEl = document.getElementById('freqOpClockMin');
+  const sEl = document.getElementById('freqOpClockSec');
+  if(mEl) mEl.textContent = m;
+  if(sEl) sEl.textContent = s;
+}
+
+function freqOpClockShow(){
+  freqOpClockStart_ts = Date.now();
+  clearInterval(freqOpClockInterval);
+  freqOpClockInterval = setInterval(freqOpClockTick, 1000);
+  const wrap = document.getElementById('freqOpClockWrap');
+  if(!wrap) return;
+  wrap.style.display = 'block';
+  wrap.className = 'fq-clock';
+  const res = document.getElementById('freqOpClockResult');
+  if(res){ res.style.display='none'; res.textContent=''; }
+  const mEl = document.getElementById('freqOpClockMin');
+  const sEl = document.getElementById('freqOpClockSec');
+  if(mEl) mEl.textContent = '00';
+  if(sEl) sEl.textContent = '00';
+}
+
+function freqOpClockStop(type, extra){
+  clearInterval(freqOpClockInterval);
+  freqOpClockInterval = null;
+  freqOpClockTick();
+  const wrap = document.getElementById('freqOpClockWrap');
+  const res  = document.getElementById('freqOpClockResult');
+  if(!wrap) return;
+  const labels = {
+    win:       '✅ STOP GAIN ' + (extra || ''),
+    loss:      '🛑 STOP LOSS',
+    martingale:'🚨 LIMITE DE GALE',
+    stopped:   '⏹ PARADO'
+  };
+  const cls = type === 'win' ? 'clk-win' : (type === 'loss' ? 'clk-loss' : 'clk-mart');
+  wrap.className = 'fq-clock ' + cls;
+  if(res){ res.textContent = labels[type] || ''; res.style.display = 'inline-block'; }
+}
+
+function freqOpClockReset(){
+  clearInterval(freqOpClockInterval);
+  freqOpClockInterval = null;
+  freqOpClockStart_ts = null;
+  const wrap = document.getElementById('freqOpClockWrap');
+  if(wrap) wrap.style.display = 'none';
+}
+
 // ── Envia ordem de compra ─────────────────
 function freqEnterTrade(mode){
   if(!freqWs || freqWs.readyState !== 1) return;
@@ -4996,8 +5061,9 @@ function freqEnterTrade(mode){
   const contractType = mode === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
   const barrier      = mode === 'under' ? '3' : '6';
   freqTradeActive    = true;
-  freqEntryTick      = freqTotalDigits;   // registra tick de entrada para resolver no próximo tick
-  freqTradeMartLevel = freqMartLevel;     // captura nível para o relatório
+  freqEntryTick      = freqTotalDigits;
+  freqTradeMartLevel = freqMartLevel;
+  if(freqMartLevel === 0) freqOpClockShow(); // inicia relógio de operação na 1ª entrada
   playFreqEntry();
   freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
@@ -5047,6 +5113,7 @@ function freqHandleContract(data){
     freqAddTradeReport(profit > 0, profit, freqTradeMartLevel);
     if(profit > 0){
       freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
+      freqOpClockStop('win', `+$${profit.toFixed(2)}`); // operação encerrou
       freqShowResult('gain');
       // Verifica Stop Gain
       const sg = parseFloat(document.getElementById('freqSG')?.value || 10);
@@ -5064,7 +5131,7 @@ function freqHandleContract(data){
         freqRobotActive = false;
         freqSetToggleBtn(false);
         freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
-        freqClockStop('loss');
+        freqClockStop('loss'); freqOpClockStop('loss');
       }
     }
     return;
@@ -5094,6 +5161,7 @@ function freqHandleContract(data){
     freqMartLevel = 0;
     freqUpdateOpIndicator();
     freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
+    freqOpClockStop('win', `+$${profit.toFixed(2)}`);
     freqShowResult('gain');
     // Verifica Stop Gain
     const sgFb = parseFloat(document.getElementById('freqSG')?.value || 10);
@@ -5117,12 +5185,12 @@ function freqHandleContract(data){
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(freqSessionPnl <= -sl){
       freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
-      freqClockStop('loss');
+      freqClockStop('loss'); freqOpClockStop('loss');
       freqShowResult('loss'); return;
     }
     if(freqMartLevel >= FREQ_MAX_LEVELS){
       freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
-      freqClockStop('martingale');
+      freqClockStop('martingale'); freqOpClockStop('martingale');
       freqShowResult('martingale'); return;
     }
     freqUpdateLevelDisplay();
@@ -5188,7 +5256,8 @@ function freqSetToggleBtn(active){
 // ── Inicia robô ──────────────────────────
 function freqStartRobot(){
   if(!derivAccount){ alert('Conecte sua conta Deriv primeiro!'); return; }
-  freqClockShow(); // inicia/zera relógio de sessão
+  freqClockShow();     // inicia/zera relógio de sessão
+  freqOpClockReset();  // zera/oculta relógio de operação
   freqRobotActive    = true;
   freqMartLevel      = 0;
   freqMode           = null;
@@ -5240,7 +5309,8 @@ function freqStopRobot(){
   freqMode        = null;
   freqMartLevel   = 0;
   freqTradeActive = false;
-  freqClockStop('stopped'); // para contagem mas mantém visível na tela
+  freqClockStop('stopped');   // para sessão, mantém visível
+  freqOpClockStop('stopped'); // para operação, mantém visível
   freqSetToggleBtn(false);
   freqUpdateOpIndicator();
   document.getElementById('freqStatusTxt').textContent = 'PARADO';
