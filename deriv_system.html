@@ -4370,7 +4370,7 @@ function renderReports(){
     </div>
     <div class="card" style="text-align:center;padding:14px;">
       <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">WIN RATE</div>
-      <div style="font-size:26px;font-weight:900;color:${todayRate>=50?'var(--green)':'var(--red)'};">${todayRate}%</div>
+      <div style="font-size:26px;font-weight:900;color:${pnlColor};">${todayRate}%</div>
     </div>
     <div class="card" style="text-align:center;padding:14px;">
       <div style="font-size:10px;color:var(--dim);letter-spacing:2px;font-family:'Share Tech Mono',monospace;">P&L DO DIA</div>
@@ -4392,7 +4392,7 @@ function renderReports(){
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border);">
         <span style="font-size:13px;font-weight:700;font-family:'Share Tech Mono',monospace;color:var(--text);">📅 ${date}</span>
         <span style="font-size:11px;color:var(--dim);">${total} ops</span>
-        <span style="font-size:11px;color:${rate>=50?'var(--green)':'var(--red)'};">⚡ ${rate}% win</span>
+        <span style="font-size:11px;color:${dp?'var(--green)':'var(--red)'};">⚡ ${rate}% win</span>
         <span style="font-size:12px;font-weight:700;color:${dp?'var(--green)':'var(--red)'};">${dp?'+':'-'}$${Math.abs(pnl).toFixed(2)}</span>
         <span style="font-size:11px;padding:2px 8px;border-radius:4px;font-weight:700;background:${dp?'rgba(0,255,159,.15)':'rgba(255,59,107,.15)'};color:${dp?'var(--green)':'var(--red)'};">${dp?'GAIN':'LOSS'}</span>
       </div>
