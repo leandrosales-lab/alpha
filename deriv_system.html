@@ -4985,6 +4985,8 @@ function freqHandleContract(data){
     }
     freqUpdateLevelDisplay();
     freqUpdateOpIndicator();
+    // Re-entra imediatamente sem esperar o próximo tick (evita pular dígito)
+    freqEnterTrade(freqMode);
   }
 }
 
