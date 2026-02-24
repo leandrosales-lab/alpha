@@ -4257,6 +4257,50 @@ async function addTradeReport(c, isWin, profit){
   }
 }
 
+// ── Relatório do robô Freq. Dígitos ──────
+async function freqAddTradeReport(isWin, profit, martLevel){
+  const now = new Date();
+  const strategy = freqMode === 'over' ? 'OVER 6' : 'UNDER 3';
+  const trade = {
+    date:       now.toLocaleDateString('pt-BR'),
+    time:       now.toLocaleTimeString('pt-BR'),
+    market:     freqMarket,
+    strategy:   strategy,
+    entry:      freqGetEntry(martLevel),
+    entryPrice: null,
+    exitPrice:  null,
+    duration:   '1t',
+    result:     isWin ? 'WIN' : 'LOSS',
+    pnl:        profit,
+    accType:    derivAccount?.accType || 'demo',
+    martLevel:  martLevel
+  };
+  window._reportTrades.unshift(trade);
+  renderReports();
+  if(window._sb && window._alphaUser?.uid){
+    try{
+      await window._sb.from('trades').insert({
+        user_id:      window._alphaUser.uid,
+        trade_date:   trade.date,
+        trade_time:   trade.time,
+        market:       trade.market,
+        strategy:     trade.strategy,
+        entry_amount: parseFloat(trade.entry) || 0,
+        entry_price:  null,
+        exit_price:   null,
+        duration:     trade.duration,
+        result:       trade.result,
+        pnl:          parseFloat(trade.pnl) || 0,
+        acc_type:     trade.accType,
+        mart_level:   trade.martLevel || 0
+      });
+      console.log('[FreqTrades] Supabase insert OK:', trade.result, trade.pnl);
+    }catch(e){ console.warn('[FreqTrades] Supabase insert failed:', e.message); }
+  } else {
+    console.warn('[FreqTrades] Supabase não disponível — _sb:', !!window._sb, '_alphaUser:', !!window._alphaUser);
+  }
+}
+
 function renderReports(){
   const content = document.getElementById('reportsContent');
   const summary = document.getElementById('reportsSummary');
@@ -4457,6 +4501,7 @@ let freqSessionPnl       = 0;
 let freqProcessedContracts = new Set();
 let freqTickHandledId  = null; // ID do contrato já resolvido pelo tick (POC só faz P&L)
 let freqEntryTick      = 0;    // freqTotalDigits no momento da entrada
+let freqTradeMartLevel = 0;    // nível martingale no momento da entrada (para relatório)
 
 // ── Mercado ──────────────────────────────
 function freqSelectMarket(sym, btn){
@@ -4952,6 +4997,7 @@ function freqEnterTrade(mode){
   const barrier      = mode === 'under' ? '3' : '6';
   freqTradeActive    = true;
   freqEntryTick      = freqTotalDigits;   // registra tick de entrada para resolver no próximo tick
+  freqTradeMartLevel = freqMartLevel;     // captura nível para o relatório
   playFreqEntry();
   freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
@@ -4998,6 +5044,7 @@ function freqHandleContract(data){
     const profit = parseFloat(c.profit || 0);
     freqSessionPnl += profit;
     freqUpdateStats();
+    freqAddTradeReport(profit > 0, profit, freqTradeMartLevel);
     if(profit > 0){
       freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
       freqShowResult('gain');
@@ -5042,6 +5089,7 @@ function freqHandleContract(data){
     freqSessionWins++;
     freqSessionPnl += profit;
     freqUpdateStats();
+    freqAddTradeReport(true, profit, freqTradeMartLevel);
     freqMode      = null;
     freqMartLevel = 0;
     freqUpdateOpIndicator();
@@ -5061,6 +5109,7 @@ function freqHandleContract(data){
     freqSessionLosses++;
     freqSessionPnl += profit;
     freqUpdateStats();
+    freqAddTradeReport(false, profit, freqTradeMartLevel);
     freqMartLevel++;
     const statusEl = document.getElementById('freqStatusTxt');
     if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS}`;
