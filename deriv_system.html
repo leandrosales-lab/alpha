@@ -1581,6 +1581,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <div class="fq-clock-time">
           <span id="freqOpClockMin">00</span><span class="fq-clock-sep">:</span><span id="freqOpClockSec">00</span>
         </div>
+        <div id="freqOpClockEntry" style="font-size:11px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;margin-top:6px;letter-spacing:1px;">Entrada: —</div>
         <div id="freqOpClockResult" class="fq-clock-result" style="display:none;"></div>
       </div>
 
@@ -4845,7 +4846,7 @@ function freqResolveOnTick(digit){
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(estimatedPnl <= -sl){
       freqLog(`🛑 STOP LOSS estimado atingido (~$${Math.abs(estimatedPnl).toFixed(2)})`, 'error');
-      freqClockStop('loss'); freqOpClockStop('loss');
+      freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
       freqShowResult('loss');
       freqRobotActive = false;
       freqSetToggleBtn(false);
@@ -4853,7 +4854,7 @@ function freqResolveOnTick(digit){
     }
     if(freqMartLevel >= FREQ_MAX_LEVELS){
       freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
-      freqClockStop('martingale'); freqOpClockStop('martingale');
+      freqClockStop('martingale'); freqOpClockStop('martingale', `-$${freqOpTotalStaked.toFixed(2)}`);
       freqShowResult('martingale');
       freqRobotActive = false;
       freqSetToggleBtn(false);
@@ -4950,8 +4951,9 @@ function freqUpdateOpIndicator(){
 // ══════════════════════════════════════════
 let freqClockStart_ts  = null;
 let freqClockInterval  = null;
-let freqOpClockStart_ts = null;
-let freqOpClockInterval = null;
+let freqOpClockStart_ts  = null;
+let freqOpClockInterval  = null;
+let freqOpTotalStaked    = 0;    // soma das entradas da cadeia atual
 
 function freqClockTick(){
   if(!freqClockStart_ts) return;
@@ -5012,6 +5014,7 @@ function freqOpClockTick(){
 }
 
 function freqOpClockShow(){
+  freqOpTotalStaked   = 0;
   freqOpClockStart_ts = Date.now();
   clearInterval(freqOpClockInterval);
   freqOpClockInterval = setInterval(freqOpClockTick, 1000);
@@ -5021,6 +5024,8 @@ function freqOpClockShow(){
   wrap.className = 'fq-clock';
   const res = document.getElementById('freqOpClockResult');
   if(res){ res.style.display='none'; res.textContent=''; }
+  const ent = document.getElementById('freqOpClockEntry');
+  if(ent){ ent.textContent='Entrada: —'; ent.style.display='block'; }
   const mEl = document.getElementById('freqOpClockMin');
   const sEl = document.getElementById('freqOpClockSec');
   if(mEl) mEl.textContent = '00';
@@ -5033,16 +5038,24 @@ function freqOpClockStop(type, extra){
   freqOpClockTick();
   const wrap = document.getElementById('freqOpClockWrap');
   const res  = document.getElementById('freqOpClockResult');
+  const ent  = document.getElementById('freqOpClockEntry');
   if(!wrap) return;
-  const labels = {
-    win:       '✅ STOP GAIN ' + (extra || ''),
+  const statusLabels = {
+    win:       '✅ WIN',
     loss:      '🛑 STOP LOSS',
     martingale:'🚨 LIMITE DE GALE',
     stopped:   '⏹ PARADO'
   };
   const cls = type === 'win' ? 'clk-win' : (type === 'loss' ? 'clk-loss' : 'clk-mart');
   wrap.className = 'fq-clock ' + cls;
-  if(res){ res.textContent = labels[type] || ''; res.style.display = 'inline-block'; }
+  // Linha de entrada acumulada
+  if(ent) ent.textContent = `Entrada: $${freqOpTotalStaked.toFixed(2)}`;
+  // Resultado líquido (extra = "+$2.00" ou "-$5.00")
+  if(res){
+    const liqLine = extra ? `Líquido: ${extra}` : '';
+    res.innerHTML = `${statusLabels[type] || ''}<br><span style="font-size:13px;opacity:.85;">${liqLine}</span>`;
+    res.style.display = 'inline-block';
+  }
 }
 
 function freqOpClockReset(){
@@ -5063,7 +5076,10 @@ function freqEnterTrade(mode){
   freqTradeActive    = true;
   freqEntryTick      = freqTotalDigits;
   freqTradeMartLevel = freqMartLevel;
-  if(freqMartLevel === 0) freqOpClockShow(); // inicia relógio de operação na 1ª entrada
+  if(freqMartLevel === 0) freqOpClockShow(); // inicia relógio na 1ª entrada
+  freqOpTotalStaked += amount;               // acumula stake do gale
+  const entEl = document.getElementById('freqOpClockEntry');
+  if(entEl) entEl.textContent = `Entrada: $${freqOpTotalStaked.toFixed(2)}`;
   playFreqEntry();
   freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
@@ -5131,7 +5147,7 @@ function freqHandleContract(data){
         freqRobotActive = false;
         freqSetToggleBtn(false);
         freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
-        freqClockStop('loss'); freqOpClockStop('loss');
+        freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
       }
     }
     return;
@@ -5185,12 +5201,12 @@ function freqHandleContract(data){
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(freqSessionPnl <= -sl){
       freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
-      freqClockStop('loss'); freqOpClockStop('loss');
+      freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
       freqShowResult('loss'); return;
     }
     if(freqMartLevel >= FREQ_MAX_LEVELS){
       freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
-      freqClockStop('martingale'); freqOpClockStop('martingale');
+      freqClockStop('martingale'); freqOpClockStop('martingale', `-$${freqOpTotalStaked.toFixed(2)}`);
       freqShowResult('martingale'); return;
     }
     freqUpdateLevelDisplay();
