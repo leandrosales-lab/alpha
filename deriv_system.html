@@ -4539,9 +4539,10 @@ let freqSessionWins      = 0;
 let freqSessionLosses    = 0;
 let freqSessionPnl       = 0;
 let freqProcessedContracts = new Set();
-let freqTickHandledId  = null; // ID do contrato já resolvido pelo tick (POC só faz P&L)
-let freqEntryTick      = 0;    // freqTotalDigits no momento da entrada
-let freqTradeMartLevel = 0;    // nível martingale no momento da entrada (para relatório)
+let freqTickHandledId        = null; // ID do contrato já resolvido pelo tick (POC só faz P&L)
+let freqTickHandledMartLevel = 0;    // nível da trade encerrada pelo tick (imune a sobrescrita)
+let freqEntryTick            = 0;    // freqTotalDigits no momento da entrada
+let freqTradeMartLevel       = 0;    // nível martingale no momento da entrada (para relatório)
 
 // ── Mercado ──────────────────────────────
 function freqSelectMarket(sym, btn){
@@ -4854,7 +4855,8 @@ function freqResolveOnTick(digit){
   const isWin = (freqMode === 'under') ? FREQ_UNDER_DIGITS.includes(digit)
                                        : FREQ_OVER_DIGITS.includes(digit);
   // Marca como resolvido pelo tick → POC só fará atualização de P&L exato
-  freqTickHandledId = freqCurrentContractId;
+  freqTickHandledId        = freqCurrentContractId;
+  freqTickHandledMartLevel = freqTradeMartLevel; // salva antes de freqEnterTrade sobrescrever
   if(freqCurrentContractId) freqProcessedContracts.add(freqCurrentContractId);
   freqTradeActive       = false;
   freqCurrentContractId = null;
@@ -5165,7 +5167,7 @@ function freqHandleContract(data){
     const profit = parseFloat(c.profit || 0);
     freqSessionPnl += profit;
     freqUpdateStats();
-    freqAddTradeReport(profit > 0, profit, freqTradeMartLevel);
+    freqAddTradeReport(profit > 0, profit, freqTickHandledMartLevel);
     if(profit > 0){
       freqLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'success');
       freqOpClockStop('win', `+$${profit.toFixed(2)}`); // operação encerrou
