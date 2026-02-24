@@ -284,6 +284,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 .digit-chip.virt-loss{background:rgba(255,59,107,.25);color:var(--red);border:1px solid rgba(255,59,107,.5);}
 .digit-chip.trigger-win{background:rgba(0,212,255,.25);color:var(--accent);border:2px solid var(--accent);box-shadow:0 0 8px rgba(0,212,255,.4);}
 .digit-chip.trigger-loss{background:rgba(255,59,107,.35);color:var(--red);border:2px solid var(--red);box-shadow:0 0 8px rgba(255,59,107,.4);}
+.digit-chip.gale-loss{background:rgba(255,59,107,.35);color:var(--red);border:2px solid rgba(255,59,107,.7);box-shadow:0 0 6px rgba(255,59,107,.35);}
 
 /* Stats grid */
 .stats-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin-bottom:14px;}
@@ -4778,6 +4779,12 @@ function freqUpdateCards(counts, total, ready){
   freqUpdateLevelDisplay();
 }
 
+// ── Label de nível: nível 0 = "Entrada", 1+ = "Gale X" ──
+const FREQ_MAX_GALES = FREQ_MAX_LEVELS - 1; // 7 gales máx (nível 0 é a entrada base)
+function freqLevelLabel(level){
+  return level === 0 ? 'Entrada' : `Gale ${level}`;
+}
+
 // ── Calcula entrada com martingale ───────
 function freqGetEntry(level){
   const base   = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
@@ -4796,18 +4803,18 @@ function freqUpdateLevelDisplay(){
   const base   = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
 
   if(freqMode === 'under'){
-    if(uLevel) uLevel.textContent = (freqMartLevel + 1) + ' / ' + FREQ_MAX_LEVELS;
+    if(uLevel) uLevel.textContent = freqLevelLabel(freqMartLevel) + ' / ' + FREQ_MAX_GALES + ' gales';
     if(uNext)  uNext.textContent  = '$' + freqGetEntry(freqMartLevel).toFixed(2);
-    if(oLevel) oLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
+    if(oLevel) oLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
     if(oNext)  oNext.textContent  = '$' + base.toFixed(2);
   } else if(freqMode === 'over'){
-    if(oLevel) oLevel.textContent = (freqMartLevel + 1) + ' / ' + FREQ_MAX_LEVELS;
+    if(oLevel) oLevel.textContent = freqLevelLabel(freqMartLevel) + ' / ' + FREQ_MAX_GALES + ' gales';
     if(oNext)  oNext.textContent  = '$' + freqGetEntry(freqMartLevel).toFixed(2);
-    if(uLevel) uLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
+    if(uLevel) uLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
     if(uNext)  uNext.textContent  = '$' + base.toFixed(2);
   } else {
-    if(uLevel) uLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
-    if(oLevel) oLevel.textContent = '1 / ' + FREQ_MAX_LEVELS;
+    if(uLevel) uLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
+    if(oLevel) oLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
     if(uNext)  uNext.textContent  = '$' + base.toFixed(2);
     if(oNext)  oNext.textContent  = '$' + base.toFixed(2);
   }
@@ -4837,9 +4844,12 @@ function freqResolveOnTick(digit){
     freqSessionLosses++;
     freqUpdateStats();
     freqMartLevel++;
+    // Pinta o chip do dígito de resolução em vermelho
+    const latestChip = document.querySelector('#freqDigitStream .freq-latest');
+    if(latestChip) latestChip.classList.add('gale-loss');
     const statusEl = document.getElementById('freqStatusTxt');
-    if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel+1}/${FREQ_MAX_LEVELS}`;
-    freqLog(`💸 LOSS | Mart. nível ${freqMartLevel+1}/${FREQ_MAX_LEVELS} | P&L atualizado em breve...`, 'error');
+    if(statusEl) statusEl.textContent = `❌ PERDEU — ${freqLevelLabel(freqMartLevel)} próximo`;
+    freqLog(`💸 LOSS | ${freqLevelLabel(freqMartLevel)} ($${freqGetEntry(freqMartLevel).toFixed(2)}) | P&L atualizado em breve...`, 'error');
     // Verifica Stop Loss estimado com base na stake perdida
     const lostStake = freqGetEntry(freqMartLevel - 1);
     const estimatedPnl = freqSessionPnl - lostStake;
@@ -4943,7 +4953,7 @@ function freqUpdateOpIndicator(){
   const level = document.getElementById('freqOpLevel');
   if(icon)  icon.textContent  = isUnder ? '📉' : '📈';
   if(label){ label.textContent=isUnder?'UNDER 3':'OVER 6'; label.style.color=isUnder?'var(--fq-under)':'var(--fq-over)'; }
-  if(level){ const amt=freqGetEntry(freqMartLevel); level.textContent=`Nível ${freqMartLevel+1} / ${FREQ_MAX_LEVELS} — $${amt.toFixed(2)}`; }
+  if(level){ const amt=freqGetEntry(freqMartLevel); level.textContent=`${freqLevelLabel(freqMartLevel)} / ${FREQ_MAX_GALES} gales — $${amt.toFixed(2)}`; }
 }
 
 // ══════════════════════════════════════════
@@ -5084,7 +5094,7 @@ function freqEnterTrade(mode){
   freqUpdateOpIndicator();
   const statusEl = document.getElementById('freqStatusTxt');
   if(statusEl) statusEl.textContent = mode === 'under' ? `📉 UNDER 3 — $${amount}` : `📈 OVER 6 — $${amount}`;
-  freqLog(`📤 Ordem: ${mode==='under'?'UNDER 3':'OVER 6'} — $${amount.toFixed(2)} (Nível ${freqMartLevel+1})`, 'info');
+  freqLog(`📤 Ordem: ${mode==='under'?'UNDER 3':'OVER 6'} — $${amount.toFixed(2)} (${freqLevelLabel(freqMartLevel)})`, 'info');
   freqWs.send(JSON.stringify({
     buy: 1,
     price: amount.toFixed(2),
@@ -5196,8 +5206,8 @@ function freqHandleContract(data){
     freqAddTradeReport(false, profit, freqTradeMartLevel);
     freqMartLevel++;
     const statusEl = document.getElementById('freqStatusTxt');
-    if(statusEl) statusEl.textContent = `❌ PERDEU — Martingale nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS}`;
-    freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | Mart. nível ${freqMartLevel + 1}/${FREQ_MAX_LEVELS} | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
+    if(statusEl) statusEl.textContent = `❌ PERDEU — ${freqLevelLabel(freqMartLevel)} próximo`;
+    freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | ${freqLevelLabel(freqMartLevel)} ($${freqGetEntry(freqMartLevel).toFixed(2)}) | P&L: ${freqSessionPnl>=0?'+':''}$${freqSessionPnl.toFixed(2)}`, 'error');
     const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
     if(freqSessionPnl <= -sl){
       freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
