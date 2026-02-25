@@ -2066,7 +2066,7 @@ function switchLoginTab(tab){
 // 3. We detect the redirect via popup URL polling OR via URL params on load
 // 4. Extract tokens and auto-login
 
-const DERIV_APP_ID = '128505'; // Replace with your registered App ID for production
+const DERIV_APP_ID = '127769'; // Replace with your registered App ID for production
 const DERIV_OAUTH_URL = `https://oauth.deriv.com/oauth2/authorize?app_id=${DERIV_APP_ID}&l=pt&brand=deriv`;
 
 let oauthPopup = null;   // kept for compatibility
@@ -3256,7 +3256,7 @@ function connectDash(){
 
   // Credentials ALWAYS come from derivAccount (robots are strategy-only configs)
   const creds = derivAccount;
-  const appId = creds?.appId || '128505';
+  const appId = creds?.appId || '127769';
   const token = creds?.token || null;
   const market = document.getElementById('boletaMarket')?.value || 'R_100';
 
