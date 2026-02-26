@@ -504,39 +504,22 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           window._alphaUser = { uid: user.id, email: user.email,
             name: user.email.split('@')[0], plan: 'free', is_admin: false };
         }
+        document.documentElement.classList.remove('restoring-session');
         window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
       } else {
         window._alphaUser = null;
+        document.documentElement.classList.remove('restoring-session');
         window._onAlphaLogout && window._onAlphaLogout();
       }
     });
     // Restore session from sessionStorage (avoids Web Locks)
+    // setSession dispara onAuthStateChange(SIGNED_IN) que já faz todo o setup do login
     const _saved = sessionStorage.getItem('alpha_session');
     if(_saved){
       try {
         const { access_token, refresh_token } = JSON.parse(_saved);
-        // Autentica o cliente Supabase para que inserts/updates usem o token certo
-        _supa.auth.setSession({ access_token, refresh_token }).catch(()=>{});
-        _supa.auth.getUser(access_token).then(async ({ data, error }) => {
-          if(data?.user && !error){
-            let profile = null;
-            try {
-              const resp = await fetch(
-                `${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=name,plan,is_admin&limit=1`,
-                { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${access_token}` } }
-              );
-              const rows = await resp.json();
-              profile = rows[0] || null;
-            } catch(e){}
-            window._alphaUser = {
-              uid: data.user.id, email: data.user.email,
-              name: profile?.name || data.user.email.split('@')[0],
-              plan: profile?.plan || 'free',
-              is_admin: profile?.is_admin || false,
-            };
-            window._onAlphaLogin && window._onAlphaLogin(window._alphaUser);
-            document.documentElement.classList.remove('restoring-session');
-          } else {
+        _supa.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+          if(error){
             sessionStorage.removeItem('alpha_session');
             document.documentElement.classList.remove('restoring-session');
           }
@@ -4379,23 +4362,22 @@ async function addTradeReport(c, isWin, profit){
   renderReports();
   // ── Persistir no Supabase ──
   if(window._sb && window._alphaUser?.uid){
-    try{
-      await window._sb.from('trades').insert({
-        user_id:      window._alphaUser.uid,
-        trade_date:   trade.date,
-        trade_time:   trade.time,
-        market:       trade.market,
-        strategy:     trade.strategy,
-        entry_amount: parseFloat(trade.entry) || 0,
-        entry_price:  trade.entryPrice != null ? parseFloat(trade.entryPrice) : null,
-        exit_price:   trade.exitPrice  != null ? parseFloat(trade.exitPrice)  : null,
-        duration:     trade.duration,
-        result:       trade.result,
-        pnl:          parseFloat(trade.pnl) || 0,
-        acc_type:     trade.accType,
-        mart_level:   trade.martLevel || 0
-      });
-    }catch(e){ console.warn('[Trades] Supabase insert failed:', e.message); }
+    const { error: insErr } = await window._sb.from('trades').insert({
+      user_id:      window._alphaUser.uid,
+      trade_date:   trade.date,
+      trade_time:   trade.time,
+      market:       trade.market,
+      strategy:     trade.strategy,
+      entry_amount: parseFloat(trade.entry) || 0,
+      entry_price:  trade.entryPrice != null ? parseFloat(trade.entryPrice) : null,
+      exit_price:   trade.exitPrice  != null ? parseFloat(trade.exitPrice)  : null,
+      duration:     trade.duration,
+      result:       trade.result,
+      pnl:          parseFloat(trade.pnl) || 0,
+      acc_type:     trade.accType,
+      mart_level:   trade.martLevel || 0
+    });
+    if(insErr) console.warn('[Trades] insert failed:', insErr.message);
   }
 }
 
@@ -4420,24 +4402,23 @@ async function freqAddTradeReport(isWin, profit, martLevel){
   window._reportTrades.unshift(trade);
   renderReports();
   if(window._sb && window._alphaUser?.uid){
-    try{
-      await window._sb.from('trades').insert({
-        user_id:      window._alphaUser.uid,
-        trade_date:   trade.date,
-        trade_time:   trade.time,
-        market:       trade.market,
-        strategy:     trade.strategy,
-        entry_amount: parseFloat(trade.entry) || 0,
-        entry_price:  null,
-        exit_price:   null,
-        duration:     trade.duration,
-        result:       trade.result,
-        pnl:          parseFloat(trade.pnl) || 0,
-        acc_type:     trade.accType,
-        mart_level:   trade.martLevel || 0
-      });
-      console.log('[FreqTrades] Supabase insert OK:', trade.result, trade.pnl);
-    }catch(e){ console.warn('[FreqTrades] Supabase insert failed:', e.message); }
+    const { error: insErr } = await window._sb.from('trades').insert({
+      user_id:      window._alphaUser.uid,
+      trade_date:   trade.date,
+      trade_time:   trade.time,
+      market:       trade.market,
+      strategy:     trade.strategy,
+      entry_amount: parseFloat(trade.entry) || 0,
+      entry_price:  null,
+      exit_price:   null,
+      duration:     trade.duration,
+      result:       trade.result,
+      pnl:          parseFloat(trade.pnl) || 0,
+      acc_type:     trade.accType,
+      mart_level:   trade.martLevel || 0
+    });
+    if(insErr) console.warn('[FreqTrades] insert failed:', insErr.message);
+    else console.log('[FreqTrades] insert OK:', trade.result, trade.pnl);
   } else {
     console.warn('[FreqTrades] Supabase não disponível — _sb:', !!window._sb, '_alphaUser:', !!window._alphaUser);
   }
