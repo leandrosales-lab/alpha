@@ -514,7 +514,9 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     const _saved = sessionStorage.getItem('alpha_session');
     if(_saved){
       try {
-        const { access_token } = JSON.parse(_saved);
+        const { access_token, refresh_token } = JSON.parse(_saved);
+        // Autentica o cliente Supabase para que inserts/updates usem o token certo
+        _supa.auth.setSession({ access_token, refresh_token }).catch(()=>{});
         _supa.auth.getUser(access_token).then(async ({ data, error }) => {
           if(data?.user && !error){
             let profile = null;
@@ -569,7 +571,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
         <img id="loginLogoImg" style="display:none;" class="brand-logo-img">
         <div id="loginLogoEmoji" style="font-size:48px;">⚡</div>
       </div>
-      <h1 id="loginBrandName">DERIV ROBO SYSTEM</h1>
+      <h1 id="loginBrandName">ALPHA SYSTEM</h1>
       <p id="loginBrandSlogan">PAINEL DE OPERAÇÕES AUTOMATIZADAS</p>
     </div>
 
@@ -632,12 +634,13 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
 <div id="screenAdmin" class="screen">
   <!-- TOP NAV -->
   <div class="topnav">
-    <div class="topnav-brand" id="adminTopnavBrand">⚡ DERIV ROBO SYSTEM · ADMIN</div>
+    <div class="topnav-brand" id="adminTopnavBrand">⚡ ALPHA SYSTEM · ADMIN</div>
     <div class="topnav-user" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <button class="nav-pill active" id="adminTabBtnRobots" onclick="showAdminTab('robots')">🤖 Robôs</button>
       <button class="nav-pill" id="adminTabBtnAdmins" onclick="showAdminTab('admins')">👥 Admins</button>
       <button class="nav-pill" id="adminTabBtnCodes" onclick="showAdminTab('codes')">🔑 Códigos</button>
       <button class="nav-pill" id="adminTabBtnBrand" onclick="showAdminTab('brand')">🎨 Marca</button>
+      <button class="nav-pill" id="adminTabBtnOnline" onclick="showAdminTab('online')">🟢 Online</button>
       <span style="font-size:12px;color:var(--dim);" id="adminNavUser"></span>
       <button class="btn btn-gold btn-sm" onclick="goToDashboard()">📊 Trocar Conta</button>
       <button class="btn btn-danger btn-sm" onclick="logoutAll()">⏏ Sair</button>
@@ -894,6 +897,19 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
       </div>
     </div>
 
+    <!-- ONLINE TAB -->
+    <div id="adminTabOnline" style="display:none;">
+      <div style="max-width:600px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h2 style="font-size:16px;font-weight:900;letter-spacing:1px;">🟢 Usuários Online Agora</h2>
+          <button class="btn btn-sm" onclick="loadOnlineUsers()" style="font-size:11px;border:1px solid var(--border);">↺ Atualizar</button>
+        </div>
+        <div class="card">
+          <div id="onlineUsersList"><div style="color:var(--dim);font-size:12px;text-align:center;padding:20px;">Carregando...</div></div>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /screenAdmin -->
 
@@ -909,7 +925,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
   </div>
 
   <div class="topnav">
-    <div class="topnav-brand" id="dashTopnavBrand">⚡ DERIV ROBO SYSTEM</div>
+    <div class="topnav-brand" id="dashTopnavBrand">⚡ ALPHA SYSTEM</div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
       <!-- Ping indicator -->
       <div class="ping-box" id="pingBox">
@@ -1996,6 +2012,7 @@ async function alphaSignup(){
 }
 
 async function alphaLogout(){
+  stopPresence();
   stopPing();
   if(ws) disconnectDash();
   if(freqWs){ freqWs.onclose=null; freqWs.onerror=null; freqWs.onmessage=null; freqWs.close(); freqWs=null; }
@@ -2010,6 +2027,69 @@ async function alphaLogout(){
   document.getElementById('panelAlphaAuth').style.display='block';
   showScreen('screenLogin');
 }
+
+// ── PRESENCE ────────────────────────────────────────────────────────────────
+let _presenceInterval = null;
+
+async function updatePresence(){
+  if(!window._sb || !window._alphaUser?.uid) return;
+  const { error } = await window._sb.from('presence').upsert({
+    user_id:   window._alphaUser.uid,
+    email:     window._alphaUser.email,
+    name:      window._alphaUser.name,
+    last_seen: new Date().toISOString()
+  }, { onConflict: 'user_id' });
+  if(error) console.warn('[Presence] upsert failed:', error.message);
+}
+
+function startPresence(){
+  updatePresence();
+  clearInterval(_presenceInterval);
+  _presenceInterval = setInterval(updatePresence, 30000);
+}
+
+function stopPresence(){
+  clearInterval(_presenceInterval);
+  _presenceInterval = null;
+  if(window._sb && window._alphaUser?.uid){
+    try{ window._sb.from('presence').delete().eq('user_id', window._alphaUser.uid); }catch(e){}
+  }
+}
+
+async function loadOnlineUsers(){
+  const list = document.getElementById('onlineUsersList');
+  if(!list) return;
+  if(!window._sb){
+    list.innerHTML='<div style="color:var(--dim);font-size:12px;text-align:center;padding:20px;">Supabase não inicializado.</div>';
+    return;
+  }
+  list.innerHTML='<div style="color:var(--dim);font-size:12px;text-align:center;padding:20px;">⏳ Carregando...</div>';
+  try{
+    const cutoff = new Date(Date.now() - 3*60*1000).toISOString();
+    const { data, error } = await window._sb
+      .from('presence').select('*').gte('last_seen', cutoff).order('last_seen', { ascending: false });
+    if(error) throw error;
+    if(!data?.length){
+      list.innerHTML='<div style="color:var(--dim);font-size:12px;text-align:center;padding:20px;">Nenhum usuário online no momento.</div>';
+      return;
+    }
+    list.innerHTML = data.map(u=>{
+      const ago = Math.floor((Date.now() - new Date(u.last_seen).getTime()) / 1000);
+      const agoTxt = ago < 60 ? ago+'s atrás' : Math.floor(ago/60)+'min atrás';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div>
+          <div style="font-size:13px;font-weight:700;">🟢 ${u.name||'—'}</div>
+          <div style="font-size:11px;color:var(--dim);">${u.email}</div>
+        </div>
+        <div style="font-size:11px;color:var(--dim);">${agoTxt}</div>
+      </div>`;
+    }).join('') +
+    `<div style="font-size:11px;color:var(--green);text-align:right;padding-top:10px;font-weight:700;">${data.length} online agora</div>`;
+  }catch(e){
+    list.innerHTML=`<div style="color:var(--red);font-size:12px;text-align:center;padding:20px;">Erro: ${e.message}</div>`;
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 // Called by Supabase onAuthStateChange when user logs in
 window._onAlphaLogin = function(user){
@@ -2037,6 +2117,7 @@ window._onAlphaLogin = function(user){
   }
 
   updateProfileDropdown();
+  startPresence();
   showScreen('screenDashboard');
 
   // Auto-connect se Deriv restaurada
@@ -2584,7 +2665,7 @@ function goToDashboard(){
 // BRAND SYSTEM
 // ════════════════════════════════════════
 const BRAND_DEFAULTS = {
-  name: 'DERIV ROBO SYSTEM',
+  name: 'ALPHA SYSTEM',
   slogan: 'PAINEL DE OPERAÇÕES AUTOMATIZADAS',
   icon: '⚡',
   logoUrl: '',
@@ -2739,13 +2820,25 @@ document.addEventListener('input', function(e){
 });
 
 function showAdminTab(tab){
-  ['robots','admins','codes','brand'].forEach(t=>{
+  ['robots','admins','codes','brand','online'].forEach(t=>{
     const panel = document.getElementById('adminTab'+t.charAt(0).toUpperCase()+t.slice(1));
     const btn   = document.getElementById('adminTabBtn'+t.charAt(0).toUpperCase()+t.slice(1));
     if(panel) panel.style.display = tab===t ? 'block' : 'none';
     if(btn)   btn.classList.toggle('active', tab===t);
   });
-  if(tab==='codes') renderCodeList();
+  if(tab==='codes')  renderCodeList();
+  if(tab==='online'){ loadOnlineUsers(); startOnlineRefresh(); }
+  else stopOnlineRefresh();
+}
+
+let _onlineRefreshInterval = null;
+function startOnlineRefresh(){
+  clearInterval(_onlineRefreshInterval);
+  _onlineRefreshInterval = setInterval(loadOnlineUsers, 30000);
+}
+function stopOnlineRefresh(){
+  clearInterval(_onlineRefreshInterval);
+  _onlineRefreshInterval = null;
 }
 
 ['rfEntry','rfFactor','rfLevels'].forEach(id=>{

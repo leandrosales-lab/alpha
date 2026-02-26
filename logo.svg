@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <style>@import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@900&amp;display=swap');</style>
+    <radialGradient id="glow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#ffb800" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#020b14" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="bolt-grad" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#fff7aa"/>
+      <stop offset="40%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#ff8c00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo -->
+  <rect width="400" height="400" rx="40" fill="#020b14"/>
+
+  <!-- Glow amarelo -->
+  <ellipse cx="200" cy="185" rx="130" ry="130" fill="url(#glow)"/>
+
+  <!-- Raio -->
+  <polygon
+    points="228,45 122,215 193,215 162,355 282,180 208,180"
+    fill="url(#bolt-grad)"
+    filter="url(#blur-glow)"
+  />
+
+  <!-- Texto -->
+  <text
+    x="200" y="388"
+    font-family="'Exo 2', sans-serif"
+    font-size="26"
+    font-weight="900"
+    letter-spacing="6"
+    fill="#ffb800"
+    text-anchor="middle"
+  >ALPHA SYSTEM</text>
+</svg>
