@@ -2118,7 +2118,12 @@ window._onAlphaLogin = function(user){
 
   updateProfileDropdown();
   startPresence();
-  showScreen('screenDashboard');
+
+  // Só navega ao dashboard se estiver na tela de login (evita interromper outras abas no F5)
+  const _activeScreen = document.querySelector('.screen.active');
+  if(!_activeScreen || _activeScreen.id === 'screenLogin'){
+    showScreen('screenDashboard');
+  }
 
   // Auto-connect se Deriv restaurada
   if(derivAccount){
@@ -3559,6 +3564,10 @@ function loadHistory(market){
 // AUTO-TRADE
 // ════════════════════════════════════════
 function toggleAutoTrade(){
+  if(!autoTradeEnabled && !selectedRobot){
+    log('⚠️ Selecione um robô antes de iniciar.', 'warning');
+    return;
+  }
   autoTradeEnabled=!autoTradeEnabled;
   const btn=document.getElementById('tradeToggleBtn');
   const ind=document.getElementById('autoTradeIndicator');
