@@ -4828,8 +4828,20 @@ function freqSetSize(n){
 
 // ── Atualiza info cards UNDER / OVER ─────
 function freqUpdateCards(counts, total, ready){
+  // Usa as mesmas condições do freqCheckEntry() para evitar falsos positivos visuais
+  const threshold  = parseFloat(document.getElementById('freqHotThreshold')?.value  || 40) / 100;
+  const oppMin     = parseFloat(document.getElementById('freqOppMinThreshold')?.value || 20) / 100;
+
   const underZeros = ready ? FREQ_UNDER_DIGITS.filter(d => counts[d] === 0) : [];
   const overZeros  = ready ? FREQ_OVER_DIGITS.filter(d => counts[d] === 0)  : [];
+  const underHot   = ready && total > 0 ? FREQ_UNDER_DIGITS.filter(d => counts[d] / total >= threshold) : [];
+  const overHot    = ready && total > 0 ? FREQ_OVER_DIGITS.filter(d => counts[d] / total >= threshold)  : [];
+  const underGroupPct = total > 0 ? FREQ_UNDER_DIGITS.reduce((s,d) => s + counts[d], 0) / total : 0;
+  const overGroupPct  = total > 0 ? FREQ_OVER_DIGITS.reduce((s,d)  => s + counts[d], 0) / total : 0;
+
+  const underQualifies = underZeros.length === 1 && underHot.length >= 1 && overGroupPct >= oppMin;
+  const overQualifies  = overZeros.length === 1  && overHot.length >= 1  && underGroupPct >= oppMin;
+  const ambiguous      = underQualifies && overQualifies;
 
   // UNDER card
   const uZeroEl = document.getElementById('freqUnderZeroDigit');
@@ -4837,15 +4849,19 @@ function freqUpdateCards(counts, total, ready){
   const uCard   = document.getElementById('freqCardUnder');
 
   if(freqMode === 'over'){
-    // UNDER pausado — robô está em chain OVER
     uZeroEl.textContent = '—';
     uBadge.textContent = '⏸ PAUSADO'; uBadge.className = 'freq-status-badge aguard';
     uCard.classList.remove('active');
     uCard.style.opacity = '0.45';
   } else {
     uCard.style.opacity = '1';
-    if(!ready){ uZeroEl.textContent='—'; uBadge.textContent='AGUARDANDO'; uBadge.className='freq-status-badge aguard'; uCard.classList.remove('active'); }
-    else if(underZeros.length === 1){
+    if(!ready){
+      uZeroEl.textContent='—'; uBadge.textContent='AGUARDANDO'; uBadge.className='freq-status-badge aguard'; uCard.classList.remove('active');
+    } else if(ambiguous){
+      uZeroEl.textContent = underZeros[0];
+      uBadge.textContent = '⚠️ DUPLO'; uBadge.className = 'freq-status-badge duplo';
+      uCard.classList.remove('active');
+    } else if(underQualifies){
       uZeroEl.textContent = underZeros[0];
       uBadge.textContent = '⚡ SINAL'; uBadge.className = 'freq-status-badge sinal';
       uCard.classList.add('active');
@@ -4854,7 +4870,7 @@ function freqUpdateCards(counts, total, ready){
       uBadge.textContent = '⚠️ DUPLO'; uBadge.className = 'freq-status-badge duplo';
       uCard.classList.remove('active');
     } else {
-      uZeroEl.textContent = '—';
+      uZeroEl.textContent = underZeros.length === 1 ? underZeros[0] : '—';
       uBadge.textContent = 'AGUARDANDO'; uBadge.className = 'freq-status-badge aguard';
       uCard.classList.remove('active');
     }
@@ -4866,15 +4882,19 @@ function freqUpdateCards(counts, total, ready){
   const oCard   = document.getElementById('freqCardOver');
 
   if(freqMode === 'under'){
-    // OVER pausado — robô está em chain UNDER
     oZeroEl.textContent = '—';
     oBadge.textContent = '⏸ PAUSADO'; oBadge.className = 'freq-status-badge aguard';
     oCard.classList.remove('active');
     oCard.style.opacity = '0.45';
   } else {
     oCard.style.opacity = '1';
-    if(!ready){ oZeroEl.textContent='—'; oBadge.textContent='AGUARDANDO'; oBadge.className='freq-status-badge aguard'; oCard.classList.remove('active'); }
-    else if(overZeros.length === 1){
+    if(!ready){
+      oZeroEl.textContent='—'; oBadge.textContent='AGUARDANDO'; oBadge.className='freq-status-badge aguard'; oCard.classList.remove('active');
+    } else if(ambiguous){
+      oZeroEl.textContent = overZeros[0];
+      oBadge.textContent = '⚠️ DUPLO'; oBadge.className = 'freq-status-badge duplo';
+      oCard.classList.remove('active');
+    } else if(overQualifies){
       oZeroEl.textContent = overZeros[0];
       oBadge.textContent = '⚡ SINAL'; oBadge.className = 'freq-status-badge sinal';
       oCard.classList.add('active');
@@ -4883,7 +4903,7 @@ function freqUpdateCards(counts, total, ready){
       oBadge.textContent = '⚠️ DUPLO'; oBadge.className = 'freq-status-badge duplo';
       oCard.classList.remove('active');
     } else {
-      oZeroEl.textContent = '—';
+      oZeroEl.textContent = overZeros.length === 1 ? overZeros[0] : '—';
       oBadge.textContent = 'AGUARDANDO'; oBadge.className = 'freq-status-badge aguard';
       oCard.classList.remove('active');
     }
