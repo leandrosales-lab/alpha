@@ -1928,11 +1928,13 @@ async function alphaLogin(){
   }
 
   if(data?.user && data?.session){
-    // Save session for F5 persistence — onAuthStateChange handles the rest
+    // Save session for F5 persistence
     sessionStorage.setItem('alpha_session', JSON.stringify({
       access_token:  data.session.access_token,
       refresh_token: data.session.refresh_token,
     }));
+    // Navega imediatamente — onAuthStateChange completa o setup do perfil em paralelo
+    showScreen('screenDashboard');
   }
 }
 
