@@ -518,12 +518,24 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     if(_saved){
       try {
         const { access_token, refresh_token } = JSON.parse(_saved);
-        _supa.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
-          if(error){
-            sessionStorage.removeItem('alpha_session');
-            document.documentElement.classList.remove('restoring-session');
-          }
-        });
+        // Verifica se o JWT ainda está válido ANTES de chamar setSession.
+        // Se expirado, setSession tentaria um refresh via rede e poderia segurar o
+        // mutex interno do SDK — bloqueando signInWithPassword indefinidamente.
+        let exp = 0;
+        try { exp = JSON.parse(atob(access_token.split('.')[1])).exp * 1000; } catch(_){}
+        const tokenValid = exp && (exp - Date.now()) > 30000; // > 30s restantes
+        if(tokenValid){
+          _supa.auth.setSession({ access_token, refresh_token }).then(({ error }) => {
+            if(error){
+              sessionStorage.removeItem('alpha_session');
+              document.documentElement.classList.remove('restoring-session');
+            }
+          });
+        } else {
+          // Token expirado: limpa sessão e vai direto pra tela de login sem travar o mutex
+          sessionStorage.removeItem('alpha_session');
+          document.documentElement.classList.remove('restoring-session');
+        }
       } catch(e) {
         sessionStorage.removeItem('alpha_session');
         document.documentElement.classList.remove('restoring-session');
