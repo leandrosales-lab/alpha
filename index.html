@@ -3358,6 +3358,7 @@ function connectPublicStream(market){
 
   wsPub.onopen = () => {
     pubState = 'LOADING';
+    log(`📡 Buscando últimos 5000 dígitos históricos (${mkt})...`, 'info');
     wsPub.send(JSON.stringify({ticks_history:mkt,count:5000,end:'latest',style:'ticks',adjust_start_time:1}));
   };
 
@@ -3376,6 +3377,7 @@ function connectPublicStream(market){
         const d=parts.length>1?parseInt(parts[1].slice(-1)):parseInt(s.slice(-1));
         processDigitSilent(d);
       });
+      log(`✅ ${prices.length} dígitos históricos carregados! Iniciando stream ao vivo...`, 'success');
       updateDiagnostics(); updateOUTable(); updateMartRefTable(); updateFreqGrid();
       updateLastDigit(digits[digits.length-1]??0);
       if(document.getElementById('chartPanel')?.style.display!=='none') feedChartHistory(prices,times);
