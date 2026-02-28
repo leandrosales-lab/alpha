@@ -1904,7 +1904,12 @@ async function alphaLogin(){
 
   let loginResult;
   try {
-    loginResult = await window._sb.auth.signInWithPassword({ email, password: pass });
+    const _timeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Tempo esgotado — verifique sua conexão e tente novamente.')), 10000));
+    loginResult = await Promise.race([
+      window._sb.auth.signInWithPassword({ email, password: pass }),
+      _timeout
+    ]);
   } catch(e) {
     if(btn){ btn.textContent='▶ ENTRAR'; btn.disabled=false; }
     err.textContent = 'Erro inesperado: ' + e.message;
