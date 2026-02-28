@@ -1119,7 +1119,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;margin-top:4px;align-items:end;">
             <div class="field">
               <label>Mercado</label>
-              <select id="boletaMarket" onchange="applyBoleta();updateOUTable();updateDiagnostics();" style="height:38px;">
+              <select id="boletaMarket" onchange="applyBoleta();updateOUTable();updateDiagnostics();reconnectPublicStream();" style="height:38px;">
                 <optgroup label="── Volatility (padrão)">
                   <option value="R_10">Volatility 10</option>
                   <option value="R_25">Volatility 25</option>
@@ -1849,7 +1849,8 @@ function openDerivConnectModal(){
   closeProfileDropdown();
   loginWithDeriv();
 }
-function closeDerivConnectModal(){}
+function showDerivConnectModal(){ document.getElementById('derivConnectModal').style.display='flex'; }
+function closeDerivConnectModal(){ document.getElementById('derivConnectModal').style.display='none'; }
 
 function disconnectDeriv(){
   if(!confirm('Desconectar conta Deriv? O robô será parado.')) return;
@@ -2118,6 +2119,10 @@ window._onAlphaLogin = function(user){
   // Auto-connect se Deriv restaurada
   if(derivAccount){
     setTimeout(()=>{ if(!ws||ws.readyState>1) connectDash(); }, 700);
+  } else {
+    // Inicia stream público de dígitos ao vivo (sem conta Deriv)
+    const _mkt = document.getElementById('boletaMarket')?.value || 'R_100';
+    setTimeout(()=>{ if(!ws||ws.readyState>1) connectPublicStream(_mkt); }, 500);
   }
 };
 
@@ -2616,6 +2621,7 @@ async function logoutAll(){
     ws.close(); ws=null;
   }
   if(freqWs){ freqWs.onclose=null; freqWs.onerror=null; freqWs.onmessage=null; freqWs.close(); freqWs=null; }
+  disconnectPublicStream();
   // Supabase signOut
   if(window._sb) try{ await window._sb.auth.signOut(); }catch(e){}
   sessionStorage.removeItem('alpha_session');
@@ -2993,6 +2999,7 @@ function renderAdminList(){
 // DASHBOARD STATE
 // ════════════════════════════════════════
 let ws = null;
+let wsPub = null; // public WebSocket for live stream without Deriv auth
 let derivAccount = null; // from trader login or selected robot
 let digits = [];
 let freqMap = {0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
@@ -3335,20 +3342,80 @@ function getContractType(){
 }
 
 // ════════════════════════════════════════
+// PUBLIC STREAM (sem auth Deriv)
+// ════════════════════════════════════════
+function disconnectPublicStream(){
+  if(wsPub){ wsPub.onclose=null; wsPub.onerror=null; wsPub.onmessage=null; wsPub.onopen=null; wsPub.close(); wsPub=null; }
+}
+
+function connectPublicStream(market){
+  if(ws && ws.readyState <= 1) return; // trading WS ativo, não interfere
+  disconnectPublicStream();
+  const mkt = market || document.getElementById('boletaMarket')?.value || 'R_100';
+  let pubState = 'CONNECTING';
+  try{ wsPub = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`); }
+  catch(e){ return; }
+
+  wsPub.onopen = () => {
+    pubState = 'LOADING';
+    wsPub.send(JSON.stringify({ticks_history:mkt,count:5000,end:'latest',style:'ticks',adjust_start_time:1}));
+  };
+
+  wsPub.onmessage = (e) => {
+    if(ws && ws.readyState <= 1){ disconnectPublicStream(); return; }
+    let data; try{ data = JSON.parse(e.data); }catch{ return; }
+
+    if(data.msg_type==='history' && data.history && pubState==='LOADING'){
+      pubState = 'LIVE';
+      digits=[]; freqMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+      document.getElementById('digitStream').innerHTML='';
+      const prices = data.history.prices||[];
+      const times  = data.history.times||[];
+      prices.forEach(p=>{
+        const s=p.toString(), parts=s.split('.');
+        const d=parts.length>1?parseInt(parts[1].slice(-1)):parseInt(s.slice(-1));
+        processDigitSilent(d);
+      });
+      updateDiagnostics(); updateOUTable(); updateMartRefTable(); updateFreqGrid();
+      updateLastDigit(digits[digits.length-1]??0);
+      if(document.getElementById('chartPanel')?.style.display!=='none') feedChartHistory(prices,times);
+      else{ window._chartPendingHistory={prices,times}; }
+      wsPub.send(JSON.stringify({ticks:mkt,subscribe:1}));
+    }
+
+    if(data.msg_type==='tick' && data.tick && pubState==='LIVE'){
+      const s=data.tick.quote.toString(), parts=s.split('.');
+      const d=parts.length>1?parseInt(parts[1].slice(-1)):parseInt(s.slice(-1));
+      processDigit(d);
+      updateChart(data.tick.quote, data.tick.epoch);
+    }
+  };
+
+  wsPub.onerror = () => { wsPub=null; };
+  wsPub.onclose = () => { wsPub=null; };
+}
+
+function reconnectPublicStream(){
+  if(ws && ws.readyState <= 1) return;
+  const mkt = document.getElementById('boletaMarket')?.value || 'R_100';
+  connectPublicStream(mkt);
+}
+
+// ════════════════════════════════════════
 // WEBSOCKET & CONNECT
 // ════════════════════════════════════════
 function connectDash(){
-  if(!derivAccount){ log('❌ Faça login com suas credenciais Deriv primeiro.','error'); return; }
+  if(!derivAccount){ showDerivConnectModal(); return; }
   if(ws&&(ws.readyState===0||ws.readyState===1)){ log('⚠️ Já conectado.','warning'); return; }
   if(location.protocol==='file:'){ log('⚠️ Aberto via file:// — use o INICIAR_WINDOWS.bat para funcionar corretamente.','warning'); }
+
+  disconnectPublicStream(); // para stream público antes de conectar com auth
 
   // Credentials ALWAYS come from derivAccount (robots are strategy-only configs)
   const creds = derivAccount;
   const appId = creds?.appId || '127769';
   const token = creds?.token || null;
   const market = document.getElementById('boletaMarket')?.value || 'R_100';
-
-  if(!token && !creds){ log('❌ Faça login com suas credenciais Deriv primeiro.','error'); return; }
 
   // Reset digit state
   digits=[]; freqMap={0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
@@ -3554,9 +3621,9 @@ function loadHistory(market){
 // AUTO-TRADE
 // ════════════════════════════════════════
 function toggleAutoTrade(){
-  if(!autoTradeEnabled && !selectedRobot){
-    log('⚠️ Selecione um robô antes de iniciar.', 'warning');
-    return;
+  if(!autoTradeEnabled){
+    if(!derivAccount || !ws || ws.readyState !== 1){ showDerivConnectModal(); return; }
+    if(!selectedRobot){ log('⚠️ Selecione um robô antes de iniciar.', 'warning'); return; }
   }
   autoTradeEnabled=!autoTradeEnabled;
   const btn=document.getElementById('tradeToggleBtn');
@@ -5531,5 +5598,17 @@ updateDiagnostics();
 updateOUTable();
 updateFreqGrid();
 </script>
+
+<!-- ══ MODAL: CONECTAR DERIV ══ -->
+<div id="derivConnectModal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:380px;text-align:center;position:relative;">
+    <div style="font-size:38px;margin-bottom:12px;">🔗</div>
+    <div style="font-size:14px;font-weight:900;letter-spacing:2px;color:var(--accent);margin-bottom:10px;font-family:'Share Tech Mono',monospace;">CONECTE SUA CONTA DERIV</div>
+    <p style="font-size:13px;color:var(--dim);line-height:1.7;margin-bottom:24px;">Para operar você precisa vincular sua conta Deriv.<br>Você já pode ver o mercado ao vivo gratuitamente.</p>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="closeDerivConnectModal();loginWithDeriv();">🔗 CONECTAR COM DERIV</button>
+    <button class="btn" style="width:100%;background:transparent;border:1px solid var(--border);color:var(--dim);" onclick="closeDerivConnectModal()">Fechar</button>
+  </div>
+</div>
+
 </body>
 </html>
