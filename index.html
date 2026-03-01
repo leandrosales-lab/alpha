@@ -2562,7 +2562,7 @@
           persistSession: false,
           detectSessionInUrl: false,
           flowType: 'implicit',
-          lock: { enabled: false }
+          lock: async (name, acquireTimeout, fn) => fn()
         }
       });
       window._sb = _supa;
