@@ -375,6 +375,13 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
     border-color: rgba(0, 212, 255, .4);
     box-shadow: 0 0 16px rgba(0, 212, 255, .1);
 }
+/* Caixa de erro padronizada — usada via classList.add('err-visible') */
+.err-box { display: none; color: var(--red); font-size: 12px; text-align: center; }
+.err-box.err-visible {
+  display: block;
+  padding: 10px; border-radius: 8px;
+  background: rgba(255,71,87,.08); border: 1px solid rgba(255,71,87,.2);
+}
 
 /* ── TOP NAV ── */
 .topnav {
@@ -2367,7 +2374,7 @@ label{font-size:10px;letter-spacing:2px;color:var(--dim);font-family:'Share Tech
               onkeydown="if(event.key==='Enter')alphaLogin()">
           </div>
           <button class="btn btn-primary" onclick="alphaLogin()" style="margin-top:4px;">▶ ENTRAR</button>
-          <div id="alphaLoginErr" style="color:var(--red);font-size:12px;text-align:center;display:none;"></div>
+          <div id="alphaLoginErr" class="err-box"></div>
         </div>
       </div>
 
@@ -3651,9 +3658,7 @@ function disconnectDeriv(){
   if(!confirm('Desconectar conta Deriv? O robô será parado.')) return;
   if(ws) disconnectDash();
   // Remover token salvo do sessionStorage
-  if(window._alphaUser?.uid){
-    try{ sessionStorage.removeItem('drv_conn_' + window._alphaUser.uid); }catch(e){}
-  }
+  if(window._alphaUser?.uid) _removeDrvConn(window._alphaUser.uid);
   derivAccount = null;
   updateProfileDropdown();
   closeProfileDropdown();
@@ -3680,7 +3685,7 @@ async function alphaLogin(){
   const pass  = document.getElementById('alphaLoginPass')?.value;
   const err   = document.getElementById('alphaLoginErr');
   if(!email||!pass){ err.textContent='Preencha e-mail e senha.'; err.style.display='block'; return; }
-  err.style.display='none';
+  err.classList.remove('err-visible');
 
   // Wait for Supabase to initialize (max 3s)
   let attempts = 0;
@@ -3724,11 +3729,7 @@ async function alphaLogin(){
       'User not found':            'E-mail não cadastrado. Use a aba CADASTRAR.',
     };
     err.textContent = msgs[error.message] || ('Erro: ' + error.message);
-    err.style.display='block';
-    err.style.padding = '10px';
-    err.style.background = 'rgba(255,71,87,.08)';
-    err.style.borderRadius = '8px';
-    err.style.border = '1px solid rgba(255,71,87,.2)';
+    err.classList.add('err-visible');
     return;
   }
 
@@ -3889,21 +3890,18 @@ window._onAlphaLogin = function(user){
 
   // Tentar restaurar conexão Deriv salva do sessionStorage
   if(!derivAccount && user.uid){
-    try{
-      const saved = sessionStorage.getItem('drv_conn_' + user.uid);
-      if(saved){
-        const conn = JSON.parse(saved);
-        derivAccount = {
-          loginid:   conn.loginid,
-          token:     conn.token,
-          appId:     conn.appId || DERIV_APP_ID,
-          accType:   conn.accType,
-          isVirtual: conn.isVirtual,
-          currency:  conn.currency
-        };
-        log('🔗 Deriv restaurada automaticamente: ' + conn.loginid, 'success');
-      }
-    }catch(e){}
+    const conn = _loadDrvConn(user.uid);
+    if(conn){
+      derivAccount = {
+        loginid:   conn.loginid,
+        token:     conn.token,
+        appId:     conn.appId || DERIV_APP_ID,
+        accType:   conn.accType,
+        isVirtual: conn.isVirtual,
+        currency:  conn.currency
+      };
+      log('🔗 Deriv restaurada automaticamente: ' + conn.loginid, 'success');
+    }
   }
 
   updateProfileDropdown();
@@ -4055,17 +4053,15 @@ async function finishOAuthLogin(acc){
 
   // Persistir conexão Deriv no sessionStorage (por uid) para auto-reconexão na sessão
   if(alphaUser?.uid){
-    try{
-      sessionStorage.setItem('drv_conn_' + alphaUser.uid, JSON.stringify({
-        loginid:   acc.loginid,
-        token:     acc.token,
-        appId:     DERIV_APP_ID,
-        accType:   acc.isVirtual ? 'demo' : 'real',
-        isVirtual: acc.isVirtual,
-        currency:  acc.currency,
-        savedAt:   Date.now()
-      }));
-    }catch(e){}
+    _saveDrvConn(alphaUser.uid, {
+      loginid:   acc.loginid,
+      token:     acc.token,
+      appId:     DERIV_APP_ID,
+      accType:   acc.isVirtual ? 'demo' : 'real',
+      isVirtual: acc.isVirtual,
+      currency:  acc.currency,
+      savedAt:   Date.now()
+    });
   }
   // Salvar metadados no Supabase (sem o token)
   if(window._sb && alphaUser?.uid){
@@ -4135,10 +4131,12 @@ function showOAuthError(msg){
 })();
 
 async function loginAdmin(){
-  const u = document.getElementById('adminUser').value.trim();
-  const p = document.getElementById('adminPass').value;
-  const err = document.getElementById('adminLoginErr');
-  if(!err){ return; }
+  const uEl = document.getElementById('adminUser');
+  const pEl = document.getElementById('adminPass');
+  const err  = document.getElementById('adminLoginErr');
+  if(!uEl || !pEl || !err) return; // elementos não presentes na tela atual
+  const u = uEl.value.trim();
+  const p = pEl.value;
   const hash = await hashPass(p);
   let found = admins.find(a => a.user === u && a.pass === hash);
   // Migração automática: senhas antigas em btoa → SHA-256
@@ -4160,7 +4158,7 @@ async function loginAdmin(){
   showScreen('screenAdmin');
 }
 
-function safeEl(id){ return document.getElementById(id); }
+function safeEl(id){ return $el(id); }
 function safeSet(id, prop, val){ const el=safeEl(id); if(el) el[prop]=val; }
 function safeCss(id, css){ const el=safeEl(id); if(el) el.style.cssText=css; }
 
@@ -4819,16 +4817,21 @@ let accountBalance=0, accountCurrency='USD';
 let dynamicMartTable=[];
 let connectTimeout=null;
 // ── DOM cache — elementos consultados a cada tick ────────────────────────
-// Populado após DOMContentLoaded para evitar null refs
 const _dom = {};
 document.addEventListener('DOMContentLoaded', ()=>{
   const ids = ['boletaSG','boletaSL','boletaMarket','freqHotThreshold',
                'freqOppMinThreshold','freqEntry','freqSG','freqSL',
-               'pingDot','pingBox','pingVal','bPnl','pnlFill','bStatus'];
+               'pingDot','pingBox','pingVal','bPnl','pnlFill','bStatus',
+               'accBalanceD','freqAccBalance'];
   ids.forEach(id=>{ _dom[id] = document.getElementById(id); });
 });
-// Helper: retorna elemento cacheado ou faz query (fallback seguro)
+// $el — DOM query com cache; safeEl delega aqui para consistência
 function $el(id){ return _dom[id] || document.getElementById(id); }
+
+// ── Helpers para token Deriv em sessionStorage ────────────────────────────
+function _saveDrvConn(uid, data){ try{ sessionStorage.setItem('drv_conn_'+uid, JSON.stringify(data)); }catch(e){} }
+function _loadDrvConn(uid)      { try{ const v=sessionStorage.getItem('drv_conn_'+uid); return v?JSON.parse(v):null; }catch(e){ return null; } }
+function _removeDrvConn(uid)    { try{ sessionStorage.removeItem('drv_conn_'+uid); }catch(e){} }
 
 // ── WebSocket auto-reconnect ──────────────────────────────────────────────
 let _wsReconnectTimer = null;
@@ -4839,7 +4842,7 @@ function _scheduleReconnect(){
   const delay = Math.min(1000 * Math.pow(2, _wsReconnectAttempts), WS_RECONNECT_MAX_DELAY);
   _wsReconnectAttempts++;
   log(`🔄 Reconectando em ${Math.round(delay/1000)}s (tentativa ${_wsReconnectAttempts})...`, 'warning');
-  _wsReconnectTimer = setTimeout(()=>{ if(derivAccount && !ws) connectDash(); }, delay);
+  _wsReconnectTimer = setTimeout(()=>{ try{ if(derivAccount && !ws) connectDash(); }catch(e){ log('❌ Erro ao reconectar: '+e.message,'error'); } }, delay);
 }
 function _resetReconnect(){
   clearTimeout(_wsReconnectTimer);
@@ -5400,7 +5403,7 @@ updateMartRefTable(); updateFreqGrid(); updateMartRefTable();
       else if(code==='InvalidToken' || code==='WrongResponse' || code==='AuthorizationRequired'){
         // Token expirado/inválido — limpa sessionStorage e solicita nova autenticação OAuth
         const _uid = window._alphaUser?.uid;
-        if(_uid){ try{ sessionStorage.removeItem('drv_conn_' + _uid); }catch(e){} }
+        if(_uid) _removeDrvConn(_uid);
         derivAccount = null;
         updateProfileDropdown();
         log('🔐 Sessão Deriv expirada. Clique em "Conectar Deriv" no menu de perfil para reconectar.','warning');
@@ -5804,9 +5807,7 @@ function stopPing(){
   pingInterval = null;
   pingAlertShown = false;
   // Reset UI
-  const dot=document.getElementById('pingDot');
-  const box=document.getElementById('pingBox');
-  const val=document.getElementById('pingVal');
+  const dot=$el('pingDot'), box=$el('pingBox'), val=$el('pingVal');
   if(dot){ dot.className='ping-dot'; }
   if(box){ box.className='ping-box'; }
   if(val){ val.textContent='—'; }
@@ -6741,8 +6742,8 @@ function freqSetSize(n){
 // ── Atualiza info cards UNDER / OVER ─────
 function freqUpdateCards(counts, total, ready){
   // Usa as mesmas condições do freqCheckEntry() para evitar falsos positivos visuais
-  const threshold  = parseFloat(document.getElementById('freqHotThreshold')?.value  || 40) / 100;
-  const oppMin     = parseFloat(document.getElementById('freqOppMinThreshold')?.value || 20) / 100;
+  const threshold  = parseFloat($el('freqHotThreshold')?.value  || 40) / 100;
+  const oppMin     = parseFloat($el('freqOppMinThreshold')?.value || 20) / 100;
 
   const underZeros = ready ? FREQ_UNDER_DIGITS.filter(d => counts[d] === 0) : [];
   const overZeros  = ready ? FREQ_OVER_DIGITS.filter(d => counts[d] === 0)  : [];
@@ -6934,8 +6935,8 @@ function freqCheckEntry(){
   const { counts, total } = freqCalcFreq(freqAnalysisSize);
   if(total === 0) return;
 
-  const threshold    = parseFloat(document.getElementById('freqHotThreshold')?.value  || 40) / 100;
-  const oppMin       = parseFloat(document.getElementById('freqOppMinThreshold')?.value || 20) / 100;
+  const threshold    = parseFloat($el('freqHotThreshold')?.value  || 40) / 100;
+  const oppMin       = parseFloat($el('freqOppMinThreshold')?.value || 20) / 100;
 
   // Frequência total de cada grupo (soma dos 3 dígitos / total de ticks)
   const underGroupPct = FREQ_UNDER_DIGITS.reduce((s, d) => s + counts[d], 0) / total;
