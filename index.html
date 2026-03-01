@@ -3719,12 +3719,16 @@ async function alphaLogin(){
   if(error){
     const msgs = {
       'Invalid login credentials': 'E-mail ou senha incorretos.',
-      'Email not confirmed':       'Confirme seu e-mail antes de entrar.',
+      'Email not confirmed':       '📧 Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.',
       'Too many requests':         'Muitas tentativas. Aguarde alguns minutos.',
-      'User not found':            'E-mail não cadastrado.',
+      'User not found':            'E-mail não cadastrado. Use a aba CADASTRAR.',
     };
     err.textContent = msgs[error.message] || ('Erro: ' + error.message);
     err.style.display='block';
+    err.style.padding = '10px';
+    err.style.background = 'rgba(255,71,87,.08)';
+    err.style.borderRadius = '8px';
+    err.style.border = '1px solid rgba(255,71,87,.2)';
     return;
   }
 
