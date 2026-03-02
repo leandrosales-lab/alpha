@@ -3645,28 +3645,30 @@
         <!-- Config -->
         <div class="fq-panel">
           <div class="fq-label">Configuração</div>
-          <div class="fq-input-group">
-            <div class="fq-input-label">ENTRADA (USD)</div>
-            <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" class="fq-input">
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div id="freqConfigInputs">
             <div class="fq-input-group">
-              <div class="fq-input-label">STOP GAIN</div>
-              <input type="number" id="freqSG" value="10" step="0.50" class="fq-input">
+              <div class="fq-input-label">ENTRADA (USD)</div>
+              <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" class="fq-input">
             </div>
-            <div class="fq-input-group">
-              <div class="fq-input-label">STOP LOSS</div>
-              <input type="number" id="freqSL" value="5" step="0.50" class="fq-input">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="fq-input-group">
+                <div class="fq-input-label">STOP GAIN</div>
+                <input type="number" id="freqSG" value="10" step="0.50" class="fq-input">
+              </div>
+              <div class="fq-input-group">
+                <div class="fq-input-label">STOP LOSS</div>
+                <input type="number" id="freqSL" value="5" step="0.50" class="fq-input">
+              </div>
             </div>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            <div class="fq-input-group">
-              <div class="fq-input-label">DIG. QUENTE %</div>
-              <input type="number" id="freqHotThreshold" value="25" step="5" min="10" max="90" class="fq-input">
-            </div>
-            <div class="fq-input-group">
-              <div class="fq-input-label">EQUIL. OPOSTO %</div>
-              <input type="number" id="freqOppMinThreshold" value="15" step="5" min="0" max="60" class="fq-input">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="fq-input-group">
+                <div class="fq-input-label">DIG. QUENTE %</div>
+                <input type="number" id="freqHotThreshold" value="25" step="5" min="10" max="90" class="fq-input">
+              </div>
+              <div class="fq-input-group">
+                <div class="fq-input-label">EQUIL. OPOSTO %</div>
+                <input type="number" id="freqOppMinThreshold" value="15" step="5" min="0" max="60" class="fq-input">
+              </div>
             </div>
           </div>
           <button id="freqToggleBtn" onclick="freqToggleRobot()" class="fq-start-btn">▶ INICIAR ROBÔ</button>
@@ -7223,6 +7225,8 @@
           document.getElementById('freqCardOverTitle').textContent = '🎯 ALVO';
           document.getElementById('freqCardOverInfo').innerHTML = 'Dígito alvo: <span id="freqMatchTarget" style="color:var(--fq-over);font-family:\'Share Tech Mono\',monospace;">—</span>';
         }
+        const cfgInputs = document.getElementById('freqConfigInputs');
+        if (cfgInputs) cfgInputs.style.display = strat === 'neutros' ? 'none' : '';
         freqLog(`🔄 Estratégia: ${strat === 'extremos' ? '⚡ EXTREMOS' : '🎯 NEUTROS MATCH'}`, 'info');
         freqMode = null;
         const { counts, total } = freqCalcFreq(freqAnalysisSize);
