@@ -7532,11 +7532,11 @@
           const statusEl = document.getElementById('freqStatusTxt');
           if (statusEl) statusEl.textContent = `❌ PERDEU — ${freqLevelLabel(freqMartLevel)} próximo`;
           freqLog(`💸 LOSS | ${freqLevelLabel(freqMartLevel)} ($${freqGetEntry(freqMartLevel).toFixed(2)}) | P&L atualizado em breve...`, 'error');
-          // Verifica Stop Loss estimado com base na stake perdida
+          // Verifica Stop Loss estimado com base na stake perdida (ignorado no MATCH)
           const lostStake = freqGetEntry(freqMartLevel - 1);
           const estimatedPnl = freqSessionPnl - lostStake;
           const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-          if (estimatedPnl <= -sl) {
+          if (freqStrategy !== 'neutros' && estimatedPnl <= -sl) {
             freqLog(`🛑 STOP LOSS estimado atingido (~$${Math.abs(estimatedPnl).toFixed(2)})`, 'error');
             freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('loss');
@@ -7876,9 +7876,9 @@
             }
           } else {
             freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${freqSessionPnl >= 0 ? '+' : ''}$${freqSessionPnl.toFixed(2)}`, 'error');
-            // Verifica Stop Loss com valor exato
+            // Verifica Stop Loss com valor exato (ignorado no MATCH)
             const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-            if (freqSessionPnl <= -sl && freqRobotActive) {
+            if (freqStrategy !== 'neutros' && freqSessionPnl <= -sl && freqRobotActive) {
               freqRobotActive = false;
               freqSetToggleBtn(false);
               freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
@@ -7934,7 +7934,7 @@
           if (statusEl) statusEl.textContent = `❌ PERDEU — ${freqLevelLabel(freqMartLevel)} próximo`;
           freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | ${freqLevelLabel(freqMartLevel)} ($${freqGetEntry(freqMartLevel).toFixed(2)}) | P&L: ${freqSessionPnl >= 0 ? '+' : ''}$${freqSessionPnl.toFixed(2)}`, 'error');
           const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-          if (freqSessionPnl <= -sl) {
+          if (freqStrategy !== 'neutros' && freqSessionPnl <= -sl) {
             freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
             freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('loss'); return;
