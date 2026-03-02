@@ -3624,6 +3624,15 @@
             ⬤ Desconectado</div>
         </div>
 
+        <!-- Robot selector -->
+        <div class="fq-panel">
+          <div class="fq-label">Robô</div>
+          <div class="fq-size-btns">
+            <button class="fq-size-btn active" id="freqBtnExtremus" onclick="freqSetStrategy('extremos')">⚡ EXTREMOS</button>
+            <button class="fq-size-btn" id="freqBtnNeutros" onclick="freqSetStrategy('neutros')">🎯 MATCH</button>
+          </div>
+        </div>
+
         <!-- Analysis size -->
         <div class="fq-panel">
           <div class="fq-label">Análise do Robô</div>
@@ -3736,10 +3745,10 @@
           <!-- UNDER 3 -->
           <div class="fq-trade-card fq-under-card" id="freqCardUnder">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <div style="font-size:14px;font-weight:700;color:var(--fq-under);">📉 UNDER 3</div>
+              <div id="freqCardUnderTitle" style="font-size:14px;font-weight:700;color:var(--fq-under);">📉 UNDER 3</div>
               <span class="freq-status-badge aguard" id="freqBadgeUnder">AGUARDANDO</span>
             </div>
-            <div style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">
+            <div id="freqCardUnderInfo" style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">
               Monitora: <span style="color:var(--fq-under);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}
             </div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fq-dim);margin:6px 0;">
@@ -3765,10 +3774,10 @@
           <!-- OVER 6 -->
           <div class="fq-trade-card fq-over-card" id="freqCardOver">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-              <div style="font-size:14px;font-weight:700;color:var(--fq-over);">📈 OVER 6</div>
+              <div id="freqCardOverTitle" style="font-size:14px;font-weight:700;color:var(--fq-over);">📈 OVER 6</div>
               <span class="freq-status-badge aguard" id="freqBadgeOver">AGUARDANDO</span>
             </div>
-            <div style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">
+            <div id="freqCardOverInfo" style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">
               Monitora: <span style="color:var(--fq-over);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}</div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fq-dim);margin:6px 0;">
               <span>Martingale</span><span style="color:var(--fq-text);">1.9× — 8 níveis</span>
@@ -6745,7 +6754,9 @@
       // ── Relatório do robô Freq. Dígitos ──────
       async function freqAddTradeReport(isWin, profit, martLevel) {
         const now = new Date();
-        const strategy = freqMode === 'over' ? 'OVER 6' : 'UNDER 3';
+        const strategy = freqTradeMode === 'over' ? 'OVER 6'
+                       : freqTradeMode === 'match' ? `MATCH ${freqTradeMatchDigit}`
+                       : 'UNDER 3';
         const trade = {
           date: now.toLocaleDateString('pt-BR'),
           time: now.toLocaleTimeString('pt-BR'),
@@ -6961,6 +6972,9 @@
       const FREQ_UNDER_FACTOR = 1.85;
       const FREQ_OVER_FACTOR = 1.9;
       const FREQ_MAX_LEVELS = 8;
+      const FREQ_NEUTROS_DIGITS     = [3, 4, 5, 6]; // grupo monitorado pelo MATCH
+      const FREQ_NEUTROS_FACTOR     = 1.3;           // fator conservador com payout ~9x
+      const FREQ_NEUTROS_MAX_LEVELS = 17;            // 17 níveis → risco máx ~R$99,77 (base 0,35)
       // Casas decimais por mercado — determina o último dígito da cotação
       const FREQ_DECIMALS = { 'R_10': 3, 'R_25': 3, 'R_50': 4, 'R_75': 4, 'R_100': 2 };
       function freqGetLastDigit(price, market) {
@@ -6977,7 +6991,11 @@
       let freqRobotActive = false;
       let freqTradeActive = false;
       let freqCurrentContractId = null;
-      let freqMode = null;     // 'under' | 'over' | null
+      let freqMode = null;          // 'under' | 'over' | 'match' | null
+      let freqStrategy = 'extremos'; // 'extremos' | 'neutros'
+      let freqMatchDigit = null;     // dígito alvo do DIGITMATCH (3|4|5|6 | null)
+      let freqTradeMode = null;      // mode capturado na entrada (para relatório)
+      let freqTradeMatchDigit = null; // freqMatchDigit capturado na entrada
       let freqMartLevel = 0;        // 0 = base, 1..5 = martingale
       let freqSessionWins = 0;
       let freqSessionLosses = 0;
@@ -7187,8 +7205,79 @@
         freqRenderChart();
       }
 
+      // ── Alterna estratégia: EXTREMOS ↔ NEUTROS MATCH ──
+      function freqSetStrategy(strat) {
+        if (freqRobotActive) { freqLog('⚠️ Pare o robô antes de trocar a estratégia.', 'warning'); return; }
+        freqStrategy = strat;
+        freqMatchDigit = null;
+        document.getElementById('freqBtnExtremus').classList.toggle('active', strat === 'extremos');
+        document.getElementById('freqBtnNeutros').classList.toggle('active', strat === 'neutros');
+        if (strat === 'extremos') {
+          document.getElementById('freqCardUnderTitle').textContent = '📉 UNDER 3';
+          document.getElementById('freqCardUnderInfo').innerHTML = 'Monitora: <span style="color:var(--fq-under);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}';
+          document.getElementById('freqCardOverTitle').textContent = '📈 OVER 6';
+          document.getElementById('freqCardOverInfo').innerHTML = 'Monitora: <span style="color:var(--fq-over);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}';
+        } else {
+          document.getElementById('freqCardUnderTitle').textContent = '🎯 MATCH [3-6]';
+          document.getElementById('freqCardUnderInfo').innerHTML = 'Monitora: <span style="color:var(--fq-under);">3, 4, 5, 6</span> &nbsp;|&nbsp; DIGITMATCH no dígito em 0%';
+          document.getElementById('freqCardOverTitle').textContent = '🎯 ALVO';
+          document.getElementById('freqCardOverInfo').innerHTML = 'Dígito alvo: <span id="freqMatchTarget" style="color:var(--fq-over);font-family:\'Share Tech Mono\',monospace;">—</span>';
+        }
+        freqLog(`🔄 Estratégia: ${strat === 'extremos' ? '⚡ EXTREMOS' : '🎯 NEUTROS MATCH'}`, 'info');
+        freqMode = null;
+        const { counts, total } = freqCalcFreq(freqAnalysisSize);
+        freqUpdateCards(counts, total, total >= freqAnalysisSize);
+        freqUpdateLevelDisplay();
+      }
+
       // ── Atualiza info cards UNDER / OVER ─────
       function freqUpdateCards(counts, total, ready) {
+        // ── NEUTROS MATCH: exibe análise do grupo [3-6] ──
+        if (freqStrategy === 'neutros') {
+          const zeros = ready && total > 0 ? FREQ_NEUTROS_DIGITS.filter(d => counts[d] === 0) : [];
+          const uZeroEl = document.getElementById('freqUnderZeroDigit');
+          const uBadge  = document.getElementById('freqBadgeUnder');
+          const uCard   = document.getElementById('freqCardUnder');
+          const oZeroEl = document.getElementById('freqOverZeroDigit');
+          const oBadge  = document.getElementById('freqBadgeOver');
+          const oCard   = document.getElementById('freqCardOver');
+          const matchTargetEl = document.getElementById('freqMatchTarget');
+
+          if (freqMode === 'match') {
+            // Trade ativa: exibe dígito alvo e pausa o OVER card
+            if (uZeroEl) uZeroEl.textContent = freqMatchDigit ?? '—';
+            if (uBadge)  { uBadge.textContent = '⚡ MATCH'; uBadge.className = 'freq-status-badge sinal'; }
+            if (uCard)   { uCard.classList.add('active'); uCard.style.opacity = '1'; }
+            if (oZeroEl) oZeroEl.textContent = freqMatchDigit ?? '—';
+            if (oBadge)  { oBadge.textContent = '⏸ PAUSADO'; oBadge.className = 'freq-status-badge aguard'; }
+            if (oCard)   { oCard.classList.remove('active'); oCard.style.opacity = '0.45'; }
+            if (matchTargetEl) matchTargetEl.textContent = freqMatchDigit ?? '—';
+          } else if (!ready) {
+            [uZeroEl, oZeroEl].forEach(el => { if (el) el.textContent = '—'; });
+            [uBadge, oBadge].forEach(el => { if (el) { el.textContent = 'AGUARDANDO'; el.className = 'freq-status-badge aguard'; } });
+            [uCard, oCard].forEach(el => { if (el) { el.classList.remove('active'); el.style.opacity = '1'; } });
+            if (matchTargetEl) matchTargetEl.textContent = '—';
+          } else if (zeros.length > 0) {
+            const best = zeros.reduce((b, d) => counts[d] < counts[b] ? d : b, zeros[0]);
+            if (uZeroEl) uZeroEl.textContent = zeros.join(', ');
+            if (uBadge)  { uBadge.textContent = '⚡ SINAL'; uBadge.className = 'freq-status-badge sinal'; }
+            if (uCard)   { uCard.classList.add('active'); uCard.style.opacity = '1'; }
+            if (oZeroEl) oZeroEl.textContent = best;
+            if (oBadge)  { oBadge.textContent = '🎯 ALVO'; oBadge.className = 'freq-status-badge sinal'; }
+            if (oCard)   { oCard.classList.add('active'); oCard.style.opacity = '1'; }
+            if (matchTargetEl) matchTargetEl.textContent = best;
+          } else {
+            if (uZeroEl) uZeroEl.textContent = '—';
+            if (uBadge)  { uBadge.textContent = 'AGUARDANDO'; uBadge.className = 'freq-status-badge aguard'; }
+            if (uCard)   { uCard.classList.remove('active'); uCard.style.opacity = '1'; }
+            if (oZeroEl) oZeroEl.textContent = '—';
+            if (oBadge)  { oBadge.textContent = 'AGUARDANDO'; oBadge.className = 'freq-status-badge aguard'; }
+            if (oCard)   { oCard.classList.remove('active'); oCard.style.opacity = '1'; }
+            if (matchTargetEl) matchTargetEl.textContent = '—';
+          }
+          return;
+        }
+
         // Usa as mesmas condições do freqCheckEntry() para evitar falsos positivos visuais
         const threshold = parseFloat($el('freqHotThreshold')?.value || 40) / 100;
         const oppMin = parseFloat($el('freqOppMinThreshold')?.value || 20) / 100;
@@ -7282,7 +7371,8 @@
       // ── Calcula entrada com martingale ───────
       function freqGetEntry(level) {
         const base = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
-        const factor = (freqMode === 'over') ? FREQ_OVER_FACTOR : FREQ_UNDER_FACTOR;
+        const factor = freqMode === 'match' ? FREQ_NEUTROS_FACTOR
+                     : (freqMode === 'over') ? FREQ_OVER_FACTOR : FREQ_UNDER_FACTOR;
         let amt = base;
         for (let i = 0; i < level; i++) amt *= factor;
         return parseFloat(amt.toFixed(2));
@@ -7306,6 +7396,12 @@
           if (oNext) oNext.textContent = '$' + freqGetEntry(freqMartLevel).toFixed(2);
           if (uLevel) uLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
           if (uNext) uNext.textContent = '$' + base.toFixed(2);
+        } else if (freqMode === 'match') {
+          const maxG = FREQ_NEUTROS_MAX_LEVELS - 1;
+          if (uLevel) uLevel.textContent = freqLevelLabel(freqMartLevel) + ' / ' + maxG + ' gales';
+          if (uNext) uNext.textContent = '$' + freqGetEntry(freqMartLevel).toFixed(2);
+          if (oLevel) oLevel.textContent = freqMatchDigit !== null ? 'Alvo: ' + freqMatchDigit : '—';
+          if (oNext) oNext.textContent = '—';
         } else {
           if (uLevel) uLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
           if (oLevel) oLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
@@ -7316,8 +7412,10 @@
 
       // ── Resolve contrato 1-tick diretamente pelo dígito (sem esperar POC) ────────
       function freqResolveOnTick(digit) {
-        const isWin = (freqMode === 'under') ? FREQ_UNDER_DIGITS.includes(digit)
-          : FREQ_OVER_DIGITS.includes(digit);
+        const isWin = freqMode === 'under' ? FREQ_UNDER_DIGITS.includes(digit)
+          : freqMode === 'over' ? FREQ_OVER_DIGITS.includes(digit)
+          : freqMode === 'match' ? digit === freqMatchDigit
+          : false;
         // Marca como resolvido pelo tick → POC só fará atualização de P&L exato
         freqTickHandledId = freqCurrentContractId;
         freqTickHandledMartLevel = freqTradeMartLevel; // salva antes de freqEnterTrade sobrescrever
@@ -7330,6 +7428,7 @@
           freqSessionWins++;
           freqUpdateStats();
           freqMode = null;
+          freqMatchDigit = null;
           freqMartLevel = 0;
           freqUpdateOpIndicator();
           freqLog(`🏆 WIN | aguardando P&L exato do servidor...`, 'success');
@@ -7357,8 +7456,10 @@
             freqSetToggleBtn(false);
             return;
           }
-          if (freqMartLevel >= FREQ_MAX_LEVELS) {
+          const _maxLvl = freqMode === 'match' ? FREQ_NEUTROS_MAX_LEVELS : FREQ_MAX_LEVELS;
+          if (freqMartLevel >= _maxLvl) {
             freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
+            freqMode = null; freqMatchDigit = null;
             freqClockStop('martingale'); freqOpClockStop('martingale', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('martingale');
             freqRobotActive = false;
@@ -7378,6 +7479,15 @@
         // ── Em cadeia ativa (pós-loss): entra imediatamente no próximo tick ──
         if (freqMode === 'under') { freqEnterTrade('under'); return; }
         if (freqMode === 'over') { freqEnterTrade('over'); return; }
+        if (freqMode === 'match') {
+          if (freqMartLevel >= FREQ_NEUTROS_MAX_LEVELS) {
+            freqLog(`🛑 NEUTROS MATCH — limite de ${FREQ_NEUTROS_MAX_LEVELS} níveis atingido`, 'error');
+            freqMode = null; freqMatchDigit = null; freqTradeActive = false;
+            return;
+          }
+          freqEnterTrade('match');
+          return;
+        }
 
         // ── Estado neutro: avalia gatilho com filtro de dígito quente ──
         const { counts, total } = freqCalcFreq(freqAnalysisSize);
@@ -7385,6 +7495,20 @@
 
         const threshold = parseFloat($el('freqHotThreshold')?.value || 40) / 100;
         const oppMin = parseFloat($el('freqOppMinThreshold')?.value || 20) / 100;
+
+        // ── NEUTROS MATCH: avalia dígitos [3,4,5,6] ──
+        if (freqStrategy === 'neutros') {
+          const zeros = FREQ_NEUTROS_DIGITS.filter(d => counts[d] === 0);
+          if (zeros.length === 0) return;
+          // Escolhe o mais ausente (menor count); empate → menor índice (já ordenado)
+          const target = zeros.reduce((best, d) => counts[d] < counts[best] ? d : best, zeros[0]);
+          freqMatchDigit = target;
+          freqMode = 'match';
+          freqMartLevel = 0;
+          freqLog(`🎯 NEUTROS MATCH — dígito ${target} em 0%`, 'warning');
+          freqEnterTrade('match');
+          return;
+        }
 
         // Frequência total de cada grupo (soma dos 3 dígitos / total de ticks)
         const underGroupPct = FREQ_UNDER_DIGITS.reduce((s, d) => s + counts[d], 0) / total;
@@ -7443,12 +7567,17 @@
         if (!freqTradeActive || !freqMode) { if (el) el.style.display = 'none'; return; }
         if (el) el.style.display = 'block';
         const isUnder = freqMode === 'under';
+        const isMatch = freqMode === 'match';
         const icon = document.getElementById('freqOpIcon');
         const label = document.getElementById('freqOpLabel');
         const level = document.getElementById('freqOpLevel');
-        if (icon) icon.textContent = isUnder ? '📉' : '📈';
-        if (label) { label.textContent = isUnder ? 'UNDER 3' : 'OVER 6'; label.style.color = isUnder ? 'var(--fq-under)' : 'var(--fq-over)'; }
-        if (level) { const amt = freqGetEntry(freqMartLevel); level.textContent = `${freqLevelLabel(freqMartLevel)} / ${FREQ_MAX_GALES} gales — $${amt.toFixed(2)}`; }
+        if (icon) icon.textContent = isUnder ? '📉' : isMatch ? '🎯' : '📈';
+        if (label) {
+          label.textContent = isUnder ? 'UNDER 3' : isMatch ? `MATCH ${freqMatchDigit}` : 'OVER 6';
+          label.style.color = isUnder ? 'var(--fq-under)' : isMatch ? 'var(--fq-gold)' : 'var(--fq-over)';
+        }
+        const maxGales = isMatch ? FREQ_NEUTROS_MAX_LEVELS - 1 : FREQ_MAX_GALES;
+        if (level) { const amt = freqGetEntry(freqMartLevel); level.textContent = `${freqLevelLabel(freqMartLevel)} / ${maxGales} gales — $${amt.toFixed(2)}`; }
       }
 
       // ══════════════════════════════════════════
@@ -7576,11 +7705,16 @@
         if (!freqWs || freqWs.readyState !== 1) return;
         if (!derivAccount?.token) { alert('Conecte sua conta Deriv primeiro!'); return; }
         const amount = freqGetEntry(freqMartLevel);
-        const contractType = mode === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
-        const barrier = mode === 'under' ? '3' : '6';
+        const contractType = mode === 'match' ? 'DIGITMATCH'
+                           : mode === 'under' ? 'DIGITUNDER' : 'DIGITOVER';
+        const barrier = mode === 'under' ? '3' : mode === 'over' ? '6' : String(freqMatchDigit);
+        const modeLabel = mode === 'under' ? 'UNDER 3' : mode === 'over' ? 'OVER 6' : `MATCH ${freqMatchDigit}`;
+        const modeIcon  = mode === 'under' ? '📉' : mode === 'over' ? '📈' : '🎯';
         freqTradeActive = true;
         freqEntryTick = freqTotalDigits;
         freqTradeMartLevel = freqMartLevel;
+        freqTradeMode = mode;
+        freqTradeMatchDigit = freqMatchDigit;
         if (freqMartLevel === 0) freqOpClockShow(); // inicia relógio na 1ª entrada
         freqOpTotalStaked += amount;               // acumula stake do gale
         const entEl = document.getElementById('freqOpClockEntry');
@@ -7588,8 +7722,8 @@
         playFreqEntry();
         freqUpdateOpIndicator();
         const statusEl = document.getElementById('freqStatusTxt');
-        if (statusEl) statusEl.textContent = mode === 'under' ? `📉 UNDER 3 — $${amount}` : `📈 OVER 6 — $${amount}`;
-        freqLog(`📤 Ordem: ${mode === 'under' ? 'UNDER 3' : 'OVER 6'} — $${amount.toFixed(2)} (${freqLevelLabel(freqMartLevel)})`, 'info');
+        if (statusEl) statusEl.textContent = `${modeIcon} ${modeLabel} — $${amount}`;
+        freqLog(`📤 Ordem: ${modeLabel} — $${amount.toFixed(2)} (${freqLevelLabel(freqMartLevel)})`, 'info');
         freqWs.send(JSON.stringify({
           buy: 1,
           price: amount.toFixed(2),
