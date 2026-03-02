@@ -7232,9 +7232,8 @@
 
       // ── Atualiza info cards UNDER / OVER ─────
       function freqUpdateCards(counts, total, ready) {
-        // ── NEUTROS MATCH: exibe análise do grupo [3-6] ──
+        // ── NEUTROS MATCH: exibe análise do grupo [3-6] com as 3 condições ──
         if (freqStrategy === 'neutros') {
-          const zeros = ready && total > 0 ? FREQ_NEUTROS_DIGITS.filter(d => counts[d] === 0) : [];
           const uZeroEl = document.getElementById('freqUnderZeroDigit');
           const uBadge  = document.getElementById('freqBadgeUnder');
           const uCard   = document.getElementById('freqCardUnder');
@@ -7252,28 +7251,39 @@
             if (oBadge)  { oBadge.textContent = '⏸ PAUSADO'; oBadge.className = 'freq-status-badge aguard'; }
             if (oCard)   { oCard.classList.remove('active'); oCard.style.opacity = '0.45'; }
             if (matchTargetEl) matchTargetEl.textContent = freqMatchDigit ?? '—';
-          } else if (!ready) {
+          } else if (!ready || total === 0) {
             [uZeroEl, oZeroEl].forEach(el => { if (el) el.textContent = '—'; });
             [uBadge, oBadge].forEach(el => { if (el) { el.textContent = 'AGUARDANDO'; el.className = 'freq-status-badge aguard'; } });
             [uCard, oCard].forEach(el => { if (el) { el.classList.remove('active'); el.style.opacity = '1'; } });
             if (matchTargetEl) matchTargetEl.textContent = '—';
-          } else if (zeros.length > 0) {
-            const best = zeros.reduce((b, d) => counts[d] < counts[b] ? d : b, zeros[0]);
-            if (uZeroEl) uZeroEl.textContent = zeros.join(', ');
-            if (uBadge)  { uBadge.textContent = '⚡ SINAL'; uBadge.className = 'freq-status-badge sinal'; }
-            if (uCard)   { uCard.classList.add('active'); uCard.style.opacity = '1'; }
-            if (oZeroEl) oZeroEl.textContent = best;
-            if (oBadge)  { oBadge.textContent = '🎯 ALVO'; oBadge.className = 'freq-status-badge sinal'; }
-            if (oCard)   { oCard.classList.add('active'); oCard.style.opacity = '1'; }
-            if (matchTargetEl) matchTargetEl.textContent = best;
           } else {
-            if (uZeroEl) uZeroEl.textContent = '—';
-            if (uBadge)  { uBadge.textContent = 'AGUARDANDO'; uBadge.className = 'freq-status-badge aguard'; }
-            if (uCard)   { uCard.classList.remove('active'); uCard.style.opacity = '1'; }
-            if (oZeroEl) oZeroEl.textContent = '—';
-            if (oBadge)  { oBadge.textContent = 'AGUARDANDO'; oBadge.className = 'freq-status-badge aguard'; }
-            if (oCard)   { oCard.classList.remove('active'); oCard.style.opacity = '1'; }
-            if (matchTargetEl) matchTargetEl.textContent = '—';
+            // Verifica as 3 condições (espelha freqCheckEntry)
+            const neutZeros = FREQ_NEUTROS_DIGITS.filter(d => counts[d] === 0);
+            const underHasZero = FREQ_UNDER_DIGITS.some(d => counts[d] === 0);
+            const overHasZero  = FREQ_OVER_DIGITS.some(d => counts[d] === 0);
+            const uGrp = FREQ_UNDER_DIGITS.reduce((s, d) => s + counts[d], 0) / total;
+            const oGrp = FREQ_OVER_DIGITS.reduce((s, d) => s + counts[d], 0) / total;
+            const qualifies = neutZeros.length === 1 && !underHasZero && !overHasZero && uGrp >= 0.20 && oGrp >= 0.20;
+
+            if (qualifies) {
+              if (uZeroEl) uZeroEl.textContent = neutZeros[0];
+              if (uBadge)  { uBadge.textContent = '⚡ SINAL'; uBadge.className = 'freq-status-badge sinal'; }
+              if (uCard)   { uCard.classList.add('active'); uCard.style.opacity = '1'; }
+              if (oZeroEl) oZeroEl.textContent = neutZeros[0];
+              if (oBadge)  { oBadge.textContent = '🎯 ALVO'; oBadge.className = 'freq-status-badge sinal'; }
+              if (oCard)   { oCard.classList.add('active'); oCard.style.opacity = '1'; }
+              if (matchTargetEl) matchTargetEl.textContent = neutZeros[0];
+            } else {
+              // Mostra o dígito em 0% (se houver) mas sem SINAL pois condições não completas
+              const display = neutZeros.length > 0 ? neutZeros.join(', ') : '—';
+              if (uZeroEl) uZeroEl.textContent = display;
+              if (uBadge)  { uBadge.textContent = 'AGUARDANDO'; uBadge.className = 'freq-status-badge aguard'; }
+              if (uCard)   { uCard.classList.remove('active'); uCard.style.opacity = '1'; }
+              if (oZeroEl) oZeroEl.textContent = '—';
+              if (oBadge)  { oBadge.textContent = 'AGUARDANDO'; oBadge.className = 'freq-status-badge aguard'; }
+              if (oCard)   { oCard.classList.remove('active'); oCard.style.opacity = '1'; }
+              if (matchTargetEl) matchTargetEl.textContent = '—';
+            }
           }
           return;
         }
@@ -7496,16 +7506,24 @@
         const threshold = parseFloat($el('freqHotThreshold')?.value || 40) / 100;
         const oppMin = parseFloat($el('freqOppMinThreshold')?.value || 20) / 100;
 
-        // ── NEUTROS MATCH: avalia dígitos [3,4,5,6] ──
+        // ── NEUTROS MATCH: avalia dígitos [3,4,5,6] — 3 condições obrigatórias ──
         if (freqStrategy === 'neutros') {
-          const zeros = FREQ_NEUTROS_DIGITS.filter(d => counts[d] === 0);
-          if (zeros.length === 0) return;
-          // Escolhe o mais ausente (menor count); empate → menor índice (já ordenado)
-          const target = zeros.reduce((best, d) => counts[d] < counts[best] ? d : best, zeros[0]);
-          freqMatchDigit = target;
+          // Cond. 1: exatamente 1 dígito de [3,4,5,6] em 0%
+          const neutZeros = FREQ_NEUTROS_DIGITS.filter(d => counts[d] === 0);
+          if (neutZeros.length !== 1) return;
+          // Cond. 2: nenhum dígito dos extremos em 0%
+          const underHasZero = FREQ_UNDER_DIGITS.some(d => counts[d] === 0);
+          const overHasZero  = FREQ_OVER_DIGITS.some(d => counts[d] === 0);
+          if (underHasZero || overHasZero) return;
+          // Cond. 3: soma de frequência de cada grupo extremo > 20%
+          const uGrpPct = FREQ_UNDER_DIGITS.reduce((s, d) => s + counts[d], 0) / total;
+          const oGrpPct = FREQ_OVER_DIGITS.reduce((s, d) => s + counts[d], 0) / total;
+          if (uGrpPct < 0.20 || oGrpPct < 0.20) return;
+          // Todas as condições satisfeitas → entra
+          freqMatchDigit = neutZeros[0];
           freqMode = 'match';
           freqMartLevel = 0;
-          freqLog(`🎯 NEUTROS MATCH — dígito ${target} em 0%`, 'warning');
+          freqLog(`🎯 NEUTROS MATCH — dígito ${neutZeros[0]} em 0% | UNDER:${Math.round(uGrpPct*100)}% OVER:${Math.round(oGrpPct*100)}%`, 'warning');
           freqEnterTrade('match');
           return;
         }
