@@ -4145,9 +4145,7 @@
       const btn = document.querySelector('#panelAlphaLogin .btn-primary');
       if (btn) { btn.textContent = '⏳ Aguarde...'; btn.disabled = true; }
 
-      // Force sign out first to clear any stale auth locks/sessions
-      try { await window._sb.auth.signOut({ scope: 'local' }); } catch (_) { }
-      // Clear any stale session
+      // Clear any stale session (persistSession:false — no local session to sign out from)
       sessionStorage.removeItem('alpha_session');
 
       let loginResult;
@@ -5885,8 +5883,9 @@
         else { cycleState = 'IDLE'; log('❌ Erro de conexão WebSocket.', 'error'); }
         resetConnectBtn();
       };
+    } // end connectDash
 
-      function resetConnectBtn() {
+    function resetConnectBtn() {
         const btn = document.getElementById('connectBtn');
         btn.textContent = '▶ CONECTAR';
         btn.style.cssText = '';
