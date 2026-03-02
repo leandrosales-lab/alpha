@@ -2339,6 +2339,76 @@
       color: var(--fq-red);
     }
 
+    /* Bar chart (frequência dinâmica) */
+    .fq-bars {
+      display: flex;
+      gap: 6px;
+      height: 110px;
+      align-items: flex-end;
+    }
+
+    .fq-bar-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      min-width: 0;
+      gap: 3px;
+    }
+
+    .fq-bar-pct {
+      font-size: 9px;
+      font-family: 'Share Tech Mono', monospace;
+      line-height: 1;
+      min-height: 12px;
+      color: var(--fq-dim);
+    }
+
+    .fq-bar-track {
+      flex: 1;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 5px 5px 3px 3px;
+      display: flex;
+      align-items: flex-end;
+      overflow: hidden;
+    }
+
+    .fq-bar-fill {
+      width: 100%;
+      border-radius: 4px 4px 2px 2px;
+      transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      min-height: 2px;
+    }
+
+    .fq-bar-num {
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Share Tech Mono', monospace;
+      line-height: 1;
+    }
+
+    .fq-bar-item.chip-under .fq-bar-fill { background: var(--fq-under); }
+    .fq-bar-item.chip-under .fq-bar-pct  { color: rgba(0, 255, 136, .75); }
+    .fq-bar-item.chip-under .fq-bar-num  { color: var(--fq-under); }
+
+    .fq-bar-item.chip-over .fq-bar-fill { background: var(--fq-over); }
+    .fq-bar-item.chip-over .fq-bar-pct  { color: rgba(0, 212, 255, .75); }
+    .fq-bar-item.chip-over .fq-bar-num  { color: var(--fq-over); }
+
+    .fq-bar-item.chip-hot .fq-bar-fill { background: var(--fq-gold); }
+    .fq-bar-item.chip-hot .fq-bar-pct  { color: rgba(255, 184, 0, .85); }
+    .fq-bar-item.chip-hot .fq-bar-num  { color: var(--fq-gold); }
+
+    .fq-bar-item.chip-zero .fq-bar-fill { background: var(--fq-red); animation: fqZeroPulse .85s ease infinite; }
+    .fq-bar-item.chip-zero .fq-bar-pct  { color: var(--fq-red); }
+    .fq-bar-item.chip-zero .fq-bar-num  { color: var(--fq-red); }
+
+    .fq-bar-item.chip-neutral .fq-bar-fill { background: rgba(255, 255, 255, 0.18); }
+    .fq-bar-item.chip-neutral .fq-bar-pct  { color: var(--fq-dim); }
+    .fq-bar-item.chip-neutral .fq-bar-num  { color: var(--fq-dim); }
+
     /* Trade cards */
     .fq-trade-cards {
       display: grid;
@@ -3714,10 +3784,10 @@
             </div>
           </div>
           <div id="freqChart10Wrap">
-            <div class="fq-chips" id="freqBars10"></div>
+            <div class="fq-bars" id="freqBars10"></div>
           </div>
           <div id="freqChart25Wrap" style="display:none;">
-            <div class="fq-chips" id="freqBars25"></div>
+            <div class="fq-bars" id="freqBars25"></div>
           </div>
         </div>
 
@@ -7154,7 +7224,7 @@
         return { counts: c, total: slice.length };
       }
 
-      // ── Renderiza chips de dígitos ──
+      // ── Renderiza gráfico de barras de dígitos ──
       function freqRenderBars(elId, n) {
         const barsEl = document.getElementById(elId);
         if (!barsEl) return;
@@ -7168,16 +7238,20 @@
           const isOver = FREQ_OVER_DIGITS.includes(d);
           const isZero = ready && counts[d] === 0;
           const isHot = ready && !isZero && total > 0 && (counts[d] / total) >= threshold;
-          let cls = 'fq-chip ';
-          if (isZero) cls += 'chip-zero';
-          else if (isHot) cls += 'chip-hot';
-          else if (isUnder) cls += 'chip-under';
-          else if (isOver) cls += 'chip-over';
-          else cls += 'chip-neutral';
-          html += `<div class="${cls}">
-      <div class="fq-chip-num">${d}</div>
-      <div class="fq-chip-pct">${ready ? pct + '%' : '—'}</div>
-    </div>`;
+          let stateClass;
+          if (isZero) stateClass = 'chip-zero';
+          else if (isHot) stateClass = 'chip-hot';
+          else if (isUnder) stateClass = 'chip-under';
+          else if (isOver) stateClass = 'chip-over';
+          else stateClass = 'chip-neutral';
+          const fillHeight = ready ? Math.max(pct, isZero ? 4 : 0) : 0;
+          html += `<div class="fq-bar-item ${stateClass}">
+            <div class="fq-bar-pct">${ready ? pct + '%' : '—'}</div>
+            <div class="fq-bar-track">
+              <div class="fq-bar-fill" style="height:${fillHeight}%"></div>
+            </div>
+            <div class="fq-bar-num">${d}</div>
+          </div>`;
         }
         barsEl.innerHTML = html;
       }
