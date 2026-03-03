@@ -3716,28 +3716,45 @@
         <div class="fq-panel">
           <div class="fq-label">Configuração</div>
           <div id="freqConfigInputs">
+            <!-- Entrada: sempre visível -->
             <div class="fq-input-group">
               <div class="fq-input-label">ENTRADA (USD)</div>
-              <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" class="fq-input">
+              <input type="number" id="freqEntry" value="0.35" step="0.01" min="0.35" class="fq-input" oninput="freqOnEntryChange()">
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div class="fq-input-group">
-                <div class="fq-input-label">STOP GAIN</div>
-                <input type="number" id="freqSG" value="10" step="0.50" class="fq-input">
-              </div>
-              <div class="fq-input-group">
-                <div class="fq-input-label">STOP LOSS</div>
-                <input type="number" id="freqSL" value="5" step="0.50" class="fq-input">
+            <!-- MATCH only: Fator + Stop Loss -->
+            <div id="freqMatchOnlyConfig" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="fq-input-group">
+                  <div class="fq-input-label">FATOR MULTIPLICAÇÃO</div>
+                  <input type="number" id="freqFactor" value="1.30" step="0.05" min="1.05" max="2.00" class="fq-input" oninput="freqOnFactorChange()">
+                </div>
+                <div class="fq-input-group">
+                  <div class="fq-input-label">STOP LOSS</div>
+                  <input type="number" id="freqSLMatch" value="5" step="0.50" class="fq-input">
+                </div>
               </div>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div class="fq-input-group">
-                <div class="fq-input-label">DIG. QUENTE %</div>
-                <input type="number" id="freqHotThreshold" value="25" step="5" min="10" max="90" class="fq-input">
+            <!-- EXTREMOS only: Stop Gain + Stop Loss + Dig. Quente + Equil. Oposto -->
+            <div id="freqExtremosOnlyConfig">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="fq-input-group">
+                  <div class="fq-input-label">STOP GAIN</div>
+                  <input type="number" id="freqSG" value="10" step="0.50" class="fq-input">
+                </div>
+                <div class="fq-input-group">
+                  <div class="fq-input-label">STOP LOSS</div>
+                  <input type="number" id="freqSL" value="5" step="0.50" class="fq-input">
+                </div>
               </div>
-              <div class="fq-input-group">
-                <div class="fq-input-label">EQUIL. OPOSTO %</div>
-                <input type="number" id="freqOppMinThreshold" value="15" step="5" min="0" max="60" class="fq-input">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="fq-input-group">
+                  <div class="fq-input-label">DIG. QUENTE %</div>
+                  <input type="number" id="freqHotThreshold" value="25" step="5" min="10" max="90" class="fq-input">
+                </div>
+                <div class="fq-input-group">
+                  <div class="fq-input-label">EQUIL. OPOSTO %</div>
+                  <input type="number" id="freqOppMinThreshold" value="15" step="5" min="0" max="60" class="fq-input">
+                </div>
               </div>
             </div>
           </div>
@@ -3824,7 +3841,7 @@
               Monitora: <span style="color:var(--fq-under);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}
             </div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fq-dim);margin:6px 0;">
-              <span>Martingale</span><span style="color:var(--fq-text);">1.6× — 8 níveis</span>
+              <span>Martingale</span><span id="freqUnderMartInfo" style="color:var(--fq-text);">1.85× — 8 níveis</span>
             </div>
             <div
               style="font-size:11px;color:var(--fq-dim);display:flex;justify-content:space-between;margin-bottom:4px;">
@@ -3852,7 +3869,7 @@
             <div id="freqCardOverInfo" style="font-size:10px;color:var(--fq-dim);margin-bottom:6px;font-family:'Share Tech Mono',monospace;">
               Monitora: <span style="color:var(--fq-over);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}</div>
             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--fq-dim);margin:6px 0;">
-              <span>Martingale</span><span style="color:var(--fq-text);">1.9× — 8 níveis</span>
+              <span>Martingale</span><span id="freqOverMartInfo" style="color:var(--fq-text);">1.9× — 8 níveis</span>
             </div>
             <div
               style="font-size:11px;color:var(--fq-dim);display:flex;justify-content:space-between;margin-bottom:4px;">
@@ -3870,6 +3887,27 @@
             <div id="freqOverZeroDigit"
               style="font-size:26px;font-weight:700;color:var(--fq-over);font-family:'Share Tech Mono',monospace;text-align:center;padding:4px 0;">
               —</div>
+          </div>
+        </div>
+
+        <!-- Simulação de Gale MATCH -->
+        <div id="freqSimWrap" style="display:none;margin-top:12px;">
+          <div class="fq-panel" style="padding:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;"
+              onclick="this.parentElement.querySelector('#freqSimBody').style.display = this.parentElement.querySelector('#freqSimBody').style.display==='none' ? '' : 'none'; this.querySelector('#freqSimArrow').textContent = this.parentElement.querySelector('#freqSimBody').style.display==='' ? '▲' : '▼';">
+              <span style="font-size:10px;letter-spacing:1.5px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">📊 SIMULAÇÃO DE GALE — MATCH</span>
+              <span id="freqSimArrow" style="font-size:10px;color:var(--fq-dim);">▼</span>
+            </div>
+            <div id="freqSimBody" style="display:none;padding:0 14px 14px;">
+              <div style="font-size:10px;color:var(--fq-dim);margin-bottom:10px;font-family:'Share Tech Mono',monospace;" id="freqSimMeta"></div>
+              <div style="overflow-x:auto;">
+                <table id="freqSimTable" style="width:100%;border-collapse:collapse;font-size:10px;font-family:'Share Tech Mono',monospace;"></table>
+              </div>
+              <div style="font-size:10px;color:var(--fq-dim);margin-top:8px;">
+                <span style="color:var(--green);">■</span> Lucro positivo &nbsp;
+                <span style="color:var(--fq-gold);">★</span> Fator atual selecionado
+              </div>
+            </div>
           </div>
         </div>
 
@@ -5346,7 +5384,7 @@
     const _dom = {};
     document.addEventListener('DOMContentLoaded', () => {
       const ids = ['boletaSG', 'boletaSL', 'boletaMarket', 'freqHotThreshold',
-        'freqOppMinThreshold', 'freqEntry', 'freqSG', 'freqSL',
+        'freqOppMinThreshold', 'freqEntry', 'freqFactor', 'freqSLMatch', 'freqSG', 'freqSL',
         'pingDot', 'pingBox', 'pingVal', 'bPnl', 'pnlFill', 'bStatus',
         'accBalanceD', 'freqAccBalance'];
       ids.forEach(id => { _dom[id] = document.getElementById(id); });
@@ -7293,14 +7331,25 @@
           document.getElementById('freqCardUnderInfo').innerHTML = 'Monitora: <span style="color:var(--fq-under);">0, 1, 2</span> &nbsp;|&nbsp; Ganha se dígito ∈ {0,1,2}';
           document.getElementById('freqCardOverTitle').textContent = '📈 OVER 6';
           document.getElementById('freqCardOverInfo').innerHTML = 'Monitora: <span style="color:var(--fq-over);">7, 8, 9</span> &nbsp;|&nbsp; Ganha se dígito ∈ {7,8,9}';
+          const uInfo = document.getElementById('freqUnderMartInfo'); if (uInfo) uInfo.textContent = '1.85× — 8 níveis';
+          const oInfo = document.getElementById('freqOverMartInfo');  if (oInfo) oInfo.textContent = '1.9× — 8 níveis';
         } else {
           document.getElementById('freqCardUnderTitle').textContent = '🎯 MATCH [3-6]';
           document.getElementById('freqCardUnderInfo').innerHTML = 'Monitora: <span style="color:var(--fq-under);">3, 4, 5, 6</span> &nbsp;|&nbsp; DIGITMATCH no dígito em 0%';
           document.getElementById('freqCardOverTitle').textContent = '🎯 ALVO';
           document.getElementById('freqCardOverInfo').innerHTML = 'Dígito alvo: <span id="freqMatchTarget" style="color:var(--fq-over);font-family:\'Share Tech Mono\',monospace;">—</span>';
+          const f = parseFloat(document.getElementById('freqFactor')?.value || FREQ_NEUTROS_FACTOR).toFixed(2);
+          const uInfo = document.getElementById('freqUnderMartInfo'); if (uInfo) uInfo.textContent = `${f}× — 17 níveis`;
+          const oInfo = document.getElementById('freqOverMartInfo');  if (oInfo) oInfo.textContent = `${f}× — 17 níveis`;
         }
-        const cfgInputs = document.getElementById('freqConfigInputs');
-        if (cfgInputs) cfgInputs.style.display = strat === 'neutros' ? 'none' : '';
+        // Mostrar/ocultar inputs de config por estratégia
+        const matchCfg    = document.getElementById('freqMatchOnlyConfig');
+        const extremosCfg = document.getElementById('freqExtremosOnlyConfig');
+        if (matchCfg)    matchCfg.style.display    = strat === 'neutros'  ? '' : 'none';
+        if (extremosCfg) extremosCfg.style.display  = strat === 'extremos' ? '' : 'none';
+        // Mostrar/ocultar seção de simulação
+        const simWrap = document.getElementById('freqSimWrap');
+        if (simWrap) { simWrap.style.display = strat === 'neutros' ? '' : 'none'; if (strat === 'neutros') freqRenderSimTable(); }
         freqLog(`🔄 Estratégia: ${strat === 'extremos' ? '⚡ EXTREMOS' : '🎯 NEUTROS MATCH'}`, 'info');
         freqMode = null;
         const { counts, total } = freqCalcFreq(freqAnalysisSize);
@@ -7459,11 +7508,102 @@
       // ── Calcula entrada com martingale ───────
       function freqGetEntry(level) {
         const base = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
-        const factor = freqMode === 'match' ? FREQ_NEUTROS_FACTOR
-                     : (freqMode === 'over') ? FREQ_OVER_FACTOR : FREQ_UNDER_FACTOR;
+        const factor = freqMode === 'match'
+          ? (parseFloat(document.getElementById('freqFactor')?.value) || FREQ_NEUTROS_FACTOR)
+          : (freqMode === 'over') ? FREQ_OVER_FACTOR : FREQ_UNDER_FACTOR;
         let amt = base;
         for (let i = 0; i < level; i++) amt *= factor;
         return parseFloat(amt.toFixed(2));
+      }
+
+      // ── Helper: retorna stop loss correto conforme estratégia ──
+      function getFreqSL() {
+        return parseFloat(document.getElementById(freqStrategy === 'neutros' ? 'freqSLMatch' : 'freqSL')?.value || 5);
+      }
+
+      // ── Callbacks de mudança nos inputs de MATCH ────
+      function freqOnFactorChange() {
+        if (freqStrategy !== 'neutros') return;
+        const f = parseFloat(document.getElementById('freqFactor')?.value || FREQ_NEUTROS_FACTOR).toFixed(2);
+        const uInfo = document.getElementById('freqUnderMartInfo'); if (uInfo) uInfo.textContent = `${f}× — 17 níveis`;
+        const oInfo = document.getElementById('freqOverMartInfo');  if (oInfo) oInfo.textContent = `${f}× — 17 níveis`;
+        freqRenderSimTable();
+      }
+      function freqOnEntryChange() {
+        if (freqStrategy !== 'neutros') return;
+        freqRenderSimTable();
+      }
+
+      // ── Tabela de simulação de gale (fatores 1.1 a 1.5) ────
+      function freqRenderSimTable() {
+        const tbl  = document.getElementById('freqSimTable');
+        const meta = document.getElementById('freqSimMeta');
+        if (!tbl) return;
+        const base    = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
+        const curF    = parseFloat(document.getElementById('freqFactor')?.value || FREQ_NEUTROS_FACTOR);
+        const payout  = 9;   // DIGITMATCH payout ratio (~9x)
+        const levels  = FREQ_NEUTROS_MAX_LEVELS; // 17
+        const factors = [1.1, 1.2, 1.3, 1.4, 1.5];
+
+        if (meta) meta.textContent = `Base: $${base.toFixed(2)} | Payout: ${payout}× | Níveis: ${levels} | Prob. vitória por tick: 10%`;
+
+        // Calcula dados por fator
+        const simData = factors.map(F => {
+          const rows = [];
+          let accLoss = 0;
+          for (let n = 0; n < levels; n++) {
+            const entry  = base * Math.pow(F, n);
+            const win    = entry * payout;
+            const net    = win - accLoss;
+            rows.push({ n, entry, win, net });
+            accLoss += entry;
+          }
+          // EV da sequência: P(win at n) * net(n) - P(all lose) * accLoss
+          let ev = 0;
+          for (let n = 0; n < levels; n++) ev += Math.pow(0.9, n) * 0.1 * rows[n].net;
+          ev -= Math.pow(0.9, levels) * accLoss;
+          return { F, rows, maxExposure: accLoss, ev };
+        });
+
+        // Monta cabeçalho
+        let html = '<thead><tr>';
+        html += '<th style="padding:4px 6px;text-align:left;border-bottom:1px solid var(--fq-border);color:var(--fq-dim);">Nível</th>';
+        factors.forEach((F, i) => {
+          const isCur = Math.abs(F - curF) < 0.005;
+          const col = isCur ? 'var(--fq-gold)' : 'var(--fq-text)';
+          html += `<th style="padding:4px 6px;text-align:right;border-bottom:1px solid var(--fq-border);color:${col};">${isCur ? '★ ' : ''}${F.toFixed(1)}×</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Linhas por nível
+        for (let n = 0; n < levels; n++) {
+          html += '<tr>';
+          const lbl = n === 0 ? 'Entr.' : `G${n}`;
+          html += `<td style="padding:3px 6px;color:var(--fq-dim);white-space:nowrap;">${lbl}</td>`;
+          simData.forEach(({ F, rows }) => {
+            const { entry, net } = rows[n];
+            const netColor = net >= 0 ? 'var(--green)' : 'var(--red)';
+            const isCur = Math.abs(F - curF) < 0.005;
+            const bg = isCur ? 'background:rgba(255,204,0,0.06);' : '';
+            html += `<td style="padding:3px 6px;text-align:right;${bg}">`;
+            html += `<div style="color:var(--fq-text);">$${entry.toFixed(2)}</div>`;
+            html += `<div style="color:${netColor};font-size:9px;">↑$${net.toFixed(2)}</div>`;
+            html += '</td>';
+          });
+          html += '</tr>';
+        }
+
+        // Linha de exposição máxima
+        html += '<tr style="border-top:1px solid var(--fq-border);">';
+        html += '<td style="padding:4px 6px;color:var(--fq-dim);">Exp.Máx.</td>';
+        simData.forEach(({ F, maxExposure }) => {
+          const isCur = Math.abs(F - curF) < 0.005;
+          const bg = isCur ? 'background:rgba(255,204,0,0.06);' : '';
+          html += `<td style="padding:4px 6px;text-align:right;color:var(--fq-red);font-weight:700;${bg}">$${maxExposure.toFixed(2)}</td>`;
+        });
+        html += '</tr></tbody>';
+
+        tbl.innerHTML = html;
       }
 
       // ── Atualiza display de nível/entrada ────
@@ -7491,8 +7631,9 @@
           if (oLevel) oLevel.textContent = freqMatchDigit !== null ? 'Alvo: ' + freqMatchDigit : '—';
           if (oNext) oNext.textContent = '—';
         } else {
-          if (uLevel) uLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
-          if (oLevel) oLevel.textContent = 'Entrada / ' + FREQ_MAX_GALES + ' gales';
+          const idleMaxG = freqStrategy === 'neutros' ? FREQ_NEUTROS_MAX_LEVELS - 1 : FREQ_MAX_GALES;
+          if (uLevel) uLevel.textContent = 'Entrada / ' + idleMaxG + ' gales';
+          if (oLevel) oLevel.textContent = 'Entrada / ' + idleMaxG + ' gales';
           if (uNext) uNext.textContent = '$' + base.toFixed(2);
           if (oNext) oNext.textContent = '$' + base.toFixed(2);
         }
@@ -7532,11 +7673,11 @@
           const statusEl = document.getElementById('freqStatusTxt');
           if (statusEl) statusEl.textContent = `❌ PERDEU — ${freqLevelLabel(freqMartLevel)} próximo`;
           freqLog(`💸 LOSS | ${freqLevelLabel(freqMartLevel)} ($${freqGetEntry(freqMartLevel).toFixed(2)}) | P&L atualizado em breve...`, 'error');
-          // Verifica Stop Loss estimado com base na stake perdida (ignorado no MATCH)
+          // Verifica Stop Loss estimado com base na stake perdida
           const lostStake = freqGetEntry(freqMartLevel - 1);
           const estimatedPnl = freqSessionPnl - lostStake;
-          const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-          if (freqStrategy !== 'neutros' && estimatedPnl <= -sl) {
+          const sl = getFreqSL();
+          if (estimatedPnl <= -sl) {
             freqLog(`🛑 STOP LOSS estimado atingido (~$${Math.abs(estimatedPnl).toFixed(2)})`, 'error');
             freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('loss');
@@ -7876,9 +8017,9 @@
             }
           } else {
             freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${freqSessionPnl >= 0 ? '+' : ''}$${freqSessionPnl.toFixed(2)}`, 'error');
-            // Verifica Stop Loss com valor exato (ignorado no MATCH)
-            const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-            if (freqStrategy !== 'neutros' && freqSessionPnl <= -sl && freqRobotActive) {
+            // Verifica Stop Loss com valor exato
+            const sl = getFreqSL();
+            if (freqSessionPnl <= -sl && freqRobotActive) {
               freqRobotActive = false;
               freqSetToggleBtn(false);
               freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
@@ -7933,8 +8074,8 @@
           const statusEl = document.getElementById('freqStatusTxt');
           if (statusEl) statusEl.textContent = `❌ PERDEU — ${freqLevelLabel(freqMartLevel)} próximo`;
           freqLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | ${freqLevelLabel(freqMartLevel)} ($${freqGetEntry(freqMartLevel).toFixed(2)}) | P&L: ${freqSessionPnl >= 0 ? '+' : ''}$${freqSessionPnl.toFixed(2)}`, 'error');
-          const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-          if (freqStrategy !== 'neutros' && freqSessionPnl <= -sl) {
+          const sl = getFreqSL();
+          if (freqSessionPnl <= -sl) {
             freqLog(`🛑 STOP LOSS atingido: $${freqSessionPnl.toFixed(2)}`, 'error');
             freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('loss'); return;
@@ -8017,14 +8158,20 @@
         freqUpdateStats();
         freqSetToggleBtn(true);
         document.getElementById('freqStatusTxt').textContent = 'MONITORANDO...';
-        const sg = parseFloat(document.getElementById('freqSG')?.value || 10);
-        const sl = parseFloat(document.getElementById('freqSL')?.value || 5);
-        const hot = parseFloat(document.getElementById('freqHotThreshold')?.value || 40);
-        const opp = parseFloat(document.getElementById('freqOppMinThreshold')?.value || 20);
-        freqLog(`🤖 Robô iniciado | Entrada: $${parseFloat(document.getElementById('freqEntry')?.value || 0.35).toFixed(2)} | SG: $${sg} | SL: $${sl} | Quente: ${hot}% | Equil.: ${opp}%`, 'success');
+        const entrada = parseFloat(document.getElementById('freqEntry')?.value || 0.35).toFixed(2);
+        const sl = getFreqSL();
+        if (freqStrategy === 'neutros') {
+          const fator = parseFloat(document.getElementById('freqFactor')?.value || FREQ_NEUTROS_FACTOR).toFixed(2);
+          freqLog(`🤖 Robô iniciado | Entrada: $${entrada} | Fator: ${fator}× | SL: $${sl} | 17 níveis`, 'success');
+        } else {
+          const sg = parseFloat(document.getElementById('freqSG')?.value || 10);
+          const hot = parseFloat(document.getElementById('freqHotThreshold')?.value || 40);
+          const opp = parseFloat(document.getElementById('freqOppMinThreshold')?.value || 20);
+          freqLog(`🤖 Robô iniciado | Entrada: $${entrada} | SG: $${sg} | SL: $${sl} | Quente: ${hot}% | Equil.: ${opp}%`, 'success');
+        }
 
         // Bloqueia inputs e seletor de mercado
-        ['freqEntry', 'freqSG', 'freqSL', 'freqHotThreshold', 'freqOppMinThreshold'].forEach(id => {
+        ['freqEntry', 'freqSG', 'freqSL', 'freqFactor', 'freqSLMatch', 'freqHotThreshold', 'freqOppMinThreshold'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.disabled = true; el.style.opacity = '0.5'; }
         });
@@ -8067,7 +8214,7 @@
         document.getElementById('freqStatusTxt').textContent = 'PARADO';
 
         // Desbloqueia inputs
-        ['freqEntry', 'freqSG', 'freqSL', 'freqHotThreshold', 'freqOppMinThreshold'].forEach(id => {
+        ['freqEntry', 'freqSG', 'freqSL', 'freqFactor', 'freqSLMatch', 'freqHotThreshold', 'freqOppMinThreshold'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.disabled = false; el.style.opacity = '1'; }
         });
