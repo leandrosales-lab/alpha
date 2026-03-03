@@ -523,15 +523,15 @@
 
     .profile-dropdown {
       display: none;
-      position: absolute;
-      top: calc(100% + 10px);
-      right: 0;
+      position: fixed;
+      top: 56px;
+      right: 12px;
       width: 320px;
       background: var(--glass-bg);
       border: 1px solid var(--glass-border);
       border-radius: 16px;
       box-shadow: 0 12px 48px rgba(0, 0, 0, .6);
-      z-index: 999;
+      z-index: 99999;
       overflow: hidden;
       backdrop-filter: blur(20px);
     }
@@ -1491,12 +1491,73 @@
       box-shadow: 0 0 10px rgba(255, 71, 87, .4);
     }
 
+    /* Animação de borda circulando nos chips quando robô está ativo */
+    @keyframes chipRingRotate {
+      0%   { border-color: rgba(0,212,255,.7); box-shadow: 0 0 6px rgba(0,212,255,.4); }
+      25%  { border-color: rgba(0,255,136,.7); box-shadow: 0 0 6px rgba(0,255,136,.4); }
+      50%  { border-color: rgba(255,204,0,.7);  box-shadow: 0 0 6px rgba(255,204,0,.4); }
+      75%  { border-color: rgba(248,113,113,.7); box-shadow: 0 0 6px rgba(248,113,113,.4); }
+      100% { border-color: rgba(0,212,255,.7); box-shadow: 0 0 6px rgba(0,212,255,.4); }
+    }
+    .digit-stream.robot-active .digit-chip.neutral,
+    .digit-stream.robot-active .digit-chip.virt-loss {
+      animation: chipRingRotate 2s linear infinite;
+      border-width: 2px;
+    }
+
     /* Stats grid */
+    /* Dashboard digit bar chart */
     .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(10, 1fr);
-      gap: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
       margin-bottom: 16px;
+    }
+    .dash-digit-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .dash-digit-num {
+      width: 18px;
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--dim);
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .dash-digit-bar-wrap {
+      flex: 1;
+      height: 16px;
+      background: rgba(255,255,255,.04);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+    .dash-digit-bar {
+      height: 100%;
+      border-radius: 4px;
+      background: var(--gradient-accent);
+      transition: width .3s ease;
+      min-width: 2px;
+    }
+    .dash-digit-pct {
+      width: 46px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: 'Share Tech Mono', monospace;
+      color: var(--text);
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .dash-digit-cnt {
+      width: 28px;
+      font-size: 11px;
+      color: var(--dim);
+      font-family: 'Share Tech Mono', monospace;
+      text-align: right;
+      flex-shrink: 0;
     }
 
     @media(max-width:900px) {
@@ -4144,6 +4205,10 @@
       document.getElementById(id).classList.add('active');
       if (id === 'screenReports') loadReportsFromSupabase();
       if (id === 'screenFreq') freqInitChart();
+      // Salvar tela atual para restaurar no F5 (exceto login e admin)
+      if (id !== 'screenLogin' && id !== 'screenAdmin') {
+        try { localStorage.setItem('alpha_last_screen', id); } catch (e) { }
+      }
     }
 
     // ════════════════════════════════════════
@@ -4158,7 +4223,10 @@
     // ════════════════════════════════════════
     function toggleProfileDropdown() {
       const dd = document.getElementById('profileDropdown');
-      if (dd) dd.classList.toggle('open');
+      if (!dd) return;
+      const opening = !dd.classList.contains('open');
+      dd.classList.toggle('open');
+      if (opening) updateProfileDropdown();
     }
     function closeProfileDropdown() {
       const dd = document.getElementById('profileDropdown');
@@ -4471,10 +4539,12 @@
       updateProfileDropdown();
       startPresence();
 
-      // Só navega ao dashboard se estiver na tela de login (evita interromper outras abas no F5)
+      // Restaurar tela salva no F5, ou ir ao dashboard por padrão
       const _activeScreen = document.querySelector('.screen.active');
       if (!_activeScreen || _activeScreen.id === 'screenLogin') {
-        showScreen('screenDashboard');
+        const _savedScreen = localStorage.getItem('alpha_last_screen');
+        const _target = (_savedScreen && document.getElementById(_savedScreen)) ? _savedScreen : 'screenDashboard';
+        showScreen(_target);
       }
 
       // Auto-connect se Deriv restaurada
@@ -5392,10 +5462,10 @@
     // $el — DOM query com cache; safeEl delega aqui para consistência
     function $el(id) { return _dom[id] || document.getElementById(id); }
 
-    // ── Helpers para token Deriv em sessionStorage ────────────────────────────
-    function _saveDrvConn(uid, data) { try { sessionStorage.setItem('drv_conn_' + uid, JSON.stringify(data)); } catch (e) { } }
-    function _loadDrvConn(uid) { try { const v = sessionStorage.getItem('drv_conn_' + uid); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
-    function _removeDrvConn(uid) { try { sessionStorage.removeItem('drv_conn_' + uid); } catch (e) { } }
+    // ── Helpers para token Deriv em localStorage ────────────────────────────
+    function _saveDrvConn(uid, data) { try { localStorage.setItem('drv_conn_' + uid, JSON.stringify(data)); } catch (e) { } }
+    function _loadDrvConn(uid) { try { const v = localStorage.getItem('drv_conn_' + uid); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+    function _removeDrvConn(uid) { try { localStorage.removeItem('drv_conn_' + uid); } catch (e) { } }
 
     // ── WebSocket auto-reconnect ──────────────────────────────────────────────
     let _wsReconnectTimer = null;
@@ -6043,6 +6113,7 @@
           btn.style.cssText = 'background:rgba(255,59,107,.15);color:var(--red);border:1px solid rgba(255,59,107,.5);font-weight:700;';
           ind.style.cssText = 'width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:pulse 1.5s infinite;';
           lbl.style.color = 'var(--green)'; lbl.textContent = 'ROBÔ ATIVO';
+          document.getElementById('digitStream')?.classList.add('robot-active');
           // Reset cycle and show active monitoring signal
           cycleState = 'IDLE'; virtualLossStreak = 0; pendingMartingaleLevel = 0;
           window._nextChipIsTrigger = false; window._triggerChip = null;
@@ -6052,12 +6123,15 @@
           document.getElementById('bStatus').style.color = 'var(--green)';
           lockBoleta();
           log('🤖 ROBÔ INICIADO — Operando automaticamente!', 'success');
+          document.getElementById('digitStream').classList.add('robot-active');
         } else {
           btn.textContent = '🤖 INICIAR ROBÔ';
           btn.style.cssText = 'background:rgba(0,255,159,.1);color:var(--green);border:1px solid rgba(0,255,159,.4);font-weight:700;';
           ind.style.cssText = 'width:10px;height:10px;border-radius:50%;background:var(--dim);';
+          document.getElementById('digitStream').classList.remove('robot-active');
           lbl.style.color = 'var(--dim)'; lbl.textContent = 'ROBÔ PARADO';
           // Reset robot cycle completely when manually disabled
+          document.getElementById('digitStream')?.classList.remove('robot-active');
           cycleState = 'IDLE';
           virtualLossStreak = 0;
           pendingMartingaleLevel = 0;
@@ -6498,6 +6572,7 @@
               // The NEXT digit (evaluated by Deriv for the trade) will be marked pending-trigger.
               pendingChipClass = 'virt-loss';
               window._nextChipIsTrigger = true; // flag: next digit = trade digit
+              updateVdots(); // pinta todos os dots antes de resetar
               virtualLossStreak = 0;
 
               if (autoTradeEnabled && !tradeInProgress && !sessionStopped) {
@@ -6569,15 +6644,21 @@
       function updateFreqGrid() {
         const total = digits.length;
         const max = Math.max(...Object.values(freqMap), 1);
+        const cfg = getStrategyConfig ? getStrategyConfig() : null;
         document.getElementById('freqGrid').innerHTML = Object.keys(freqMap).map(d => {
           const cnt = freqMap[d] || 0;
-          const pct = total > 0 ? (cnt / total * 100).toFixed(1) : 0;
+          const pct = total > 0 ? (cnt / total * 100).toFixed(1) : '0.0';
           const barW = total > 0 ? (cnt / max * 100) : 0;
-          return `<div class="freq-card">
-      <div class="freq-digit">${d}</div>
-      <div class="freq-count">${cnt} (${pct}%)</div>
-      <div class="freq-bar-wrap"><div class="freq-bar" style="width:${barW}%"></div></div>
-    </div>`;
+          // Colorir barra conforme estratégia (win = verde, loss = vermelho)
+          const isWin = cfg?.winDigits?.includes(Number(d));
+          const barColor = isWin ? 'background:rgba(0,255,136,.5)' : 'background:rgba(255,71,87,.35)';
+          const numColor = isWin ? 'color:var(--green)' : cnt === max ? 'color:var(--gold)' : '';
+          return `<div class="dash-digit-row">
+  <div class="dash-digit-num" style="${numColor}">${d}</div>
+  <div class="dash-digit-bar-wrap"><div class="dash-digit-bar" style="width:${barW}%;${barColor}"></div></div>
+  <div class="dash-digit-pct">${pct}%</div>
+  <div class="dash-digit-cnt">${cnt}</div>
+</div>`;
         }).join('');
       }
 
