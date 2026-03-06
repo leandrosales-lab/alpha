@@ -26,3 +26,4 @@ __pycache__/
 # Arquivos temporários
 *.tmp
 *.log
+.skill-ui-ux/
