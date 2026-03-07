@@ -7897,8 +7897,7 @@
             freqSetToggleBtn(false);
             return;
           }
-          const _maxLvl = freqMode === 'match' ? FREQ_NEUTROS_MAX_LEVELS : FREQ_MAX_LEVELS;
-          if (freqMartLevel >= _maxLvl) {
+          if (freqMode === 'match' && freqMartLevel >= FREQ_NEUTROS_MAX_LEVELS) {
             freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
             freqMode = null; freqMatchDigit = null;
             freqClockStop('martingale'); freqOpClockStop('martingale', `-$${freqOpTotalStaked.toFixed(2)}`);
@@ -8292,7 +8291,7 @@
             freqClockStop('loss'); freqOpClockStop('loss', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('loss'); return;
           }
-          if (freqMartLevel >= FREQ_MAX_LEVELS) {
+          if (freqMode === 'match' && freqMartLevel >= FREQ_NEUTROS_MAX_LEVELS) {
             freqLog(`🚨 STOP MARTINGALE — nível máximo atingido`, 'error');
             freqClockStop('martingale'); freqOpClockStop('martingale', `-$${freqOpTotalStaked.toFixed(2)}`);
             freqShowResult('martingale'); return;
