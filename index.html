@@ -5999,6 +5999,18 @@
             fqType.style.color = isVirt ? 'var(--accent)' : 'var(--gold)';
             fqBar.style.display = 'flex';
           }
+          // Sincronizar derivAccount com dados reais da API e atualizar painel de perfil
+          if (!derivAccount) {
+            derivAccount = { loginid: auth.loginid, isVirtual: isVirt,
+              currency: auth.currency || 'USD', accType: isVirt ? 'demo' : 'real',
+              token: creds?.token || null, appId: appId };
+          } else {
+            derivAccount.loginid = auth.loginid;
+            derivAccount.currency = auth.currency || 'USD';
+            derivAccount.isVirtual = isVirt;
+            derivAccount.accType = isVirt ? 'demo' : 'real';
+          }
+          updateProfileDropdown();
           log(`✅ Autenticado: ${auth.loginid} (${isVirt ? 'DEMO' : 'REAL'}) | ${auth.currency}`, 'success');
           if (!isVirt) log('🚨 CONTA REAL ATIVA — opere com cuidado!', 'error');
           // Subscribe balance ONCE
