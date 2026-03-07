@@ -4950,6 +4950,15 @@
       // Re-renderiza dropdown para mostrar/esconder item Manual
       renderRobotSelectorList();
       window._modeManual = _modeManual; // expor globalmente
+      // Ao entrar no modo manual, limpa selectedRobot para não usar config do robô automático
+      if (_modeManual) {
+        selectedRobot = null;
+        const lbl = document.getElementById('robotDropdownLabel');
+        if (lbl) { lbl.textContent = '✋ MODO MANUAL'; lbl.style.color = 'var(--gold)'; }
+        document.getElementById('manualFields')?.classList.add('active');
+        document.querySelectorAll('.robot-dropdown-item').forEach(el => el.classList.remove('active'));
+        applyBoleta();
+      }
       log(_modeManual ? '🖐 Modo MANUAL ativado' : '🤖 Modo AUTOMÁTICO ativado', 'warning');
     }
 
