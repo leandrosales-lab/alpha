@@ -7678,9 +7678,9 @@
           for (let n = 0; n < levels; n++) {
             const entry = base * Math.pow(F, n);
             const win   = entry * payout;
+            accLoss += entry;
             const net   = win - accLoss;
             rows.push({ n, entry, win, net });
-            accLoss += entry;
           }
           let ev = 0;
           for (let n = 0; n < levels; n++) ev += Math.pow(0.7, n) * 0.3 * rows[n].net;
