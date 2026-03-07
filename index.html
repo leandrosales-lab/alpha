@@ -3982,6 +3982,28 @@
           </div>
         </div>
 
+        <!-- Simulação de Gale EXTREMOS -->
+        <div id="freqExtremosSimWrap" style="display:none;margin-top:12px;">
+          <div class="fq-panel" style="padding:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;"
+              onclick="this.parentElement.querySelector('#freqExtremosSimBody').style.display = this.parentElement.querySelector('#freqExtremosSimBody').style.display==='none' ? '' : 'none'; this.querySelector('#freqExtremosSimArrow').textContent = this.parentElement.querySelector('#freqExtremosSimBody').style.display==='' ? '▲' : '▼';">
+              <span style="font-size:10px;letter-spacing:1.5px;color:var(--fq-dim);font-family:'Share Tech Mono',monospace;">📊 SIMULAÇÃO DE GALE — EXTREMOS</span>
+              <span id="freqExtremosSimArrow" style="font-size:10px;color:var(--fq-dim);">▼</span>
+            </div>
+            <div id="freqExtremosSimBody" style="display:none;padding:0 14px 14px;">
+              <div style="font-size:10px;color:var(--fq-dim);margin-bottom:10px;font-family:'Share Tech Mono',monospace;" id="freqExtremosSimMeta"></div>
+              <div style="overflow-x:auto;">
+                <table id="freqExtremosSimTable" style="width:100%;border-collapse:collapse;font-size:10px;font-family:'Share Tech Mono',monospace;"></table>
+              </div>
+              <div style="font-size:10px;color:var(--fq-dim);margin-top:8px;">
+                <span style="color:var(--green);">■</span> Lucro positivo &nbsp;
+                <span style="color:var(--fq-under);">U★</span> Fator UNDER atual &nbsp;
+                <span style="color:var(--fq-over);">O★</span> Fator OVER atual
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Active trade indicator -->
         <div id="freqOpIndicator"
           style="display:none;text-align:center;padding:16px;margin-top:12px;background:var(--fq-surface);border:1px solid var(--fq-border);border-radius:14px;">
@@ -7450,6 +7472,8 @@
         // Mostrar/ocultar seção de simulação
         const simWrap = document.getElementById('freqSimWrap');
         if (simWrap) { simWrap.style.display = strat === 'neutros' ? '' : 'none'; if (strat === 'neutros') freqRenderSimTable(); }
+        const extSimWrap = document.getElementById('freqExtremosSimWrap');
+        if (extSimWrap) { extSimWrap.style.display = strat === 'extremos' ? '' : 'none'; if (strat === 'extremos') freqRenderExtremosSimTable(); }
         freqLog(`🔄 Estratégia: ${strat === 'extremos' ? '⚡ EXTREMOS' : '🎯 NEUTROS MATCH'}`, 'info');
         freqMode = null;
         const { counts, total } = freqCalcFreq(freqAnalysisSize);
@@ -7630,6 +7654,83 @@
         const fO = parseFloat(document.getElementById('freqOverFactor')?.value  || FREQ_OVER_FACTOR).toFixed(2);
         const uInfo = document.getElementById('freqUnderMartInfo'); if (uInfo) uInfo.textContent = `${fU}× — ${FREQ_MAX_LEVELS} níveis`;
         const oInfo = document.getElementById('freqOverMartInfo');  if (oInfo) oInfo.textContent = `${fO}× — ${FREQ_MAX_LEVELS} níveis`;
+        freqRenderExtremosSimTable();
+      }
+
+      // ── Tabela de simulação de gale EXTREMOS ────
+      function freqRenderExtremosSimTable() {
+        const tbl  = document.getElementById('freqExtremosSimTable');
+        const meta = document.getElementById('freqExtremosSimMeta');
+        if (!tbl) return;
+        const base   = parseFloat(document.getElementById('freqEntry')?.value || 0.35);
+        const curFU  = parseFloat(document.getElementById('freqUnderFactor')?.value || FREQ_UNDER_FACTOR);
+        const curFO  = parseFloat(document.getElementById('freqOverFactor')?.value  || FREQ_OVER_FACTOR);
+        const payout = 2.5;  // payout típico OVER/UNDER (~30% chance, 3 dígitos de 10)
+        const levels = FREQ_MAX_LEVELS; // 8
+        const factors = [1.5, 1.7, 1.85, 1.9, 2.1, 2.3];
+
+        if (meta) meta.textContent = `Base: $${base.toFixed(2)} | Payout: ${payout}× | Níveis: ${levels} | Prob. vitória: ~30%`;
+
+        // Calcula dados por fator
+        const simData = factors.map(F => {
+          const rows = [];
+          let accLoss = 0;
+          for (let n = 0; n < levels; n++) {
+            const entry = base * Math.pow(F, n);
+            const win   = entry * payout;
+            const net   = win - accLoss;
+            rows.push({ n, entry, win, net });
+            accLoss += entry;
+          }
+          let ev = 0;
+          for (let n = 0; n < levels; n++) ev += Math.pow(0.7, n) * 0.3 * rows[n].net;
+          ev -= Math.pow(0.7, levels) * accLoss;
+          return { F, rows, maxExposure: accLoss, ev };
+        });
+
+        // Monta cabeçalho
+        let html = '<thead><tr>';
+        html += '<th style="padding:4px 6px;text-align:left;border-bottom:1px solid var(--fq-border);color:var(--fq-dim);">Nível</th>';
+        factors.forEach(F => {
+          const isU = Math.abs(F - curFU) < 0.005;
+          const isO = Math.abs(F - curFO) < 0.005;
+          const col = isU ? 'var(--fq-under)' : isO ? 'var(--fq-over)' : 'var(--fq-text)';
+          const prefix = isU ? 'U★ ' : isO ? 'O★ ' : '';
+          html += `<th style="padding:4px 6px;text-align:right;border-bottom:1px solid var(--fq-border);color:${col};">${prefix}${F.toFixed(2)}×</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        // Linhas por nível
+        for (let n = 0; n < levels; n++) {
+          html += '<tr>';
+          const lbl = n === 0 ? 'Entr.' : `G${n}`;
+          html += `<td style="padding:3px 6px;color:var(--fq-dim);white-space:nowrap;">${lbl}</td>`;
+          simData.forEach(({ F, rows }) => {
+            const { entry, net } = rows[n];
+            const netColor = net >= 0 ? 'var(--green)' : 'var(--red)';
+            const isU = Math.abs(F - curFU) < 0.005;
+            const isO = Math.abs(F - curFO) < 0.005;
+            const bg = isU ? 'background:rgba(0,150,255,0.06);' : isO ? 'background:rgba(0,255,100,0.06);' : '';
+            html += `<td style="padding:3px 6px;text-align:right;${bg}">`;
+            html += `<div style="color:var(--fq-text);">$${entry.toFixed(2)}</div>`;
+            html += `<div style="color:${netColor};font-size:9px;">↑$${net.toFixed(2)}</div>`;
+            html += '</td>';
+          });
+          html += '</tr>';
+        }
+
+        // Linha de exposição máxima
+        html += '<tr style="border-top:1px solid var(--fq-border);">';
+        html += '<td style="padding:4px 6px;color:var(--fq-dim);">Exp.Máx.</td>';
+        simData.forEach(({ F, maxExposure }) => {
+          const isU = Math.abs(F - curFU) < 0.005;
+          const isO = Math.abs(F - curFO) < 0.005;
+          const bg = isU ? 'background:rgba(0,150,255,0.06);' : isO ? 'background:rgba(0,255,100,0.06);' : '';
+          html += `<td style="padding:4px 6px;text-align:right;color:var(--fq-red);font-weight:700;${bg}">$${maxExposure.toFixed(2)}</td>`;
+        });
+        html += '</tr></tbody>';
+
+        tbl.innerHTML = html;
       }
 
       // ── Callbacks de mudança nos inputs de MATCH ────
@@ -7641,8 +7742,8 @@
         freqRenderSimTable();
       }
       function freqOnEntryChange() {
-        if (freqStrategy !== 'neutros') return;
-        freqRenderSimTable();
+        if (freqStrategy === 'neutros') freqRenderSimTable();
+        else if (freqStrategy === 'extremos') freqRenderExtremosSimTable();
       }
 
       // ── Tabela de simulação de gale (fatores 1.1 a 1.5) ────
