@@ -4268,16 +4268,22 @@
 
     function updateProfileDropdown() {
       const user = window._alphaUser;
-      if (!user) return;
-      // Header
+
+      // --- Seção do usuário (só preenche se logado) ---
       const nameEl = document.getElementById('pdUserName');
       const emailEl = document.getElementById('pdUserEmail');
       const planEl = document.getElementById('pdUserPlan');
-      if (nameEl) nameEl.textContent = user.name || user.email;
-      if (emailEl) emailEl.textContent = user.email;
-      if (planEl) planEl.textContent = 'Plano ' + (user.plan === 'free' ? 'Free' : user.plan === 'pro' ? '⭐ Pro' : user.plan);
+      if (user) {
+        if (nameEl) nameEl.textContent = user.name || user.email || '—';
+        if (emailEl) emailEl.textContent = user.email || '';
+        if (planEl) planEl.textContent = 'Plano ' + (user.plan === 'free' ? 'Free' : user.plan === 'pro' ? '⭐ Pro' : (user.plan || 'Free'));
+      } else {
+        if (nameEl) nameEl.textContent = '—';
+        if (emailEl) emailEl.textContent = '';
+        if (planEl) planEl.textContent = 'Plano Free';
+      }
 
-      // Deriv status
+      // --- Seção Deriv (sempre atualiza, independente do usuário) ---
       const dot = document.getElementById('pdDerivDot');
       const derivIdEl = document.getElementById('pdDerivId');
       const derivType = document.getElementById('pdDerivType');
@@ -4291,16 +4297,14 @@
         if (derivType) derivType.textContent = derivAccount.isVirtual ? '📊 Conta Demo' : '💰 Conta Real';
         if (btnConnect) btnConnect.style.display = 'none';
         if (btnDisc) btnDisc.style.display = 'block';
-        if (profileBtn) profileBtn.classList.add('deriv-connected');
-        profileBtn.title = 'Deriv: ' + derivAccount.loginid;
+        if (profileBtn) { profileBtn.classList.add('deriv-connected'); profileBtn.title = 'Deriv: ' + derivAccount.loginid; }
       } else {
         if (dot) { dot.classList.remove('connected'); }
         if (derivIdEl) derivIdEl.textContent = 'Não conectada';
         if (derivType) derivType.textContent = '';
         if (btnConnect) btnConnect.style.display = 'block';
         if (btnDisc) btnDisc.style.display = 'none';
-        if (profileBtn) profileBtn.classList.remove('deriv-connected');
-        profileBtn.title = 'Conectar Deriv';
+        if (profileBtn) { profileBtn.classList.remove('deriv-connected'); profileBtn.title = 'Conectar Deriv'; }
       }
     }
 
@@ -6151,7 +6155,7 @@
       function toggleAutoTrade() {
         if (!autoTradeEnabled) {
           if (!derivAccount || !ws || ws.readyState !== 1) { showDerivConnectModal(); return; }
-          if (!selectedRobot) { log('⚠️ Selecione um robô antes de iniciar.', 'warning'); return; }
+          if (!selectedRobot && !window._modeManual) { log('⚠️ Selecione um robô antes de iniciar.', 'warning'); return; }
         }
         autoTradeEnabled = !autoTradeEnabled;
         const btn = document.getElementById('tradeToggleBtn');
