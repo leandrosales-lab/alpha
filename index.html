@@ -7667,7 +7667,11 @@
         const curFO  = parseFloat(document.getElementById('freqOverFactor')?.value  || FREQ_OVER_FACTOR);
         const payout = 2.5;  // payout típico OVER/UNDER (~30% chance, 3 dígitos de 10)
         const levels = FREQ_MAX_LEVELS; // 8
-        const factors = [1.5, 1.7, 1.85, 1.9, 2.1, 2.3];
+        // Inclui sempre os fatores configurados pelo usuário + referências fixas, sem duplicatas
+        const factors = [1.5, 1.7, curFU, curFO, 2.1, 2.3]
+          .map(f => parseFloat(f.toFixed(2)))
+          .filter((f, i, arr) => arr.findIndex(x => Math.abs(x - f) < 0.005) === i)
+          .sort((a, b) => a - b);
 
         if (meta) meta.textContent = `Base: $${base.toFixed(2)} | Payout: ${payout}× | Níveis: ${levels} | Prob. vitória: ~30%`;
 
