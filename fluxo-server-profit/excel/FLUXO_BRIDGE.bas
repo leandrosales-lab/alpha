@@ -139,10 +139,10 @@ Public Sub VerificarEEnviar()
             Dim dPreco As Double
             Dim dStop As Double
 
-            sSinalVal = ExtrairStr(sSinal, """signal"":""", """")
-            dConf = CDbl(ExtrairStr(sSinal, """confidence"":", ","))
-            dPreco = CDbl(ExtrairStr(sSinal, """price"":", ","))
-            dStop = CDbl(ExtrairStr(sSinal, """stop"":", "}"))
+            sSinalVal = ExtrairStr(sSinal, """signal"": """, """")
+            dPreco = CDbl(ExtrairStr(sSinal, """price"": ", ","))
+            dStop = CDbl(ExtrairStr(sSinal, """stop_price"": ", ","))
+            dConf = CDbl(ExtrairStr(sSinal, """confidence"": ", ","))
 
             ' Converter sinal texto → código numérico para NTSL
             Dim iSinalNum As Integer
