@@ -1,0 +1,142 @@
+// ROBÔ LEITURA DE FLUXO v2.0 — COM SERVIDOR PYTHON
+// Linguagem: NTSL | Profit Pro / Profit Ultra
+
+input
+  iQtdePorTrade(100);
+  iHorarioInicio(1000);
+  iHorarioFimEntrada(1630);
+  iHorarioFimDia(1645);
+  fMetaDiaria(500.00);
+  fLimitePerdaDiaria(300.00);
+  iStopOffsetEmTicks(3);
+  fConfMinima(0.70);
+  iSinalExterno(0);
+  fPrecoSinal(0.0);
+  fStopSinal(0.0);
+  fConfiancaSinal(0.0);
+
+var
+  iDataAtual: integer;
+  bConfigurouRisco: boolean;
+  fPrecoStop: float;
+  fPrecoAlvo: float;
+  fPrecoStopOffset: float;
+  fResultadoDia: float;
+  iSinalAnterior: integer;
+  bContinuar: boolean;
+
+begin
+
+  bContinuar := true;
+
+  // Reset diário
+  if Date <> iDataAtual then
+  begin
+    iDataAtual       := Date;
+    bConfigurouRisco := false;
+    iSinalAnterior   := 0;
+  end;
+
+  // Verificar meta/perda
+  fResultadoDia := DailyResult(true);
+  if (fResultadoDia >= fMetaDiaria) or (fResultadoDia <= -fLimitePerdaDiaria) then
+  begin
+    if HasPosition then ClosePosition;
+    bContinuar := false;
+  end;
+
+  // Encerramento daytrade
+  if bContinuar and (Time >= iHorarioFimDia) and HasPosition then
+  begin
+    ClosePosition;
+    bContinuar := false;
+  end;
+
+  if bContinuar then
+  begin
+
+    // Entrada por sinal de COMPRA
+    if Not HasPosition
+    and (Time >= iHorarioInicio)
+    and (Time <= iHorarioFimEntrada)
+    and (fConfiancaSinal >= fConfMinima)
+    and (iSinalExterno = 1)
+    and (iSinalAnterior <> 1)
+    then
+    begin
+      BuyAtMarket(iQtdePorTrade);
+      bConfigurouRisco := false;
+      iSinalAnterior   := 1;
+    end;
+
+    // Entrada por sinal de VENDA
+    if Not HasPosition
+    and (Time >= iHorarioInicio)
+    and (Time <= iHorarioFimEntrada)
+    and (fConfiancaSinal >= fConfMinima)
+    and (iSinalExterno = -1)
+    and (iSinalAnterior <> -1)
+    then
+    begin
+      SellShortAtMarket(iQtdePorTrade);
+      bConfigurouRisco := false;
+      iSinalAnterior   := -1;
+    end;
+
+    // Sinal de FECHAR
+    if (iSinalExterno = 2) and HasPosition then
+    begin
+      ClosePosition;
+      bConfigurouRisco := false;
+      iSinalAnterior   := 0;
+    end;
+
+    // Reset quando WAIT
+    if (iSinalExterno = 0) and (iSinalAnterior <> 0) then
+      iSinalAnterior := 0;
+
+    // Gestão de risco
+    if HasPosition and Not bConfigurouRisco then
+    begin
+      if IsBought then
+      begin
+        if fStopSinal > 0 then
+          fPrecoStop := fStopSinal
+        else
+          fPrecoStop := BuyPrice - (2 * MinPriceIncrement);
+        fPrecoAlvo       := BuyPrice + (6 * MinPriceIncrement);
+        fPrecoStopOffset := fPrecoStop - (iStopOffsetEmTicks * MinPriceIncrement);
+      end
+      else if IsSold then
+      begin
+        if fStopSinal > 0 then
+          fPrecoStop := fStopSinal
+        else
+          fPrecoStop := SellPrice + (2 * MinPriceIncrement);
+        fPrecoAlvo       := SellPrice - (6 * MinPriceIncrement);
+        fPrecoStopOffset := fPrecoStop + (iStopOffsetEmTicks * MinPriceIncrement);
+      end;
+      bConfigurouRisco := true;
+    end;
+
+    if IsBought then
+    begin
+      SellToCoverStop(fPrecoStop, fPrecoStopOffset);
+      SellToCoverLimit(fPrecoAlvo);
+    end;
+
+    if IsSold then
+    begin
+      BuyToCoverStop(fPrecoStop, fPrecoStopOffset);
+      BuyToCoverLimit(fPrecoAlvo);
+    end;
+
+    if Not HasPosition and bConfigurouRisco then
+    begin
+      bConfigurouRisco := false;
+      iSinalAnterior   := 0;
+    end;
+
+  end;
+
+end;
