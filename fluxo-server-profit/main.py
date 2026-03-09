@@ -7,11 +7,13 @@ com integração ao Profit Pro.
 USO:
   python main.py --asset PETR4 --modo ocr
   python main.py --asset VALE3 --modo dde
+  python main.py --asset PETR4 --modo rtd
   python main.py --asset PETR4 --modo manual --port 5000
 
 MODOS:
   ocr    → Captura tela do Profit via OCR (Tesseract)
-  dde    → Lê dados do Profit via DDE (Windows, pywin32)
+  dde    → Lê dados do Profit via DDE (Windows, pywin32) — legado
+  rtd    → Recebe dados via Excel RTD Bridge (recomendado pelo Profit)
   manual → Aguarda dados via POST /tick e /book (testes/integração)
 
 REQUISITOS:
@@ -195,7 +197,7 @@ def status_loop(engine: FlowEngine, interval: int = 30):
 def parse_args():
     p = argparse.ArgumentParser(description="Fluxo Server — Leitura de Fluxo B3")
     p.add_argument("--asset",       default="PETR4",   help="Ticker do ativo (ex: PETR4)")
-    p.add_argument("--modo",        default="manual",  choices=["ocr", "dde", "manual"],
+    p.add_argument("--modo",        default="manual",  choices=["ocr", "dde", "rtd", "manual"],
                    help="Modo de captura de dados")
     p.add_argument("--host",        default="127.0.0.1", help="Host do servidor HTTP")
     p.add_argument("--port",        default=5000,      type=int, help="Porta do servidor HTTP")
@@ -269,6 +271,10 @@ def main():
                 logger.error("Falha ao iniciar DDE")
         else:
             logger.error("DDE não disponível — rodando em modo manual")
+
+    elif args.modo == "rtd":
+        logger.info("Modo RTD — dados recebidos via Excel RTD Bridge (POST /tick)")
+        logger.info("Abra o Excel com FLUXO_BRIDGE_RTD.bas e execute IniciarBridge()")
 
     else:
         logger.info("Modo MANUAL — injete dados via POST /tick e /book")
