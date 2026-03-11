@@ -2654,6 +2654,157 @@
       background: rgba(255, 184, 0, .1);
       color: var(--fq-gold);
     }
+
+    /* ══════════════════════════════════════════
+       ROBÔ HÍBRIDO — CSS
+    ══════════════════════════════════════════ */
+    #screenHybrid {
+      --hy-bg: #0c0c0f;
+      --hy-surface: rgba(16, 16, 22, .95);
+      --hy-surface2: rgba(20, 20, 28, .98);
+      --hy-border: rgba(44, 44, 60, .55);
+      --hy-text: #e8eaf0;
+      --hy-dim: #525468;
+      --hy-green: #00ff88;
+      --hy-blue: #38bdf8;
+      --hy-red: #ff4757;
+      --hy-gold: #ffb800;
+      --hy-purple: #a78bfa;
+      background: var(--hy-bg);
+      color: var(--hy-text);
+      font-family: 'Inter', 'Segoe UI', sans-serif;
+    }
+
+    .hy-heatmap {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 6px;
+    }
+
+    .hy-heatmap-cell {
+      border-radius: 8px;
+      padding: 8px 4px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      transition: background .3s, box-shadow .3s;
+      border: 1px solid var(--hy-border);
+    }
+
+    .hy-heatmap-cell .hy-heat-digit {
+      font-size: 18px;
+      font-weight: 900;
+      margin-bottom: 2px;
+    }
+
+    .hy-heatmap-cell .hy-heat-delay {
+      font-size: 10px;
+      opacity: .7;
+    }
+
+    .hy-heatmap-cell.heat-cold {
+      background: rgba(0, 255, 136, .08);
+      color: var(--hy-green);
+    }
+
+    .hy-heatmap-cell.heat-warm {
+      background: rgba(255, 184, 0, .12);
+      color: var(--hy-gold);
+    }
+
+    .hy-heatmap-cell.heat-hot {
+      background: rgba(255, 71, 87, .15);
+      color: var(--hy-red);
+      box-shadow: 0 0 12px rgba(255, 71, 87, .25);
+    }
+
+    .hy-heatmap-cell.heat-fire {
+      background: rgba(255, 71, 87, .25);
+      color: #ff6b7a;
+      box-shadow: 0 0 18px rgba(255, 71, 87, .4);
+      animation: hy-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes hy-pulse {
+      0%, 100% { box-shadow: 0 0 12px rgba(255, 71, 87, .3); }
+      50% { box-shadow: 0 0 24px rgba(255, 71, 87, .6); }
+    }
+
+    .hy-strat-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .hy-strat-card {
+      background: var(--hy-surface);
+      border: 1px solid var(--hy-border);
+      border-radius: 10px;
+      padding: 14px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .hy-strat-card.active {
+      box-shadow: 0 0 16px rgba(0, 255, 136, .15);
+    }
+
+    .hy-strat-card .hy-strat-name {
+      font-size: 10px;
+      letter-spacing: 1.5px;
+      color: var(--hy-dim);
+      font-family: 'JetBrains Mono', monospace;
+      margin-bottom: 8px;
+    }
+
+    .hy-strat-card .hy-strat-status {
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .hy-strat-card .hy-strat-detail {
+      font-size: 10px;
+      color: var(--hy-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .hy-signal-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: .5px;
+    }
+
+    .hy-signal-badge.badge-idle { background: rgba(82, 84, 104, .2); color: var(--hy-dim); }
+    .hy-signal-badge.badge-active { background: rgba(0, 255, 136, .15); color: var(--hy-green); }
+    .hy-signal-badge.badge-trade { background: rgba(56, 189, 248, .15); color: var(--hy-blue); }
+
+    .hy-trade-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 10px;
+      border-bottom: 1px solid rgba(255,255,255,.04);
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .hy-pnl-canvas {
+      width: 100%;
+      height: 120px;
+      border-radius: 8px;
+      background: var(--hy-surface2);
+      border: 1px solid var(--hy-border);
+    }
+
+    @media (max-width: 768px) {
+      .hy-strat-cards { grid-template-columns: 1fr; }
+      .hy-heatmap { grid-template-columns: repeat(5, 1fr); }
+    }
   </style>
   <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -3177,6 +3328,7 @@
         <button class="nav-pill" id="btnChartNav" onclick="toggleChartPanel()">📈 Gráfico</button>
         <button class="nav-pill" id="btnReportsNav" onclick="showScreen('screenReports')">📊 Relatórios</button>
         <button class="nav-pill" id="btnFreqNav" onclick="showScreen('screenFreq')">🎯 Freq. Dígitos</button>
+        <button class="nav-pill" id="btnHybridNav" onclick="showScreen('screenHybrid')">🤖 Híbrido</button>
         <button class="nav-pill" onclick="showScreen('screenAdmin')" id="btnAdminNav" style="display:none;">🛠️
           Admin</button>
 
@@ -4233,6 +4385,7 @@
       document.getElementById(id).classList.add('active');
       if (id === 'screenReports') loadReportsFromSupabase();
       if (id === 'screenFreq') freqInitChart();
+      if (id === 'screenHybrid') hyInitChart();
       // Salvar tela atual para restaurar no F5 (exceto login e admin)
       if (id !== 'screenLogin' && id !== 'screenAdmin') {
         try { localStorage.setItem('alpha_last_screen', id); } catch (e) { }
@@ -8480,6 +8633,810 @@
         document.getElementById('freqResultOverlay').classList.remove('show');
       }
 
+      // ════════════════════════════════════════
+      // ROBÔ HÍBRIDO
+      // ════════════════════════════════════════
+      const HY_DECIMALS = { 'R_10': 3, 'R_25': 3, 'R_50': 4, 'R_75': 4, 'R_100': 2 };
+      const HY_HIGH = [7, 8, 9];
+      const HY_LOW  = [0, 1, 2];
+
+      function hyGetLastDigit(price, market) {
+        const d = HY_DECIMALS[market] || 2;
+        return Math.round(parseFloat(price) * Math.pow(10, d)) % 10;
+      }
+
+      // ── Estado ──
+      let hyWs = null;
+      let hyMarket = 'R_10';
+      let hyBuffer = [];           // últimos 200 dígitos
+      let hyDelay = {};            // atraso por dígito (ticks desde última aparição)
+      let hyTotalDigits = 0;
+      let hyTicksSubscribed = false;
+      let hyRobotActive = false;
+      let hyTradeActive = false;
+      let hyCurrentContractId = null;
+      let hyActiveSignal = null;   // { strategy, contractType, barrier, label }
+      let hyMartLevel = 0;
+      let hySessionWins = 0;
+      let hySessionLosses = 0;
+      let hySessionPnl = 0;
+      let hyPnlHistory = [0];      // curva P&L
+      let hyProcessedContracts = new Set();
+      let hyTickHandledId = null;
+      let hyEntryTick = 0;
+      let hyTradeMartLevel = 0;
+
+      // Inicializa delays
+      for (let i = 0; i <= 9; i++) hyDelay[i] = 0;
+
+      // ── Mercado ──
+      function hySelectMarket(sym, btn) {
+        if (hyRobotActive) return;
+        hyMarket = sym;
+        document.querySelectorAll('#hyMarketBtns button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        hyBuffer = [];
+        for (let i = 0; i <= 9; i++) hyDelay[i] = 0;
+        hyTotalDigits = 0;
+        hyResetStream();
+        hyRenderBars();
+        hyRenderHeatmap();
+        if (hyWs && hyWs.readyState === 1) {
+          hyTicksSubscribed = false;
+          hyWs.send(JSON.stringify({ forget_all: 'ticks' }));
+          hyWs.send(JSON.stringify({ ticks_history: hyMarket, count: 200, end: 'latest', style: 'ticks' }));
+        }
+      }
+
+      // ── WebSocket ──
+      function hyInitChart() {
+        hyRenderBars();
+        hyRenderHeatmap();
+        if (hyWs && hyWs.readyState <= 1) return;
+        hyTicksSubscribed = false;
+        hyWs = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`);
+        hyWs.onopen = () => {
+          document.getElementById('hyConnStatus').textContent = '⬤ Conectado';
+          document.getElementById('hyConnStatus').style.color = 'var(--green)';
+          hyWs.send(JSON.stringify({ ticks_history: hyMarket, count: 200, end: 'latest', style: 'ticks' }));
+        };
+        hyWs.onclose = () => {
+          document.getElementById('hyConnStatus').textContent = '⬤ Desconectado';
+          document.getElementById('hyConnStatus').style.color = 'var(--dim)';
+          hyTicksSubscribed = false;
+        };
+        hyWs.onmessage = hyHandleMsg;
+      }
+
+      // ── Handler WS ──
+      function hyHandleMsg(evt) {
+        const data = JSON.parse(evt.data);
+        if (data.error) return;
+        if (data.msg_type === 'authorize') {
+          if (!hyTicksSubscribed) {
+            hyWs.send(JSON.stringify({ ticks_history: hyMarket, count: 200, end: 'latest', style: 'ticks' }));
+          }
+        }
+        if (data.msg_type === 'history') {
+          const prices = data.history?.prices || [];
+          hyBuffer = prices.map(p => hyGetLastDigit(parseFloat(p), hyMarket));
+          // Calcula delays iniciais
+          for (let i = 0; i <= 9; i++) hyDelay[i] = 0;
+          for (let i = hyBuffer.length - 1; i >= 0; i--) {
+            const d = hyBuffer[i];
+            if (hyDelay[d] === 0 && i < hyBuffer.length - 1) {
+              hyDelay[d] = hyBuffer.length - 1 - i;
+            }
+          }
+          // Dígitos que nunca apareceram: delay = tamanho do buffer
+          for (let i = 0; i <= 9; i++) {
+            if (!hyBuffer.includes(i)) hyDelay[i] = hyBuffer.length;
+          }
+          hyRenderBars();
+          hyRenderHeatmap();
+          if (!hyTicksSubscribed) {
+            hyWs.send(JSON.stringify({ ticks: hyMarket, subscribe: 1 }));
+          }
+        }
+        if (data.msg_type === 'tick') {
+          hyTicksSubscribed = true;
+          hyOnTick(data.tick);
+        }
+        if (data.msg_type === 'buy') hyHandleBuy(data);
+        if (data.msg_type === 'proposal_open_contract') hyHandleContract(data);
+      }
+
+      // ── Tick handler ──
+      function hyOnTick(tick) {
+        if (!tick || tick.quote == null) return;
+        const d = hyGetLastDigit(tick.quote, hyMarket);
+        hyBuffer.push(d);
+        if (hyBuffer.length > 200) hyBuffer.shift();
+        hyTotalDigits++;
+
+        // Atualiza delays
+        for (let i = 0; i <= 9; i++) hyDelay[i]++;
+        hyDelay[d] = 0;
+
+        hyRenderBars();
+        hyRenderHeatmap();
+        hyUpdateStream(d);
+        hyUpdateStrategyCards();
+
+        if (hyRobotActive && hyBuffer.length >= 20) {
+          if (hyActiveSignal && hyTradeActive && hyTotalDigits > hyEntryTick) {
+            hyResolveOnTick(d);
+          } else if (!hyTradeActive) {
+            hyCheckSignal();
+          }
+        }
+      }
+
+      // ── Renderiza barras de frequência ──
+      let _hyLastRender = 0;
+      function hyRenderBars() {
+        const now = Date.now();
+        if (now - _hyLastRender < 250) return;
+        _hyLastRender = now;
+        const barsEl = document.getElementById('hyBars');
+        if (!barsEl) return;
+        const counts = {};
+        for (let i = 0; i <= 9; i++) counts[i] = 0;
+        hyBuffer.forEach(d => counts[d]++);
+        const total = hyBuffer.length;
+        let html = '';
+        for (let d = 0; d <= 9; d++) {
+          const pct = total > 0 ? Math.round((counts[d] / total) * 100) : 0;
+          const isLow = HY_LOW.includes(d);
+          const isHigh = HY_HIGH.includes(d);
+          const isAbsent = hyDelay[d] >= (parseInt(document.getElementById('hyDelayThreshold')?.value) || 40);
+          let stateClass;
+          if (isAbsent) stateClass = 'chip-zero';
+          else if (isLow) stateClass = 'chip-under';
+          else if (isHigh) stateClass = 'chip-over';
+          else stateClass = 'chip-neutral';
+          const fillHeight = total > 0 ? Math.max(pct, counts[d] === 0 ? 4 : 0) : 0;
+          html += `<div class="fq-bar-item ${stateClass}">
+            <div class="fq-bar-pct">${total > 0 ? pct + '%' : '—'}</div>
+            <div class="fq-bar-track"><div class="fq-bar-fill" style="height:${fillHeight}%"></div></div>
+            <div class="fq-bar-num">${d}</div>
+          </div>`;
+        }
+        barsEl.innerHTML = html;
+      }
+
+      // ── Heatmap de atraso ──
+      function hyRenderHeatmap() {
+        const el = document.getElementById('hyHeatmap');
+        if (!el) return;
+        const threshold = parseInt(document.getElementById('hyDelayThreshold')?.value) || 40;
+        let html = '';
+        for (let d = 0; d <= 9; d++) {
+          const delay = hyDelay[d];
+          let cls = 'heat-cold';
+          if (delay >= threshold) cls = 'heat-fire';
+          else if (delay >= threshold * 0.7) cls = 'heat-hot';
+          else if (delay >= threshold * 0.4) cls = 'heat-warm';
+          html += `<div class="hy-heatmap-cell ${cls}">
+            <div class="hy-heat-digit">${d}</div>
+            <div class="hy-heat-delay">${delay} ticks</div>
+          </div>`;
+        }
+        el.innerHTML = html;
+      }
+
+      // ── Atualiza cards de estratégia ──
+      function hyUpdateStrategyCards() {
+        const threshold = parseInt(document.getElementById('hyDelayThreshold')?.value) || 40;
+        const clusterMin = parseInt(document.getElementById('hyClusterMin')?.value) || 7;
+
+        // 1. Dígito Ausente
+        let maxDelay = 0, maxDelayDigit = -1;
+        for (let d = 0; d <= 9; d++) {
+          if (hyDelay[d] > maxDelay) { maxDelay = hyDelay[d]; maxDelayDigit = d; }
+        }
+        const ausenteEl = document.getElementById('hyAusenteDetail');
+        const ausenteBadge = document.getElementById('hyAusenteBadge');
+        const ausenteStatus = document.getElementById('hyAusenteStatus');
+        if (ausenteEl) ausenteEl.textContent = `Atraso máx: ${maxDelay} | Dígito: ${maxDelayDigit}`;
+        if (maxDelay >= threshold) {
+          if (ausenteBadge) { ausenteBadge.textContent = 'SINAL'; ausenteBadge.className = 'hy-signal-badge badge-active'; }
+          if (ausenteStatus) { ausenteStatus.textContent = `DIFFERS ${maxDelayDigit}`; ausenteStatus.style.color = 'var(--hy-green)'; }
+          document.getElementById('hyCardAusente')?.classList.add('active');
+          document.getElementById('hyCardAusente').style.borderColor = 'var(--hy-green)';
+        } else {
+          if (ausenteBadge) { ausenteBadge.textContent = 'IDLE'; ausenteBadge.className = 'hy-signal-badge badge-idle'; }
+          if (ausenteStatus) { ausenteStatus.textContent = 'MONITORANDO'; ausenteStatus.style.color = 'var(--hy-dim)'; }
+          document.getElementById('hyCardAusente')?.classList.remove('active');
+          document.getElementById('hyCardAusente').style.borderColor = '';
+        }
+
+        // 2. Cluster
+        const last10 = hyBuffer.slice(-10);
+        const highCount = last10.filter(d => HY_HIGH.includes(d)).length;
+        const lowCount = last10.filter(d => HY_LOW.includes(d)).length;
+        const clusterEl = document.getElementById('hyClusterDetail');
+        const clusterBadge = document.getElementById('hyClusterBadge');
+        const clusterStatus = document.getElementById('hyClusterStatus');
+        if (clusterEl) clusterEl.textContent = `Alto: ${highCount}/10 | Baixo: ${lowCount}/10`;
+        const hasCluster = highCount >= clusterMin || lowCount >= clusterMin;
+        if (hasCluster) {
+          const clType = highCount >= clusterMin ? 'UNDER 7' : 'OVER 6';
+          if (clusterBadge) { clusterBadge.textContent = 'SINAL'; clusterBadge.className = 'hy-signal-badge badge-active'; }
+          if (clusterStatus) { clusterStatus.textContent = clType; clusterStatus.style.color = 'var(--hy-blue)'; }
+          document.getElementById('hyCardCluster')?.classList.add('active');
+          document.getElementById('hyCardCluster').style.borderColor = 'var(--hy-blue)';
+        } else {
+          if (clusterBadge) { clusterBadge.textContent = 'IDLE'; clusterBadge.className = 'hy-signal-badge badge-idle'; }
+          if (clusterStatus) { clusterStatus.textContent = 'MONITORANDO'; clusterStatus.style.color = 'var(--hy-dim)'; }
+          document.getElementById('hyCardCluster')?.classList.remove('active');
+          document.getElementById('hyCardCluster').style.borderColor = '';
+        }
+
+        // 3. Anti-Repetição
+        const len = hyBuffer.length;
+        const hasRepeat = len >= 2 && hyBuffer[len - 1] === hyBuffer[len - 2];
+        const repeatEl = document.getElementById('hyRepeatDetail');
+        const repeatBadge = document.getElementById('hyRepeatBadge');
+        const repeatStatus = document.getElementById('hyRepeatStatus');
+        if (repeatEl) repeatEl.textContent = `Último: ${len > 0 ? hyBuffer[len - 1] : '—'} | Repetiu: ${hasRepeat ? 'Sim' : 'Não'}`;
+        if (hasRepeat) {
+          if (repeatBadge) { repeatBadge.textContent = 'SINAL'; repeatBadge.className = 'hy-signal-badge badge-active'; }
+          if (repeatStatus) { repeatStatus.textContent = `DIFFERS ${hyBuffer[len - 1]}`; repeatStatus.style.color = 'var(--hy-purple)'; }
+          document.getElementById('hyCardRepeat')?.classList.add('active');
+          document.getElementById('hyCardRepeat').style.borderColor = 'var(--hy-purple)';
+        } else {
+          if (repeatBadge) { repeatBadge.textContent = 'IDLE'; repeatBadge.className = 'hy-signal-badge badge-idle'; }
+          if (repeatStatus) { repeatStatus.textContent = 'MONITORANDO'; repeatStatus.style.color = 'var(--hy-dim)'; }
+          document.getElementById('hyCardRepeat')?.classList.remove('active');
+          document.getElementById('hyCardRepeat').style.borderColor = '';
+        }
+      }
+
+      // ── Stream de dígitos ──
+      let _hyLastStream = 0;
+      function hyUpdateStream(d) {
+        const isLow = HY_LOW.includes(d);
+        const isHigh = HY_HIGH.includes(d);
+        const box = document.getElementById('hyLastDigitBox');
+        const result = document.getElementById('hyLastDigitResult');
+        const totalEl = document.getElementById('hyTotalDigits');
+        const bufEl = document.getElementById('hyBufferCount');
+        if (box) {
+          box.textContent = d;
+          if (isLow) { box.style.background = 'rgba(0,255,136,.15)'; box.style.color = 'var(--hy-green)'; }
+          else if (isHigh) { box.style.background = 'rgba(56,189,248,.15)'; box.style.color = 'var(--hy-blue)'; }
+          else { box.style.background = 'var(--hy-surface2)'; box.style.color = 'var(--hy-dim)'; }
+        }
+        if (result) {
+          if (isLow) { result.textContent = 'BAIXO (' + d + ')'; result.style.color = 'var(--hy-green)'; }
+          else if (isHigh) { result.textContent = 'ALTO (' + d + ')'; result.style.color = 'var(--hy-blue)'; }
+          else { result.textContent = 'NEUTRO (' + d + ')'; result.style.color = 'var(--hy-dim)'; }
+        }
+        if (totalEl) totalEl.textContent = hyTotalDigits.toLocaleString('pt-BR');
+        if (bufEl) bufEl.textContent = Math.min(hyBuffer.length, 200);
+
+        const now = Date.now();
+        if (now - _hyLastStream < 200) return;
+        _hyLastStream = now;
+        const stream = document.getElementById('hyDigitStream');
+        if (!stream) return;
+        const prev = stream.querySelector('.freq-latest');
+        if (prev) prev.classList.remove('freq-latest');
+        const chip = document.createElement('div');
+        chip.textContent = d;
+        chip.className = 'digit-chip ' + (isLow ? 'win' : isHigh ? 'freq-over' : 'neutral') + ' freq-latest';
+        stream.appendChild(chip);
+        if (stream.children.length > 60) stream.removeChild(stream.firstChild);
+        stream.scrollTop = stream.scrollHeight;
+      }
+
+      function hyResetStream() {
+        const stream = document.getElementById('hyDigitStream');
+        if (stream) stream.innerHTML = '';
+        const box = document.getElementById('hyLastDigitBox');
+        if (box) { box.textContent = '—'; box.style.background = 'var(--hy-surface2)'; box.style.color = 'var(--hy-dim)'; }
+        const result = document.getElementById('hyLastDigitResult');
+        if (result) { result.textContent = '—'; result.style.color = 'var(--hy-dim)'; }
+        const totalEl = document.getElementById('hyTotalDigits');
+        if (totalEl) totalEl.textContent = '0';
+        const bufEl = document.getElementById('hyBufferCount');
+        if (bufEl) bufEl.textContent = '0';
+      }
+
+      // ══════════════════════════════════════════
+      // MOTOR DE INTELIGÊNCIA — 3 ESTRATÉGIAS
+      // ══════════════════════════════════════════
+      function hyCheckSignal() {
+        if (!hyRobotActive || hyTradeActive) return;
+
+        // Em cadeia ativa (pós-loss): re-entra com mesmo sinal
+        if (hyActiveSignal && hyMartLevel > 0) {
+          hyEnterTrade(hyActiveSignal);
+          return;
+        }
+
+        const threshold = parseInt(document.getElementById('hyDelayThreshold')?.value) || 40;
+        const clusterMin = parseInt(document.getElementById('hyClusterMin')?.value) || 7;
+
+        // PRIORIDADE 1: Dígito Ausente
+        let maxDelay = 0, maxDelayDigit = -1;
+        for (let d = 0; d <= 9; d++) {
+          if (hyDelay[d] > maxDelay) { maxDelay = hyDelay[d]; maxDelayDigit = d; }
+        }
+        if (maxDelay >= threshold && maxDelayDigit >= 0) {
+          hyActiveSignal = {
+            strategy: 'ausente',
+            contractType: 'DIGITDIFF',
+            barrier: String(maxDelayDigit),
+            label: `DIFFERS ${maxDelayDigit} (atraso ${maxDelay})`
+          };
+          hyMartLevel = 0;
+          hyLog(`🔍 SINAL: Dígito ${maxDelayDigit} ausente há ${maxDelay} ticks → DIFFERS ${maxDelayDigit}`, 'warning');
+          hyEnterTrade(hyActiveSignal);
+          return;
+        }
+
+        // PRIORIDADE 2: Cluster
+        const last10 = hyBuffer.slice(-10);
+        const highCount = last10.filter(d => HY_HIGH.includes(d)).length;
+        const lowCount = last10.filter(d => HY_LOW.includes(d)).length;
+        if (highCount >= clusterMin) {
+          hyActiveSignal = {
+            strategy: 'cluster',
+            contractType: 'DIGITUNDER',
+            barrier: '7',
+            label: `UNDER 7 (cluster alto ${highCount}/10)`
+          };
+          hyMartLevel = 0;
+          hyLog(`🔍 SINAL: Cluster ALTO ${highCount}/10 → UNDER 7`, 'warning');
+          hyEnterTrade(hyActiveSignal);
+          return;
+        }
+        if (lowCount >= clusterMin) {
+          hyActiveSignal = {
+            strategy: 'cluster',
+            contractType: 'DIGITOVER',
+            barrier: '6',
+            label: `OVER 6 (cluster baixo ${lowCount}/10)`
+          };
+          hyMartLevel = 0;
+          hyLog(`🔍 SINAL: Cluster BAIXO ${lowCount}/10 → OVER 6`, 'warning');
+          hyEnterTrade(hyActiveSignal);
+          return;
+        }
+
+        // PRIORIDADE 3: Anti-Repetição
+        const len = hyBuffer.length;
+        if (len >= 2 && hyBuffer[len - 1] === hyBuffer[len - 2]) {
+          const repeated = hyBuffer[len - 1];
+          hyActiveSignal = {
+            strategy: 'repetição',
+            contractType: 'DIGITDIFF',
+            barrier: String(repeated),
+            label: `DIFFERS ${repeated} (repetição)`
+          };
+          hyMartLevel = 0;
+          hyLog(`🔍 SINAL: Dígito ${repeated} repetiu → DIFFERS ${repeated}`, 'warning');
+          hyEnterTrade(hyActiveSignal);
+          return;
+        }
+      }
+
+      // ══════════════════════════════════════════
+      // MOTOR DE TRADING
+      // ══════════════════════════════════════════
+      function hyGetEntry(level) {
+        const base = parseFloat(document.getElementById('hyEntry')?.value || 0.35);
+        return parseFloat((base * Math.pow(2, level)).toFixed(2));
+      }
+
+      function hyEnterTrade(signal) {
+        if (!hyWs || hyWs.readyState !== 1) return;
+        if (!derivAccount?.token) { alert('Conecte sua conta Deriv primeiro!'); return; }
+        const amount = hyGetEntry(hyMartLevel);
+        const maxGales = parseInt(document.getElementById('hyMaxGales')?.value) || 3;
+
+        hyTradeActive = true;
+        hyEntryTick = hyTotalDigits;
+        hyTradeMartLevel = hyMartLevel;
+
+        const levelLabel = hyMartLevel === 0 ? 'Entrada' : `Gale ${hyMartLevel}`;
+        const statusEl = document.getElementById('hyStatusTxt');
+        if (statusEl) statusEl.textContent = `${signal.label} — $${amount} (${levelLabel})`;
+        const lastSigEl = document.getElementById('hyLastSignal');
+        if (lastSigEl) lastSigEl.textContent = signal.label;
+
+        try { playFreqEntry(); } catch (e) {}
+
+        hyLog(`📤 Ordem: ${signal.label} — $${amount.toFixed(2)} (${levelLabel})`, 'info');
+
+        hyWs.send(JSON.stringify({
+          buy: 1,
+          price: amount.toFixed(2),
+          parameters: {
+            contract_type: signal.contractType,
+            symbol: hyMarket,
+            duration: 1, duration_unit: 't',
+            basis: 'stake',
+            amount: amount.toFixed(2),
+            currency: derivAccount.currency || 'USD',
+            barrier: signal.barrier
+          }
+        }));
+      }
+
+      // ── Resolve contrato pelo tick ──
+      function hyResolveOnTick(digit) {
+        if (!hyActiveSignal) return;
+        const sig = hyActiveSignal;
+        let isWin = false;
+        if (sig.contractType === 'DIGITDIFF') {
+          isWin = digit !== parseInt(sig.barrier);
+        } else if (sig.contractType === 'DIGITUNDER') {
+          isWin = digit < parseInt(sig.barrier);
+        } else if (sig.contractType === 'DIGITOVER') {
+          isWin = digit > parseInt(sig.barrier);
+        }
+
+        hyTickHandledId = hyCurrentContractId;
+        if (hyCurrentContractId) hyProcessedContracts.add(hyCurrentContractId);
+        hyTradeActive = false;
+        hyCurrentContractId = null;
+
+        const maxGales = parseInt(document.getElementById('hyMaxGales')?.value) || 3;
+
+        if (isWin) {
+          try { playWin(); } catch (e) {}
+          hySessionWins++;
+          hyUpdateStats();
+          hyLog(`🏆 WIN | aguardando P&L exato...`, 'success');
+          hyActiveSignal = null;
+          hyMartLevel = 0;
+        } else {
+          try { playLoss(); } catch (e) {}
+          hySessionLosses++;
+          hyUpdateStats();
+          hyMartLevel++;
+
+          // Pinta chip vermelho
+          const latestChip = document.querySelector('#hyDigitStream .freq-latest');
+          if (latestChip) latestChip.classList.add('gale-loss');
+
+          if (hyMartLevel > maxGales) {
+            hyLog(`🛑 MAX GALES atingido (${maxGales})`, 'error');
+            hyActiveSignal = null;
+            hyMartLevel = 0;
+          } else {
+            const statusEl = document.getElementById('hyStatusTxt');
+            if (statusEl) statusEl.textContent = `❌ LOSS — Gale ${hyMartLevel} próximo`;
+            hyLog(`💸 LOSS | Gale ${hyMartLevel} ($${hyGetEntry(hyMartLevel).toFixed(2)}) próximo`, 'error');
+            // Re-entra imediatamente
+            hyEnterTrade(hyActiveSignal);
+          }
+        }
+      }
+
+      // ── Buy callback ──
+      function hyHandleBuy(data) {
+        if (data.error) {
+          hyTradeActive = false;
+          if (data.error.code === 'AuthorizationRequired') {
+            hyWs.send(JSON.stringify({ authorize: derivAccount.token }));
+          }
+          hyLog(`⚠️ Erro na compra: ${data.error.message}`, 'error');
+          return;
+        }
+        hyCurrentContractId = data.buy.contract_id;
+        hyWs.send(JSON.stringify({ proposal_open_contract: 1, contract_id: hyCurrentContractId, subscribe: 1 }));
+      }
+
+      // ── Contract callback (P&L exato) ──
+      function hyHandleContract(data) {
+        const c = data.proposal_open_contract;
+        if (!c) return;
+        if (!c.is_expired && !c.is_sold) return;
+
+        // Já resolvido pelo tick → só atualiza P&L
+        if (c.contract_id === hyTickHandledId) {
+          hyTickHandledId = null;
+          const profit = parseFloat(c.profit || 0);
+          hySessionPnl += profit;
+          hyPnlHistory.push(hySessionPnl);
+          hyUpdateStats();
+          hyAddTradeRow(profit > 0, profit, hyTradeMartLevel, hyActiveSignal?.label || '—');
+          hyRenderPnlChart();
+
+          if (profit > 0) {
+            hyLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${hySessionPnl >= 0 ? '+' : ''}$${hySessionPnl.toFixed(2)}`, 'success');
+            // Check stop gain
+            const sg = parseFloat(document.getElementById('hySG')?.value || 10);
+            if (hySessionPnl >= sg && hyRobotActive) {
+              hyLog(`🎯 STOP GAIN: +$${hySessionPnl.toFixed(2)}`, 'success');
+              hyShowResult('gain');
+              return;
+            }
+          } else {
+            hyLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${hySessionPnl >= 0 ? '+' : ''}$${hySessionPnl.toFixed(2)}`, 'error');
+            // Check stop loss
+            const sl = parseFloat(document.getElementById('hySL')?.value || 5);
+            if (hySessionPnl <= -sl && hyRobotActive) {
+              hyLog(`🛑 STOP LOSS: $${hySessionPnl.toFixed(2)}`, 'error');
+              hyShowResult('loss');
+              return;
+            }
+          }
+          return;
+        }
+
+        // Fallback: contrato não resolvido pelo tick
+        if (hyCurrentContractId && c.contract_id !== hyCurrentContractId) return;
+        if (hyProcessedContracts.has(c.contract_id)) return;
+        hyProcessedContracts.add(c.contract_id);
+        if (hyProcessedContracts.size > 20) hyProcessedContracts.delete(hyProcessedContracts.values().next().value);
+
+        hyTradeActive = false;
+        hyCurrentContractId = null;
+        const profit = parseFloat(c.profit || 0);
+        const isWin = profit > 0;
+        const maxGales = parseInt(document.getElementById('hyMaxGales')?.value) || 3;
+
+        hySessionPnl += profit;
+        hyPnlHistory.push(hySessionPnl);
+        if (isWin) { try { playWin(); } catch(e){} hySessionWins++; }
+        else { try { playLoss(); } catch(e){} hySessionLosses++; }
+        hyUpdateStats();
+        hyAddTradeRow(isWin, profit, hyTradeMartLevel, hyActiveSignal?.label || '—');
+        hyRenderPnlChart();
+
+        if (isWin) {
+          hyLog(`🏆 WIN +$${profit.toFixed(2)} | P&L: ${hySessionPnl >= 0 ? '+' : ''}$${hySessionPnl.toFixed(2)}`, 'success');
+          hyActiveSignal = null;
+          hyMartLevel = 0;
+          const sg = parseFloat(document.getElementById('hySG')?.value || 10);
+          if (hySessionPnl >= sg && hyRobotActive) { hyShowResult('gain'); }
+        } else {
+          hyMartLevel++;
+          hyLog(`💸 LOSS $${Math.abs(profit).toFixed(2)} | P&L: ${hySessionPnl >= 0 ? '+' : ''}$${hySessionPnl.toFixed(2)}`, 'error');
+          const sl = parseFloat(document.getElementById('hySL')?.value || 5);
+          if (hySessionPnl <= -sl) { hyShowResult('loss'); return; }
+          if (hyMartLevel > maxGales) {
+            hyActiveSignal = null; hyMartLevel = 0;
+            hyLog(`🛑 MAX GALES atingido`, 'error');
+          } else {
+            hyEnterTrade(hyActiveSignal);
+          }
+        }
+      }
+
+      // ══════════════════════════════════════════
+      // PAINEL / DASHBOARD
+      // ══════════════════════════════════════════
+      function hyUpdateStats() {
+        const wEl = document.getElementById('hyWins');
+        const lEl = document.getElementById('hyLosses');
+        const pEl = document.getElementById('hyPnl');
+        if (wEl) wEl.textContent = hySessionWins;
+        if (lEl) lEl.textContent = hySessionLosses;
+        if (pEl) {
+          pEl.textContent = (hySessionPnl >= 0 ? '+' : '') + '$' + hySessionPnl.toFixed(2);
+          pEl.style.color = hySessionPnl >= 0 ? 'var(--hy-green)' : 'var(--hy-red)';
+        }
+      }
+
+      // ── Curva P&L (canvas) ──
+      function hyRenderPnlChart() {
+        const canvas = document.getElementById('hyPnlCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        const w = rect.width, h = rect.height;
+
+        ctx.clearRect(0, 0, w, h);
+        if (hyPnlHistory.length < 2) return;
+
+        const pts = hyPnlHistory;
+        const minV = Math.min(...pts, 0);
+        const maxV = Math.max(...pts, 0);
+        const range = maxV - minV || 1;
+        const pad = 10;
+
+        // Linha zero
+        const zeroY = pad + (h - 2 * pad) * (1 - (0 - minV) / range);
+        ctx.strokeStyle = 'rgba(82,84,104,.3)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(0, zeroY);
+        ctx.lineTo(w, zeroY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Curva
+        ctx.beginPath();
+        ctx.strokeStyle = pts[pts.length - 1] >= 0 ? '#00ff88' : '#ff4757';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < pts.length; i++) {
+          const x = (i / (pts.length - 1)) * w;
+          const y = pad + (h - 2 * pad) * (1 - (pts[i] - minV) / range);
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Preenchimento
+        const lastX = w;
+        const lastY = pad + (h - 2 * pad) * (1 - (pts[pts.length - 1] - minV) / range);
+        ctx.lineTo(lastX, zeroY);
+        ctx.lineTo(0, zeroY);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(0, 0, 0, h);
+        if (pts[pts.length - 1] >= 0) {
+          grad.addColorStop(0, 'rgba(0,255,136,.15)');
+          grad.addColorStop(1, 'rgba(0,255,136,0)');
+        } else {
+          grad.addColorStop(0, 'rgba(255,71,87,0)');
+          grad.addColorStop(1, 'rgba(255,71,87,.15)');
+        }
+        ctx.fillStyle = grad;
+        ctx.fill();
+      }
+
+      // ── Histórico de trades ──
+      function hyAddTradeRow(isWin, profit, level, label) {
+        const hist = document.getElementById('hyTradeHistory');
+        if (!hist) return;
+        // Remove placeholder
+        if (hist.children.length === 1 && !hist.querySelector('.hy-trade-row')) hist.innerHTML = '';
+        const t = new Date().toLocaleTimeString('pt-BR');
+        const row = document.createElement('div');
+        row.className = 'hy-trade-row';
+        const levelLabel = level === 0 ? 'Entr.' : `G${level}`;
+        row.innerHTML = `
+          <span style="color:var(--hy-dim);">${t}</span>
+          <span style="color:${isWin ? 'var(--hy-green)' : 'var(--hy-red)'};">${isWin ? 'WIN' : 'LOSS'}</span>
+          <span>${label}</span>
+          <span style="color:var(--hy-dim);">${levelLabel}</span>
+          <span style="color:${profit >= 0 ? 'var(--hy-green)' : 'var(--hy-red)'};">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>
+        `;
+        hist.insertBefore(row, hist.firstChild);
+        if (hist.children.length > 50) hist.removeChild(hist.lastChild);
+      }
+
+      function hyClearTrades() {
+        const hist = document.getElementById('hyTradeHistory');
+        if (hist) hist.innerHTML = '<div style="color:var(--hy-dim);font-size:10px;text-align:center;padding:14px 0;">Nenhuma trade ainda.</div>';
+      }
+
+      // ── Log ──
+      function hyLog(msg, type = 'info') {
+        const area = document.getElementById('hyLogArea');
+        if (!area) return;
+        const empty = document.getElementById('hyLogEmpty');
+        if (empty) empty.remove();
+        const t = new Date().toLocaleTimeString('pt-BR');
+        const colors = { info: 'var(--dim)', success: 'var(--green)', error: 'var(--red)', warning: 'var(--gold)' };
+        const line = document.createElement('div');
+        line.style.cssText = `color:${colors[type] || colors.info};line-height:1.4;border-bottom:1px solid rgba(255,255,255,.04);padding-bottom:2px;`;
+        line.textContent = `[${t}] ${msg}`;
+        area.appendChild(line);
+        while (area.children.length > 50) area.removeChild(area.firstChild);
+        area.scrollTop = area.scrollHeight;
+      }
+
+      function hyClearLog() {
+        const area = document.getElementById('hyLogArea');
+        if (area) area.innerHTML = '<div id="hyLogEmpty" style="color:var(--hy-dim);font-size:10px;text-align:center;padding:20px 0;line-height:1.6;">Inicie o robô<br>para ver os logs aqui.</div>';
+      }
+
+      // ══════════════════════════════════════════
+      // TOGGLE / START / STOP
+      // ══════════════════════════════════════════
+      function hyToggleRobot() {
+        if (hyRobotActive) hyStopRobot(); else hyStartRobot();
+      }
+
+      function hySetToggleBtn(active) {
+        const btn = document.getElementById('hyToggleBtn');
+        if (!btn) return;
+        if (active) {
+          btn.textContent = '⏹ PARAR ROBÔ';
+          btn.classList.add('stop');
+        } else {
+          btn.textContent = '▶ INICIAR ROBÔ';
+          btn.classList.remove('stop');
+        }
+      }
+
+      function hyStartRobot() {
+        if (!derivAccount) { alert('Conecte sua conta Deriv primeiro!'); return; }
+        hyRobotActive = true;
+        hyMartLevel = 0;
+        hyActiveSignal = null;
+        hyTradeActive = false;
+        hyProcessedContracts.clear();
+        hySetToggleBtn(true);
+        document.getElementById('hyStatusTxt').textContent = 'MONITORANDO...';
+
+        // Bloqueia inputs
+        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.disabled = true; el.style.opacity = '0.5'; }
+        });
+        document.querySelectorAll('#hyMarketBtns button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
+        const entrada = parseFloat(document.getElementById('hyEntry')?.value || 0.35).toFixed(2);
+        const sg = parseFloat(document.getElementById('hySG')?.value || 10);
+        const sl = parseFloat(document.getElementById('hySL')?.value || 5);
+        const maxG = parseInt(document.getElementById('hyMaxGales')?.value || 3);
+        hyLog(`🤖 Robô Híbrido iniciado | $${entrada} | SG: $${sg} | SL: $${sl} | Gales: ${maxG}`, 'success');
+
+        if (hyWs && hyWs.readyState === 1) {
+          hyWs.send(JSON.stringify({ authorize: derivAccount.token }));
+          return;
+        }
+
+        hyTicksSubscribed = false;
+        if (hyWs) { hyWs.onclose = null; hyWs.close(); }
+        hyWs = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`);
+        hyWs.onopen = () => {
+          document.getElementById('hyConnStatus').textContent = '⬤ Conectado';
+          document.getElementById('hyConnStatus').style.color = 'var(--green)';
+          hyWs.send(JSON.stringify({ authorize: derivAccount.token }));
+        };
+        hyWs.onclose = () => {
+          document.getElementById('hyConnStatus').textContent = '⬤ Desconectado';
+          document.getElementById('hyConnStatus').style.color = 'var(--dim)';
+          hyTicksSubscribed = false;
+        };
+        hyWs.onmessage = hyHandleMsg;
+      }
+
+      function hyStopRobot() {
+        if (hyRobotActive) hyLog('⏹ Robô parado.', 'warning');
+        hyRobotActive = false;
+        hyActiveSignal = null;
+        hyMartLevel = 0;
+        hyTradeActive = false;
+        hySetToggleBtn(false);
+        document.getElementById('hyStatusTxt').textContent = 'PARADO';
+
+        // Desbloqueia inputs
+        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.disabled = false; el.style.opacity = '1'; }
+        });
+        document.querySelectorAll('#hyMarketBtns button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+      }
+
+      // ── Resultado overlay ──
+      function hyShowResult(type) {
+        hyStopRobot();
+        const overlay = document.getElementById('hyResultOverlay');
+        const icon = document.getElementById('hyResIcon');
+        const title = document.getElementById('hyResTitle');
+        const value = document.getElementById('hyResValue');
+        const detail = document.getElementById('hyResDetail');
+        if (type === 'gain') {
+          icon.textContent = '🏆'; title.textContent = 'STOP GAIN'; title.style.color = 'var(--green)'; value.style.color = 'var(--green)';
+          try { playStopGain(); } catch(e){}
+        } else {
+          icon.textContent = '❌'; title.textContent = 'STOP LOSS'; title.style.color = 'var(--red)'; value.style.color = 'var(--red)';
+          try { playStopLoss(); } catch(e){}
+        }
+        value.textContent = (hySessionPnl >= 0 ? '+' : '') + '$' + hySessionPnl.toFixed(2);
+        detail.textContent = `${hySessionWins} wins · ${hySessionLosses} losses`;
+        overlay.style.display = 'flex';
+      }
+
+      function hyCloseResult() {
+        document.getElementById('hyResultOverlay').style.display = 'none';
+      }
+
       // ── Init ──────────────────────────────────
       renderRobotList();
       updateMartPreview();
@@ -8488,6 +9445,235 @@
       updateOUTable();
       updateFreqGrid();
   </script>
+
+  <!-- ════════════════════════════════════════════
+     SCREEN: ROBÔ HÍBRIDO
+  ════════════════════════════════════════════ -->
+  <div id="screenHybrid" class="screen">
+    <!-- Top nav -->
+    <div class="topnav" style="background:#1c1e2d;border-bottom:1px solid #32364a;">
+      <div class="topnav-brand" style="color:#a78bfa;">🤖 ROBÔ HÍBRIDO</div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <button class="nav-pill" onclick="showScreen('screenDashboard')">◀ Dashboard</button>
+      </div>
+    </div>
+
+    <!-- Account bar -->
+    <div id="hyAccBar"
+      style="display:none;background:var(--surface);border-bottom:1px solid #32364a;padding:8px 18px;gap:20px;align-items:center;flex-wrap:wrap;">
+      <div class="acc-field">
+        <span class="acc-field-label">CONTA</span>
+        <span class="acc-field-val mono" id="hyAccLoginId" style="color:var(--accent);font-size:13px;">—</span>
+      </div>
+      <div class="acc-field">
+        <span class="acc-field-label">SALDO</span>
+        <span class="acc-field-val mono" id="hyAccBalance" style="color:var(--green);font-size:13px;">—</span>
+      </div>
+    </div>
+
+    <!-- Main layout -->
+    <div style="display:flex;gap:14px;padding:18px;width:100%;overflow-y:auto;flex:1;box-sizing:border-box;align-items:flex-start;">
+
+      <!-- ── SIDEBAR ── -->
+      <div class="fq-sidebar">
+
+        <!-- Market -->
+        <div class="fq-panel">
+          <div class="fq-label">Mercado</div>
+          <div class="fq-mkt-grid" id="hyMarketBtns">
+            <button class="fq-mkt-btn active" data-sym="R_10" onclick="hySelectMarket('R_10',this)">V10</button>
+            <button class="fq-mkt-btn" data-sym="R_25" onclick="hySelectMarket('R_25',this)">V25</button>
+            <button class="fq-mkt-btn" data-sym="R_50" onclick="hySelectMarket('R_50',this)">V50</button>
+            <button class="fq-mkt-btn" data-sym="R_75" onclick="hySelectMarket('R_75',this)">V75</button>
+            <button class="fq-mkt-btn" data-sym="R_100" onclick="hySelectMarket('R_100',this)">V100</button>
+          </div>
+          <div id="hyConnStatus"
+            style="font-size:10px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;margin-top:10px;text-align:center;">
+            ⬤ Desconectado</div>
+        </div>
+
+        <!-- Config -->
+        <div class="fq-panel">
+          <div class="fq-label">Configuração</div>
+          <div class="fq-input-group">
+            <div class="fq-input-label">ENTRADA (USD)</div>
+            <input type="number" id="hyEntry" value="0.35" step="0.01" min="0.35" class="fq-input">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="fq-input-group">
+              <div class="fq-input-label">STOP GAIN</div>
+              <input type="number" id="hySG" value="10" step="0.50" class="fq-input">
+            </div>
+            <div class="fq-input-group">
+              <div class="fq-input-label">STOP LOSS</div>
+              <input type="number" id="hySL" value="5" step="0.50" class="fq-input">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="fq-input-group">
+              <div class="fq-input-label">MAX GALES</div>
+              <input type="number" id="hyMaxGales" value="3" step="1" min="1" max="5" class="fq-input">
+            </div>
+            <div class="fq-input-group">
+              <div class="fq-input-label">ATRASO MIN</div>
+              <input type="number" id="hyDelayThreshold" value="40" step="5" min="20" max="80" class="fq-input">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="fq-input-group">
+              <div class="fq-input-label">CLUSTER MIN</div>
+              <input type="number" id="hyClusterMin" value="7" step="1" min="5" max="10" class="fq-input">
+            </div>
+            <div class="fq-input-group">
+              <div class="fq-input-label">BUFFER</div>
+              <input type="number" id="hyBufferSize" value="200" step="50" min="50" max="500" class="fq-input" disabled style="opacity:.5;">
+            </div>
+          </div>
+          <button id="hyToggleBtn" onclick="hyToggleRobot()" class="fq-start-btn" style="cursor:pointer;">▶ INICIAR ROBÔ</button>
+        </div>
+
+        <!-- Session stats -->
+        <div class="fq-panel">
+          <div class="fq-label">Sessão</div>
+          <div class="fq-stats">
+            <div class="fq-stat">
+              <div class="fq-stat-label">WINS</div>
+              <div class="fq-stat-value" style="color:var(--hy-green);" id="hyWins">0</div>
+            </div>
+            <div class="fq-stat">
+              <div class="fq-stat-label">LOSSES</div>
+              <div class="fq-stat-value" style="color:var(--hy-red);" id="hyLosses">0</div>
+            </div>
+            <div class="fq-stat" style="grid-column:1/-1;">
+              <div class="fq-stat-label">P&L</div>
+              <div class="fq-stat-value" style="color:var(--hy-green);font-size:22px;" id="hyPnl">$0.00</div>
+            </div>
+            <div class="fq-stat" style="grid-column:1/-1;">
+              <div class="fq-stat-label">STATUS</div>
+              <div style="font-size:11px;font-weight:700;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;" id="hyStatusTxt">INATIVO</div>
+            </div>
+            <div class="fq-stat" style="grid-column:1/-1;">
+              <div class="fq-stat-label">ÚLTIMO SINAL</div>
+              <div style="font-size:11px;font-weight:700;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;" id="hyLastSignal">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /sidebar -->
+
+      <!-- ── MAIN CONTENT ── -->
+      <div style="flex:1;min-width:0;">
+
+        <!-- Barras de frequência -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;margin-bottom:12px;">
+            📊 FREQUÊNCIA DOS DÍGITOS (últimos 200 ticks)
+            &nbsp;<span style="color:var(--hy-green);">■ BAIXO</span>
+            &nbsp;<span style="color:var(--hy-blue);">■ ALTO</span>
+            &nbsp;<span style="color:var(--hy-red);">■ AUSENTE</span>
+          </div>
+          <div class="fq-bars" id="hyBars"></div>
+        </div>
+
+        <!-- Heatmap de atraso -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;margin-bottom:12px;">
+            🔥 HEATMAP DE ATRASO &nbsp;(ticks desde última aparição)
+          </div>
+          <div class="hy-heatmap" id="hyHeatmap"></div>
+        </div>
+
+        <!-- Strategy cards -->
+        <div class="hy-strat-cards" style="margin-bottom:12px;">
+          <!-- Dígito Ausente -->
+          <div class="hy-strat-card" id="hyCardAusente">
+            <div class="hy-strat-name">1️⃣ DÍGITO AUSENTE</div>
+            <div class="hy-strat-status" id="hyAusenteStatus" style="color:var(--hy-dim);">MONITORANDO</div>
+            <div class="hy-strat-detail" id="hyAusenteDetail">Atraso máx: — | Dígito: —</div>
+            <span class="hy-signal-badge badge-idle" id="hyAusenteBadge">IDLE</span>
+          </div>
+          <!-- Cluster -->
+          <div class="hy-strat-card" id="hyCardCluster">
+            <div class="hy-strat-name">2️⃣ CLUSTER</div>
+            <div class="hy-strat-status" id="hyClusterStatus" style="color:var(--hy-dim);">MONITORANDO</div>
+            <div class="hy-strat-detail" id="hyClusterDetail">Alto: 0/10 | Baixo: 0/10</div>
+            <span class="hy-signal-badge badge-idle" id="hyClusterBadge">IDLE</span>
+          </div>
+          <!-- Anti-Repetição -->
+          <div class="hy-strat-card" id="hyCardRepeat">
+            <div class="hy-strat-name">3️⃣ ANTI-REPETIÇÃO</div>
+            <div class="hy-strat-status" id="hyRepeatStatus" style="color:var(--hy-dim);">MONITORANDO</div>
+            <div class="hy-strat-detail" id="hyRepeatDetail">Último: — | Repetiu: Não</div>
+            <span class="hy-signal-badge badge-idle" id="hyRepeatBadge">IDLE</span>
+          </div>
+        </div>
+
+        <!-- Live stream -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+            <div id="hyLastDigitBox"
+              style="width:52px;height:52px;border-radius:10px;background:var(--hy-surface2);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;flex-shrink:0;transition:background .2s,color .2s;border:1px solid var(--hy-border);">
+              —</div>
+            <div>
+              <div id="hyLastDigitResult" style="font-size:13px;font-weight:700;color:var(--hy-dim);margin-bottom:3px;">—</div>
+              <div style="font-size:10px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">
+                Total: <span id="hyTotalDigits">0</span> dígitos | Buffer: <span id="hyBufferCount">0</span>/200
+              </div>
+            </div>
+          </div>
+          <div class="digit-stream" id="hyDigitStream" style="max-height:60px;"></div>
+        </div>
+
+        <!-- P&L Curve -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">
+            📈 CURVA DE P&L
+          </div>
+          <canvas id="hyPnlCanvas" class="hy-pnl-canvas"></canvas>
+        </div>
+
+        <!-- Trade history -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">
+              📋 HISTÓRICO DE TRADES
+            </div>
+            <button onclick="hyClearTrades()" style="font-size:9px;background:transparent;border:1px solid var(--hy-border);color:var(--hy-dim);padding:3px 8px;border-radius:4px;cursor:pointer;">LIMPAR</button>
+          </div>
+          <div id="hyTradeHistory" style="max-height:150px;overflow-y:auto;">
+            <div style="color:var(--hy-dim);font-size:10px;text-align:center;padding:14px 0;">Nenhuma trade ainda.</div>
+          </div>
+        </div>
+
+        <!-- Log -->
+        <div class="fq-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">
+              📝 LOG DO ROBÔ
+            </div>
+            <button onclick="hyClearLog()" style="font-size:9px;background:transparent;border:1px solid var(--hy-border);color:var(--hy-dim);padding:3px 8px;border-radius:4px;cursor:pointer;">LIMPAR</button>
+          </div>
+          <div id="hyLogArea" style="max-height:180px;overflow-y:auto;font-size:10px;font-family:'JetBrains Mono',monospace;">
+            <div id="hyLogEmpty" style="color:var(--hy-dim);font-size:10px;text-align:center;padding:20px 0;line-height:1.6;">
+              Inicie o robô<br>para ver os logs aqui.
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /main -->
+    </div><!-- /layout -->
+
+    <!-- Result overlay -->
+    <div id="hyResultOverlay" style="display:none;position:absolute;inset:0;z-index:100;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;">
+      <div style="text-align:center;">
+        <div id="hyResIcon" style="font-size:64px;margin-bottom:12px;">🏆</div>
+        <div id="hyResTitle" style="font-size:22px;font-weight:900;letter-spacing:3px;margin-bottom:8px;">STOP GAIN</div>
+        <div id="hyResValue" style="font-size:36px;font-weight:900;font-family:'JetBrains Mono',monospace;margin-bottom:8px;">+$0.00</div>
+        <div id="hyResDetail" style="font-size:13px;color:var(--hy-dim);margin-bottom:24px;">0 wins · 0 losses</div>
+        <button onclick="hyCloseResult()" class="fq-start-btn" style="width:200px;cursor:pointer;">FECHAR</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ══ MODAL: CONECTAR DERIV ══ -->
   <div id="derivConnectModal"
