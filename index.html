@@ -8645,6 +8645,147 @@
         return Math.round(parseFloat(price) * Math.pow(10, d)) % 10;
       }
 
+      // ── Payout cache + fator dinâmico ──
+      const HY_FALLBACK_PAYOUTS = {
+        over3: 0.43, over4: 0.85, over5: 1.50, over6: 2.40,
+        under3: 2.40, under4: 1.50, under5: 0.85, under6: 0.43
+      };
+      let hyPayoutCache = {};
+      let hyPayoutReqMap = {};
+      const HY_MARGIN = 1.05; // 5% margem de segurança sobre o fator mínimo
+
+      function hyGetStratKey(signal) {
+        if (!signal) {
+          const mode = hyGetMode();
+          // Retorna o pior payout do modo (o que define o fator mínimo)
+          return mode === 'conservador' ? 'over3' : 'over4';
+        }
+        const ct = signal.contractType;
+        const b = signal.barrier;
+        if (ct === 'DIGITOVER') return 'over' + b;
+        if (ct === 'DIGITUNDER') return 'under' + b;
+        return 'over3';
+      }
+
+      function hyGetPayout(signal) {
+        const key = hyGetStratKey(signal);
+        return hyPayoutCache[key] ?? HY_FALLBACK_PAYOUTS[key] ?? 0.43;
+      }
+
+      function hyGetFactor(signal) {
+        const payout = hyGetPayout(signal);
+        // Fórmula: fator = (1/payout + 1) × margem
+        return (1 / payout + 1) * HY_MARGIN;
+      }
+
+      function hyFetchPayouts() {
+        if (!hyWs || hyWs.readyState !== 1) return;
+        const mode = hyGetMode();
+        // Busca payouts para as estratégias do modo ativo
+        const keys = mode === 'conservador'
+          ? ['over3', 'under6'] // OVER 3 e UNDER 6
+          : ['over4', 'under5']; // OVER 4 e UNDER 5
+        const stake = parseFloat(document.getElementById('hyEntry')?.value || 0.35);
+        keys.forEach((key, i) => {
+          setTimeout(() => {
+            if (!hyWs || hyWs.readyState !== 1) return;
+            const isOver = key.startsWith('over');
+            const barrier = key.replace(/\D/g, '');
+            const contractType = isOver ? 'DIGITOVER' : 'DIGITUNDER';
+            const reqId = 'hyp_' + key + '_' + Date.now();
+            hyPayoutReqMap[reqId] = key;
+            hyWs.send(JSON.stringify({
+              proposal: 1,
+              amount: stake.toFixed(2),
+              basis: 'stake',
+              contract_type: contractType,
+              currency: derivAccount?.currency || 'USD',
+              symbol: hyMarket,
+              duration: 1, duration_unit: 't',
+              barrier: barrier,
+              req_id: reqId
+            }));
+          }, i * 300);
+        });
+      }
+
+      function hyHandleProposal(data) {
+        const p = data.proposal;
+        if (!p) return;
+        const reqId = String(data.req_id || '');
+        if (!reqId.startsWith('hyp_')) return false; // não é nosso
+        const stratKey = hyPayoutReqMap[reqId];
+        if (!stratKey) return false;
+        delete hyPayoutReqMap[reqId];
+        const stake = parseFloat(p.ask_price || 0);
+        const payout = parseFloat(p.payout || 0);
+        if (stake <= 0 || payout <= 0) return true;
+        const multiplier = (payout - stake) / stake;
+        if (multiplier <= 0) return true;
+        hyPayoutCache[stratKey] = multiplier;
+        const label = stratKey.replace(/([a-z]+)(\d+)/i, '$1 $2').toUpperCase();
+        const factor = ((1 / multiplier + 1) * HY_MARGIN).toFixed(2);
+        hyLog(`💰 Payout ${label}: ${(multiplier * 100).toFixed(1)}% → fator ${factor}×`, 'success');
+        hyUpdateFactorDisplay();
+        hyUpdateMartPreview();
+        return true;
+      }
+
+      function hyUpdateFactorDisplay() {
+        const el = document.getElementById('hyFactorInfo');
+        if (!el) return;
+        const mode = hyGetMode();
+        if (mode === 'conservador') {
+          const fOver3 = hyGetFactor({ contractType: 'DIGITOVER', barrier: '3' });
+          const fUnder6 = hyGetFactor({ contractType: 'DIGITUNDER', barrier: '6' });
+          const pOver3 = hyGetPayout({ contractType: 'DIGITOVER', barrier: '3' });
+          const pUnder6 = hyGetPayout({ contractType: 'DIGITUNDER', barrier: '6' });
+          const liveO = hyPayoutCache['over3'] != null;
+          const liveU = hyPayoutCache['under6'] != null;
+          el.innerHTML = `OVER 3: ${(pOver3*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fOver3.toFixed(2)}×</span>${liveO ? ' ✓' : ''} · UNDER 6: ${(pUnder6*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fUnder6.toFixed(2)}×</span>${liveU ? ' ✓' : ''}`;
+        } else {
+          const fOver4 = hyGetFactor({ contractType: 'DIGITOVER', barrier: '4' });
+          const fUnder5 = hyGetFactor({ contractType: 'DIGITUNDER', barrier: '5' });
+          const pOver4 = hyGetPayout({ contractType: 'DIGITOVER', barrier: '4' });
+          const pUnder5 = hyGetPayout({ contractType: 'DIGITUNDER', barrier: '5' });
+          const liveO = hyPayoutCache['over4'] != null;
+          const liveU = hyPayoutCache['under5'] != null;
+          el.innerHTML = `OVER 4: ${(pOver4*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fOver4.toFixed(2)}×</span>${liveO ? ' ✓' : ''} · UNDER 5: ${(pUnder5*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fUnder5.toFixed(2)}×</span>${liveU ? ' ✓' : ''}`;
+        }
+      }
+
+      function hyUpdateMartPreview() {
+        const el = document.getElementById('hyMartPreview');
+        if (!el) return;
+        const base = parseFloat(document.getElementById('hyEntry')?.value || 0.35);
+        const maxGales = parseInt(document.getElementById('hyMaxGales')?.value) || 3;
+        const mode = hyGetMode();
+        // Usa o pior fator do modo (maior fator = menor payout)
+        const worstSignal = mode === 'conservador'
+          ? { contractType: 'DIGITOVER', barrier: '3' }
+          : { contractType: 'DIGITOVER', barrier: '4' };
+        const factor = hyGetFactor(worstSignal);
+        const payout = hyGetPayout(worstSignal);
+        let html = '<div style="display:flex;gap:5px;flex-wrap:wrap;">';
+        let e = base, acc = 0;
+        for (let i = 0; i <= maxGales; i++) {
+          if (i > 0) e = e * factor;
+          acc += e;
+          const gross = e * payout;
+          const net = gross - acc;
+          const netColor = net >= 0 ? 'var(--hy-green)' : 'var(--hy-red)';
+          const levelLabel = i === 0 ? 'Entrada' : `Gale ${i}`;
+          html += `<div style="background:var(--hy-surface);border:1px solid var(--hy-border);border-radius:6px;padding:5px 8px;text-align:center;min-width:60px;">
+            <div style="font-size:8px;color:var(--hy-dim);">${levelLabel}</div>
+            <div style="font-size:12px;font-weight:700;color:var(--hy-gold);font-family:'JetBrains Mono',monospace;">$${e.toFixed(2)}</div>
+            <div style="font-size:9px;color:${netColor};font-family:'JetBrains Mono',monospace;">${net >= 0 ? '+' : ''}$${net.toFixed(2)}</div>
+          </div>`;
+        }
+        html += '</div>';
+        html += `<div style="font-size:9px;color:var(--hy-dim);margin-top:6px;font-family:'JetBrains Mono',monospace;">Exposição: $${acc.toFixed(2)} · Fator: ${factor.toFixed(2)}× · Payout: ${(payout*100).toFixed(0)}%</div>`;
+        el.innerHTML = html;
+      }
+
       // ── Estado ──
       let hyWs = null;
       let hyMarket = 'R_10';
@@ -8679,13 +8820,18 @@
         hyBuffer = [];
         for (let i = 0; i <= 9; i++) hyDelay[i] = 0;
         hyTotalDigits = 0;
+        hyPayoutCache = {}; // Limpa cache ao trocar mercado
         hyResetStream();
         hyRenderBars();
         hyRenderHeatmap();
+        hyUpdateFactorDisplay();
+        hyUpdateMartPreview();
         if (hyWs && hyWs.readyState === 1) {
           hyTicksSubscribed = false;
           hyWs.send(JSON.stringify({ forget_all: 'ticks' }));
           hyWs.send(JSON.stringify({ ticks_history: hyMarket, count: 200, end: 'latest', style: 'ticks' }));
+          // Re-busca payouts para o novo mercado
+          setTimeout(() => hyFetchPayouts(), 500);
         }
       }
 
@@ -8693,6 +8839,16 @@
       function hyInitChart() {
         hyRenderBars();
         hyRenderHeatmap();
+        hyUpdateFactorDisplay();
+        hyUpdateMartPreview();
+        // Atualiza preview ao mudar entrada ou max gales
+        ['hyEntry', 'hyMaxGales'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el && !el.dataset.hyBound) {
+            el.dataset.hyBound = '1';
+            el.addEventListener('input', () => { hyUpdateMartPreview(); });
+          }
+        });
         if (hyWs && hyWs.readyState <= 1) return;
         hyTicksSubscribed = false;
         hyWs = new WebSocket(`wss://ws.binaryws.com/websockets/v3?app_id=${DERIV_APP_ID}`);
@@ -8712,11 +8868,14 @@
       // ── Handler WS ──
       function hyHandleMsg(evt) {
         const data = JSON.parse(evt.data);
-        if (data.error) return;
+        if (data.error && !String(data.req_id || '').startsWith('hyp_')) return;
+        if (data.msg_type === 'proposal') { hyHandleProposal(data); return; }
         if (data.msg_type === 'authorize') {
           if (!hyTicksSubscribed) {
             hyWs.send(JSON.stringify({ ticks_history: hyMarket, count: 200, end: 'latest', style: 'ticks' }));
           }
+          // Busca payouts reais ao conectar
+          setTimeout(() => hyFetchPayouts(), 500);
         }
         if (data.msg_type === 'history') {
           const prices = data.history?.prices || [];
@@ -8958,6 +9117,10 @@
             ? 'UNDER 6 / OVER 3 — ~60% win, ~50% payout'
             : 'UNDER 5 / OVER 4 — ~50% win, ~90% payout';
         }
+        hyUpdateFactorDisplay();
+        hyUpdateMartPreview();
+        // Re-busca payouts para o novo modo
+        setTimeout(() => hyFetchPayouts(), 200);
       }
 
       function hyGetAusenteSignal(maxDelayDigit, maxDelay) {
@@ -9063,9 +9226,10 @@
       // ══════════════════════════════════════════
       // MOTOR DE TRADING
       // ══════════════════════════════════════════
-      function hyGetEntry(level) {
+      function hyGetEntry(level, signal) {
         const base = parseFloat(document.getElementById('hyEntry')?.value || 0.35);
-        return parseFloat((base * Math.pow(2, level)).toFixed(2));
+        const factor = hyGetFactor(signal || hyActiveSignal);
+        return parseFloat((base * Math.pow(factor, level)).toFixed(2));
       }
 
       function hyEnterTrade(signal) {
@@ -9087,7 +9251,8 @@
 
         try { playFreqEntry(); } catch (e) {}
 
-        hyLog(`📤 Ordem: ${signal.label} — $${amount.toFixed(2)} (${levelLabel})`, 'info');
+        const curFactor = hyGetFactor(signal);
+        hyLog(`📤 Ordem: ${signal.label} — $${amount.toFixed(2)} (${levelLabel}) · Fator: ${curFactor.toFixed(2)}×`, 'info');
 
         hyWs.send(JSON.stringify({
           buy: 1,
@@ -9416,7 +9581,10 @@
         const sg = parseFloat(document.getElementById('hySG')?.value || 10);
         const sl = parseFloat(document.getElementById('hySL')?.value || 5);
         const maxG = parseInt(document.getElementById('hyMaxGales')?.value || 3);
-        hyLog(`🤖 Robô Híbrido iniciado | $${entrada} | SG: $${sg} | SL: $${sl} | Gales: ${maxG}`, 'success');
+        const factor = hyGetFactor();
+        hyLog(`🤖 Robô Híbrido iniciado | $${entrada} | Fator: ${factor.toFixed(2)}× (dinâmico) | SG: $${sg} | SL: $${sl} | Gales: ${maxG}`, 'success');
+        // Busca payouts atualizados
+        setTimeout(() => hyFetchPayouts(), 600);
 
         if (hyWs && hyWs.readyState === 1) {
           hyWs.send(JSON.stringify({ authorize: derivAccount.token }));
@@ -9644,6 +9812,17 @@
           <div style="font-size:9px;color:var(--hy-dim);margin-top:8px;text-align:center;font-family:'JetBrains Mono',monospace;" id="hyModeDesc">
             UNDER 6 / OVER 3 — ~60% win, ~50% payout
           </div>
+          <div style="font-size:8px;color:var(--hy-dim);margin-top:6px;text-align:center;font-family:'JetBrains Mono',monospace;" id="hyFactorInfo">
+            Fator dinâmico: calculando...
+          </div>
+        </div>
+
+        <!-- Martingale preview -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;margin-bottom:8px;">
+            TABELA MARTINGALE DINÂMICA
+          </div>
+          <div id="hyMartPreview"></div>
         </div>
 
         <!-- Strategy cards -->
