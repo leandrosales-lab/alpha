@@ -8654,6 +8654,7 @@
       let hyTicksSubscribed = false;
       let hyRobotActive = false;
       let hyTradeActive = false;
+      let hyTradeActiveTs = 0;        // timestamp de quando hyTradeActive virou true
       let hyCurrentContractId = null;
       let hyActiveSignal = null;   // { strategy, contractType, barrier, label }
       let hyMartLevel = 0;
@@ -8764,6 +8765,16 @@
         hyUpdateStrategyCards();
 
         if (hyRobotActive && hyBuffer.length >= 20) {
+          // Safety: se hyTradeActive travou por mais de 15s, reseta
+          if (hyTradeActive && hyTradeActiveTs > 0 && (Date.now() - hyTradeActiveTs > 15000)) {
+            hyLog('⚠️ Trade travado há 15s — resetando para aceitar novos sinais', 'warning');
+            hyTradeActive = false;
+            hyTradeActiveTs = 0;
+            hyCurrentContractId = null;
+            hyActiveSignal = null;
+            hyMartLevel = 0;
+          }
+
           if (hyActiveSignal && hyTradeActive && hyTotalDigits > hyEntryTick) {
             hyResolveOnTick(d);
           } else if (!hyTradeActive) {
@@ -9038,6 +9049,7 @@
         const maxGales = parseInt(document.getElementById('hyMaxGales')?.value) || 3;
 
         hyTradeActive = true;
+        hyTradeActiveTs = Date.now();
         hyEntryTick = hyTotalDigits;
         hyTradeMartLevel = hyMartLevel;
 
@@ -9082,6 +9094,7 @@
         hyTickHandledId = hyCurrentContractId;
         if (hyCurrentContractId) hyProcessedContracts.add(hyCurrentContractId);
         hyTradeActive = false;
+        hyTradeActiveTs = 0;
         hyCurrentContractId = null;
 
         const maxGales = parseInt(document.getElementById('hyMaxGales')?.value) || 3;
@@ -9121,6 +9134,7 @@
       function hyHandleBuy(data) {
         if (data.error) {
           hyTradeActive = false;
+          hyTradeActiveTs = 0;
           if (data.error.code === 'AuthorizationRequired') {
             hyWs.send(JSON.stringify({ authorize: derivAccount.token }));
           }
@@ -9176,6 +9190,7 @@
         if (hyProcessedContracts.size > 20) hyProcessedContracts.delete(hyProcessedContracts.values().next().value);
 
         hyTradeActive = false;
+        hyTradeActiveTs = 0;
         hyCurrentContractId = null;
         const profit = parseFloat(c.profit || 0);
         const isWin = profit > 0;
@@ -9358,6 +9373,7 @@
         hyMartLevel = 0;
         hyActiveSignal = null;
         hyTradeActive = false;
+        hyTradeActiveTs = 0;
         hyProcessedContracts.clear();
         hySetToggleBtn(true);
         document.getElementById('hyStatusTxt').textContent = 'MONITORANDO...';
@@ -9402,6 +9418,7 @@
         hyActiveSignal = null;
         hyMartLevel = 0;
         hyTradeActive = false;
+        hyTradeActiveTs = 0;
         hySetToggleBtn(false);
         document.getElementById('hyStatusTxt').textContent = 'PARADO';
 
