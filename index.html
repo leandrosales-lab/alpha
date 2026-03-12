@@ -8808,8 +8808,22 @@
       let hyEntryTick = 0;
       let hyTradeMartLevel = 0;
 
+      // ── Gemini (Camada 2) ──
+      let hyGeminiEnabled = false;
+      let hyGeminiInterval = null;
+      const HY_GEMINI_INTERVAL_MS = 90000; // 90s entre análises
+      let hyGeminiLastAnalysis = null; // último JSON retornado
+      let hyGeminiAnalysisCount = 0;
+
       // Inicializa delays
       for (let i = 0; i <= 9; i++) hyDelay[i] = 0;
+
+      // Restaura Gemini key no input ao carregar a página
+      document.addEventListener('DOMContentLoaded', () => {
+        const savedKey = hyGeminiGetKey();
+        const keyInput = document.getElementById('hyGeminiKeyInput');
+        if (savedKey && keyInput) keyInput.value = savedKey;
+      });
 
       // ── Mercado ──
       function hySelectMarket(sym, btn) {
@@ -9121,6 +9135,189 @@
         hyUpdateMartPreview();
         // Re-busca payouts para o novo modo
         setTimeout(() => hyFetchPayouts(), 200);
+      }
+
+      // ══════════════════════════════════════════
+      // GEMINI — CAMADA 2 (AJUSTE ADAPTATIVO)
+      // ══════════════════════════════════════════
+
+      function hyGeminiGetKey() {
+        return localStorage.getItem('hyGeminiApiKey') || '';
+      }
+      function hyGeminiSetKey(key) {
+        localStorage.setItem('hyGeminiApiKey', key.trim());
+      }
+
+      function hyGeminiToggle(enabled) {
+        hyGeminiEnabled = enabled;
+        const badge = document.getElementById('hyGeminiBadge');
+        const toggle = document.getElementById('hyGeminiToggle');
+        if (badge) {
+          badge.textContent = enabled ? 'ON' : 'OFF';
+          badge.style.background = enabled ? 'rgba(34,197,94,.15)' : 'rgba(255,255,255,.05)';
+          badge.style.color = enabled ? 'var(--hy-green)' : 'var(--hy-dim)';
+        }
+        if (toggle) toggle.checked = enabled;
+        hyGeminiUpdatePanel();
+      }
+
+      function hyGeminiUpdatePanel() {
+        const panel = document.getElementById('hyGeminiStatus');
+        if (!panel) return;
+        if (!hyGeminiEnabled) {
+          panel.innerHTML = '<span style="color:var(--hy-dim);">Desativado</span>';
+          return;
+        }
+        if (!hyGeminiGetKey()) {
+          panel.innerHTML = '<span style="color:var(--hy-red);">Sem API key</span>';
+          return;
+        }
+        if (hyGeminiLastAnalysis) {
+          const a = hyGeminiLastAnalysis;
+          panel.innerHTML = `<span style="color:var(--hy-green);">Modo: ${a.modo || '—'}</span> · ` +
+            `Delay: ${a.delayThreshold || '—'} · Cluster: ${a.clusterMin || '—'}` +
+            (a.observacao ? `<br><span style="color:var(--hy-dim);font-size:9px;">${a.observacao}</span>` : '');
+        } else {
+          panel.innerHTML = '<span style="color:var(--hy-gold);">Aguardando 1ª análise...</span>';
+        }
+      }
+
+      async function hyGeminiAnalyze() {
+        if (!hyGeminiEnabled || !hyRobotActive) return;
+        const apiKey = hyGeminiGetKey();
+        if (!apiKey) return;
+
+        const last60 = hyBuffer.slice(-60);
+        if (last60.length < 20) {
+          hyLog('🤖 Gemini: poucos dados ainda, pulando análise.', 'info');
+          return;
+        }
+
+        const mode = hyGetMode();
+        const threshold = parseInt(document.getElementById('hyDelayThreshold')?.value) || 40;
+        const clusterMin = parseInt(document.getElementById('hyClusterMin')?.value) || 7;
+        const highCount = last60.slice(-10).filter(d => HY_HIGH.includes(d)).length;
+        const lowCount = last60.slice(-10).filter(d => HY_LOW.includes(d)).length;
+        let maxDelay = 0, maxDelayDigit = -1;
+        for (let d = 0; d <= 9; d++) {
+          if (hyDelay[d] > maxDelay) { maxDelay = hyDelay[d]; maxDelayDigit = d; }
+        }
+
+        const prompt = `Você é um analista de dígitos para trading de opções binárias.
+Analise os dados abaixo e retorne APENAS um JSON (sem markdown, sem texto extra):
+
+Últimos 60 dígitos (mais recente por último): [${last60.join(',')}]
+
+Métricas da sessão:
+- Modo atual: ${mode}
+- delayThreshold atual: ${threshold}
+- clusterMin atual: ${clusterMin}
+- Wins: ${hySessionWins}, Losses: ${hySessionLosses}, P&L: $${hySessionPnl.toFixed(2)}
+- Maior atraso agora: dígito ${maxDelayDigit} com ${maxDelay} ticks
+- Cluster últimos 10: alto=${highCount}, baixo=${lowCount}
+- Total de dígitos processados: ${hyTotalDigits}
+
+Retorne JSON exato neste formato:
+{"modo":"conservador ou agressivo","delayThreshold":20-80,"clusterMin":5-10,"observacao":"texto curto explicando o ajuste"}
+
+Regras:
+- Se a sessão está lucrativa, seja mais conservador
+- Se há muitas losses seguidas, ajuste os parâmetros para filtrar sinais fracos
+- delayThreshold maior = menos sinais mas mais precisos
+- clusterMin maior = menos sinais mas clusters mais fortes
+- Responda SOMENTE o JSON, nada mais`;
+
+        try {
+          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
+            })
+          });
+
+          if (!resp.ok) {
+            const errText = await resp.text();
+            hyLog(`🤖 Gemini erro HTTP ${resp.status}: ${errText.slice(0, 80)}`, 'error');
+            return;
+          }
+
+          const data = await resp.json();
+          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const jsonMatch = text.match(/\{[\s\S]*?\}/);
+          if (!jsonMatch) {
+            hyLog('🤖 Gemini: resposta sem JSON válido.', 'error');
+            return;
+          }
+
+          const result = JSON.parse(jsonMatch[0]);
+          hyGeminiAnalysisCount++;
+
+          // Valida e aplica limites
+          const newMode = (result.modo === 'agressivo' || result.modo === 'conservador') ? result.modo : null;
+          const newDelay = Math.min(80, Math.max(20, parseInt(result.delayThreshold) || threshold));
+          const newCluster = Math.min(10, Math.max(5, parseInt(result.clusterMin) || clusterMin));
+
+          // Aplica ajustes nos inputs (robô lê deles a cada tick)
+          const delayEl = document.getElementById('hyDelayThreshold');
+          const clusterEl = document.getElementById('hyClusterMin');
+          if (delayEl) delayEl.value = newDelay;
+          if (clusterEl) clusterEl.value = newCluster;
+
+          // Aplica modo se mudou
+          if (newMode && newMode !== hyGetMode()) {
+            const modeBtn = document.getElementById(newMode === 'agressivo' ? 'hyModeAgressivo' : 'hyModeConservador');
+            if (modeBtn) {
+              document.querySelectorAll('#hyModeConservador, #hyModeAgressivo').forEach(b => b.classList.remove('active'));
+              modeBtn.classList.add('active');
+              const desc = document.getElementById('hyModeDesc');
+              if (desc) {
+                desc.textContent = newMode === 'conservador'
+                  ? 'UNDER 6 / OVER 3 — ~60% win, ~50% payout'
+                  : 'UNDER 5 / OVER 4 — ~50% win, ~90% payout';
+              }
+              hyUpdateFactorDisplay();
+              hyUpdateMartPreview();
+            }
+          }
+
+          hyGeminiLastAnalysis = {
+            modo: newMode || mode,
+            delayThreshold: newDelay,
+            clusterMin: newCluster,
+            observacao: (result.observacao || '').slice(0, 120),
+            timestamp: Date.now()
+          };
+
+          hyGeminiUpdatePanel();
+
+          const obs = result.observacao ? ` — ${result.observacao}` : '';
+          hyLog(`🤖 Gemini #${hyGeminiAnalysisCount}: modo=${hyGeminiLastAnalysis.modo} delay=${newDelay} cluster=${newCluster}${obs}`, 'success');
+
+        } catch (err) {
+          hyLog(`🤖 Gemini falha: ${err.message}`, 'error');
+        }
+      }
+
+      function hyGeminiStart() {
+        if (hyGeminiInterval) clearInterval(hyGeminiInterval);
+        if (!hyGeminiEnabled || !hyGeminiGetKey()) return;
+        hyGeminiLastAnalysis = null;
+        hyGeminiAnalysisCount = 0;
+        hyGeminiUpdatePanel();
+        // Primeira análise após 30s (acumular dados)
+        setTimeout(() => {
+          if (hyRobotActive && hyGeminiEnabled) hyGeminiAnalyze();
+        }, 30000);
+        hyGeminiInterval = setInterval(() => {
+          if (hyRobotActive && hyGeminiEnabled) hyGeminiAnalyze();
+        }, HY_GEMINI_INTERVAL_MS);
+      }
+
+      function hyGeminiStop() {
+        if (hyGeminiInterval) { clearInterval(hyGeminiInterval); hyGeminiInterval = null; }
+        hyGeminiUpdatePanel();
       }
 
       function hyGetAusenteSignal(maxDelayDigit, maxDelay) {
@@ -9583,6 +9780,8 @@
         const maxG = parseInt(document.getElementById('hyMaxGales')?.value || 3);
         const factor = hyGetFactor();
         hyLog(`🤖 Robô Híbrido iniciado | $${entrada} | Fator: ${factor.toFixed(2)}× (dinâmico) | SG: $${sg} | SL: $${sl} | Gales: ${maxG}`, 'success');
+        // Inicia Gemini (Camada 2)
+        hyGeminiStart();
         // Busca payouts atualizados
         setTimeout(() => hyFetchPayouts(), 600);
 
@@ -9615,6 +9814,7 @@
         hyTradeActive = false;
         hyTradeActiveTs = 0;
         hySetToggleBtn(false);
+        hyGeminiStop();
         document.getElementById('hyStatusTxt').textContent = 'PARADO';
 
         // Desbloqueia inputs
@@ -9769,6 +9969,40 @@
               <div class="fq-stat-label">ÚLTIMO SINAL</div>
               <div style="font-size:11px;font-weight:700;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;" id="hyLastSignal">—</div>
             </div>
+          </div>
+        </div>
+
+        <!-- Gemini (Camada 2) -->
+        <div class="fq-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div class="fq-label" style="margin-bottom:0;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--hy-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
+              GEMINI IA
+            </div>
+            <span id="hyGeminiBadge" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">OFF</span>
+          </div>
+          <div class="fq-input-group" style="margin-bottom:8px;">
+            <div class="fq-input-label">API KEY (GOOGLE AI)</div>
+            <div style="display:flex;gap:6px;">
+              <input type="password" id="hyGeminiKeyInput" class="fq-input" placeholder="Cole sua API key aqui" style="flex:1;font-size:10px;">
+              <button onclick="hyGeminiSetKey(document.getElementById('hyGeminiKeyInput').value);hyLog('🤖 Gemini API key salva.','success');hyGeminiUpdatePanel();" style="font-size:9px;background:var(--hy-surface2);border:1px solid var(--hy-border);color:var(--hy-gold);padding:4px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">SALVAR</button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <label style="position:relative;width:36px;height:20px;display:inline-block;cursor:pointer;">
+              <input type="checkbox" id="hyGeminiToggle" onchange="hyGeminiToggle(this.checked)" style="opacity:0;width:0;height:0;">
+              <span style="position:absolute;inset:0;background:var(--hy-surface2);border:1px solid var(--hy-border);border-radius:10px;transition:.2s;">
+                <span style="position:absolute;left:2px;top:2px;width:14px;height:14px;background:var(--hy-dim);border-radius:50%;transition:.2s;"></span>
+              </span>
+              <style>
+                #hyGeminiToggle:checked + span { background:rgba(34,197,94,.2);border-color:var(--hy-green); }
+                #hyGeminiToggle:checked + span > span { transform:translateX(16px);background:var(--hy-green); }
+              </style>
+            </label>
+            <span style="font-size:10px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">Ajuste adaptativo a cada 90s</span>
+          </div>
+          <div id="hyGeminiStatus" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--hy-dim);padding:6px 8px;background:var(--hy-surface);border:1px solid var(--hy-border);border-radius:6px;min-height:28px;">
+            <span style="color:var(--hy-dim);">Desativado</span>
           </div>
         </div>
 
