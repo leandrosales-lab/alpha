@@ -8851,8 +8851,9 @@
         const ausenteStatus = document.getElementById('hyAusenteStatus');
         if (ausenteEl) ausenteEl.textContent = `Atraso máx: ${maxDelay} | Dígito: ${maxDelayDigit}`;
         if (maxDelay >= threshold) {
+          const previewSignal = hyGetAusenteSignal(maxDelayDigit, maxDelay);
           if (ausenteBadge) { ausenteBadge.textContent = 'SINAL'; ausenteBadge.className = 'hy-signal-badge badge-active'; }
-          if (ausenteStatus) { ausenteStatus.textContent = `DIFFERS ${maxDelayDigit}`; ausenteStatus.style.color = 'var(--hy-green)'; }
+          if (ausenteStatus) { ausenteStatus.textContent = previewSignal.label.split('(')[0].trim(); ausenteStatus.style.color = 'var(--hy-green)'; }
           document.getElementById('hyCardAusente')?.classList.add('active');
           document.getElementById('hyCardAusente').style.borderColor = 'var(--hy-green)';
         } else {
@@ -8872,7 +8873,10 @@
         if (clusterEl) clusterEl.textContent = `Alto: ${highCount}/10 | Baixo: ${lowCount}/10`;
         const hasCluster = highCount >= clusterMin || lowCount >= clusterMin;
         if (hasCluster) {
-          const clType = highCount >= clusterMin ? 'UNDER 7' : 'OVER 6';
+          const cardMode = hyGetMode();
+          const clType = highCount >= clusterMin
+            ? `UNDER ${cardMode === 'conservador' ? '6' : '5'}`
+            : `OVER ${cardMode === 'conservador' ? '3' : '4'}`;
           if (clusterBadge) { clusterBadge.textContent = 'SINAL'; clusterBadge.className = 'hy-signal-badge badge-active'; }
           if (clusterStatus) { clusterStatus.textContent = clType; clusterStatus.style.color = 'var(--hy-blue)'; }
           document.getElementById('hyCardCluster')?.classList.add('active');
@@ -8884,24 +8888,6 @@
           document.getElementById('hyCardCluster').style.borderColor = '';
         }
 
-        // 3. Anti-Repetição
-        const len = hyBuffer.length;
-        const hasRepeat = len >= 2 && hyBuffer[len - 1] === hyBuffer[len - 2];
-        const repeatEl = document.getElementById('hyRepeatDetail');
-        const repeatBadge = document.getElementById('hyRepeatBadge');
-        const repeatStatus = document.getElementById('hyRepeatStatus');
-        if (repeatEl) repeatEl.textContent = `Último: ${len > 0 ? hyBuffer[len - 1] : '—'} | Repetiu: ${hasRepeat ? 'Sim' : 'Não'}`;
-        if (hasRepeat) {
-          if (repeatBadge) { repeatBadge.textContent = 'SINAL'; repeatBadge.className = 'hy-signal-badge badge-active'; }
-          if (repeatStatus) { repeatStatus.textContent = `DIFFERS ${hyBuffer[len - 1]}`; repeatStatus.style.color = 'var(--hy-purple)'; }
-          document.getElementById('hyCardRepeat')?.classList.add('active');
-          document.getElementById('hyCardRepeat').style.borderColor = 'var(--hy-purple)';
-        } else {
-          if (repeatBadge) { repeatBadge.textContent = 'IDLE'; repeatBadge.className = 'hy-signal-badge badge-idle'; }
-          if (repeatStatus) { repeatStatus.textContent = 'MONITORANDO'; repeatStatus.style.color = 'var(--hy-dim)'; }
-          document.getElementById('hyCardRepeat')?.classList.remove('active');
-          document.getElementById('hyCardRepeat').style.borderColor = '';
-        }
       }
 
       // ── Stream de dígitos ──
@@ -8956,8 +8942,65 @@
       }
 
       // ══════════════════════════════════════════
-      // MOTOR DE INTELIGÊNCIA — 3 ESTRATÉGIAS
+      // MOTOR DE INTELIGÊNCIA — 2 ESTRATÉGIAS (OVER/UNDER)
       // ══════════════════════════════════════════
+
+      function hyGetMode() {
+        return document.getElementById('hyModeAgressivo')?.classList.contains('active') ? 'agressivo' : 'conservador';
+      }
+
+      function hySetMode(mode, btn) {
+        document.querySelectorAll('#hyModeConservador, #hyModeAgressivo').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const desc = document.getElementById('hyModeDesc');
+        if (desc) {
+          desc.textContent = mode === 'conservador'
+            ? 'UNDER 6 / OVER 3 — ~60% win, ~50% payout'
+            : 'UNDER 5 / OVER 4 — ~50% win, ~90% payout';
+        }
+      }
+
+      function hyGetAusenteSignal(maxDelayDigit, maxDelay) {
+        const mode = hyGetMode();
+        if (maxDelayDigit >= 7) {
+          const barrier = mode === 'conservador' ? '6' : '5';
+          return {
+            strategy: 'ausente',
+            contractType: 'DIGITUNDER',
+            barrier,
+            label: `UNDER ${barrier} (dígito ${maxDelayDigit} ausente ${maxDelay})`
+          };
+        } else if (maxDelayDigit <= 2) {
+          const barrier = mode === 'conservador' ? '3' : '4';
+          return {
+            strategy: 'ausente',
+            contractType: 'DIGITOVER',
+            barrier,
+            label: `OVER ${barrier} (dígito ${maxDelayDigit} ausente ${maxDelay})`
+          };
+        } else {
+          const last50 = hyBuffer.slice(-50);
+          const highCount = last50.filter(d => d >= 5).length;
+          const lowCount = last50.filter(d => d <= 4).length;
+          if (highCount > lowCount) {
+            const barrier = mode === 'conservador' ? '6' : '5';
+            return {
+              strategy: 'ausente',
+              contractType: 'DIGITUNDER',
+              barrier,
+              label: `UNDER ${barrier} (mid-ausente ${maxDelayDigit}, viés alto ${highCount}/50)`
+            };
+          } else {
+            const barrier = mode === 'conservador' ? '3' : '4';
+            return {
+              strategy: 'ausente',
+              contractType: 'DIGITOVER',
+              barrier,
+              label: `OVER ${barrier} (mid-ausente ${maxDelayDigit}, viés baixo ${lowCount}/50)`
+            };
+          }
+        }
+      }
       function hyCheckSignal() {
         if (!hyRobotActive || hyTradeActive) return;
 
@@ -8976,14 +9019,9 @@
           if (hyDelay[d] > maxDelay) { maxDelay = hyDelay[d]; maxDelayDigit = d; }
         }
         if (maxDelay >= threshold && maxDelayDigit >= 0) {
-          hyActiveSignal = {
-            strategy: 'ausente',
-            contractType: 'DIGITDIFF',
-            barrier: String(maxDelayDigit),
-            label: `DIFFERS ${maxDelayDigit} (atraso ${maxDelay})`
-          };
+          hyActiveSignal = hyGetAusenteSignal(maxDelayDigit, maxDelay);
           hyMartLevel = 0;
-          hyLog(`🔍 SINAL: Dígito ${maxDelayDigit} ausente há ${maxDelay} ticks → DIFFERS ${maxDelayDigit}`, 'warning');
+          hyLog(`🔍 SINAL: Dígito ${maxDelayDigit} ausente há ${maxDelay} ticks → ${hyActiveSignal.label}`, 'warning');
           hyEnterTrade(hyActiveSignal);
           return;
         }
@@ -8992,46 +9030,34 @@
         const last10 = hyBuffer.slice(-10);
         const highCount = last10.filter(d => HY_HIGH.includes(d)).length;
         const lowCount = last10.filter(d => HY_LOW.includes(d)).length;
+        const mode = hyGetMode();
         if (highCount >= clusterMin) {
+          const clBarrier = mode === 'conservador' ? '6' : '5';
           hyActiveSignal = {
             strategy: 'cluster',
             contractType: 'DIGITUNDER',
-            barrier: '7',
-            label: `UNDER 7 (cluster alto ${highCount}/10)`
+            barrier: clBarrier,
+            label: `UNDER ${clBarrier} (cluster alto ${highCount}/10)`
           };
           hyMartLevel = 0;
-          hyLog(`🔍 SINAL: Cluster ALTO ${highCount}/10 → UNDER 7`, 'warning');
+          hyLog(`🔍 SINAL: Cluster ALTO ${highCount}/10 → UNDER ${clBarrier}`, 'warning');
           hyEnterTrade(hyActiveSignal);
           return;
         }
         if (lowCount >= clusterMin) {
+          const clBarrier = mode === 'conservador' ? '3' : '4';
           hyActiveSignal = {
             strategy: 'cluster',
             contractType: 'DIGITOVER',
-            barrier: '6',
-            label: `OVER 6 (cluster baixo ${lowCount}/10)`
+            barrier: clBarrier,
+            label: `OVER ${clBarrier} (cluster baixo ${lowCount}/10)`
           };
           hyMartLevel = 0;
-          hyLog(`🔍 SINAL: Cluster BAIXO ${lowCount}/10 → OVER 6`, 'warning');
+          hyLog(`🔍 SINAL: Cluster BAIXO ${lowCount}/10 → OVER ${clBarrier}`, 'warning');
           hyEnterTrade(hyActiveSignal);
           return;
         }
 
-        // PRIORIDADE 3: Anti-Repetição
-        const len = hyBuffer.length;
-        if (len >= 2 && hyBuffer[len - 1] === hyBuffer[len - 2]) {
-          const repeated = hyBuffer[len - 1];
-          hyActiveSignal = {
-            strategy: 'repetição',
-            contractType: 'DIGITDIFF',
-            barrier: String(repeated),
-            label: `DIFFERS ${repeated} (repetição)`
-          };
-          hyMartLevel = 0;
-          hyLog(`🔍 SINAL: Dígito ${repeated} repetiu → DIFFERS ${repeated}`, 'warning');
-          hyEnterTrade(hyActiveSignal);
-          return;
-        }
       }
 
       // ══════════════════════════════════════════
@@ -9384,6 +9410,7 @@
           if (el) { el.disabled = true; el.style.opacity = '0.5'; }
         });
         document.querySelectorAll('#hyMarketBtns button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+        document.querySelectorAll('#hyModeConservador, #hyModeAgressivo').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
         const entrada = parseFloat(document.getElementById('hyEntry')?.value || 0.35).toFixed(2);
         const sg = parseFloat(document.getElementById('hySG')?.value || 10);
@@ -9428,6 +9455,7 @@
           if (el) { el.disabled = false; el.style.opacity = '1'; }
         });
         document.querySelectorAll('#hyMarketBtns button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+        document.querySelectorAll('#hyModeConservador, #hyModeAgressivo').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
       }
 
       // ── Resultado overlay ──
@@ -9600,6 +9628,24 @@
           <div class="hy-heatmap" id="hyHeatmap"></div>
         </div>
 
+        <!-- Seletor de Modo -->
+        <div class="fq-panel" style="margin-bottom:12px;">
+          <div style="font-size:10px;letter-spacing:1.5px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;margin-bottom:10px;">
+            MODO DE OPERAÇÃO
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <button id="hyModeConservador" class="fq-mkt-btn active" onclick="hySetMode('conservador',this)" style="cursor:pointer;font-size:11px;">
+              CONSERVADOR
+            </button>
+            <button id="hyModeAgressivo" class="fq-mkt-btn" onclick="hySetMode('agressivo',this)" style="cursor:pointer;font-size:11px;">
+              AGRESSIVO
+            </button>
+          </div>
+          <div style="font-size:9px;color:var(--hy-dim);margin-top:8px;text-align:center;font-family:'JetBrains Mono',monospace;" id="hyModeDesc">
+            UNDER 6 / OVER 3 — ~60% win, ~50% payout
+          </div>
+        </div>
+
         <!-- Strategy cards -->
         <div class="hy-strat-cards" style="margin-bottom:12px;">
           <!-- Dígito Ausente -->
@@ -9615,13 +9661,6 @@
             <div class="hy-strat-status" id="hyClusterStatus" style="color:var(--hy-dim);">MONITORANDO</div>
             <div class="hy-strat-detail" id="hyClusterDetail">Alto: 0/10 | Baixo: 0/10</div>
             <span class="hy-signal-badge badge-idle" id="hyClusterBadge">IDLE</span>
-          </div>
-          <!-- Anti-Repetição -->
-          <div class="hy-strat-card" id="hyCardRepeat">
-            <div class="hy-strat-name">3️⃣ ANTI-REPETIÇÃO</div>
-            <div class="hy-strat-status" id="hyRepeatStatus" style="color:var(--hy-dim);">MONITORANDO</div>
-            <div class="hy-strat-detail" id="hyRepeatDetail">Último: — | Repetiu: Não</div>
-            <span class="hy-signal-badge badge-idle" id="hyRepeatBadge">IDLE</span>
           </div>
         </div>
 
