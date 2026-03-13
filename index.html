@@ -8808,22 +8808,18 @@
       let hyEntryTick = 0;
       let hyTradeMartLevel = 0;
 
-      // ── Gemini (Camada 2) ──
-      let hyGeminiEnabled = true;
-      let hyGeminiInterval = null;
-      const HY_GEMINI_INTERVAL_MS = 90000; // 90s entre análises
-      let hyGeminiLastAnalysis = null; // último JSON retornado
-      let hyGeminiAnalysisCount = 0;
+      // ── Gemini AI ──
+      let hyGeminiTimer = null;
+      let hyGeminiLastCall = 0;
+      let hyGeminiCallTimestamps = [];
+      let hyGeminiApproved = 0;
+      let hyGeminiRejected = 0;
+      const HY_GEMINI_MODEL = 'gemini-2.5-flash-lite';
+      const HY_GEMINI_INTERVAL = 90000;
+      const HY_GEMINI_TIMEOUT = 8000;
 
       // Inicializa delays
       for (let i = 0; i <= 9; i++) hyDelay[i] = 0;
-
-      // Restaura Gemini key no input ao carregar a página
-      document.addEventListener('DOMContentLoaded', () => {
-        const savedKey = hyGeminiGetKey();
-        const keyInput = document.getElementById('hyGeminiKeyInput');
-        if (savedKey && keyInput) keyInput.value = savedKey;
-      });
 
       // ── Mercado ──
       function hySelectMarket(sym, btn) {
@@ -9137,189 +9133,6 @@
         setTimeout(() => hyFetchPayouts(), 200);
       }
 
-      // ══════════════════════════════════════════
-      // GEMINI — CAMADA 2 (AJUSTE ADAPTATIVO)
-      // ══════════════════════════════════════════
-
-      function hyGeminiGetKey() {
-        return localStorage.getItem('hyGeminiApiKey') || '';
-      }
-      function hyGeminiSetKey(key) {
-        localStorage.setItem('hyGeminiApiKey', key.trim());
-      }
-
-      function hyGeminiToggle(enabled) {
-        hyGeminiEnabled = enabled;
-        const badge = document.getElementById('hyGeminiBadge');
-        const toggle = document.getElementById('hyGeminiToggle');
-        if (badge) {
-          badge.textContent = enabled ? 'ON' : 'OFF';
-          badge.style.background = enabled ? 'rgba(34,197,94,.15)' : 'rgba(255,255,255,.05)';
-          badge.style.color = enabled ? 'var(--hy-green)' : 'var(--hy-dim)';
-        }
-        if (toggle) toggle.checked = enabled;
-        hyGeminiUpdatePanel();
-      }
-
-      function hyGeminiUpdatePanel() {
-        const panel = document.getElementById('hyGeminiStatus');
-        if (!panel) return;
-        if (!hyGeminiEnabled) {
-          panel.innerHTML = '<span style="color:var(--hy-dim);">Desativado</span>';
-          return;
-        }
-        if (!hyGeminiGetKey()) {
-          panel.innerHTML = '<span style="color:var(--hy-red);">Sem API key</span>';
-          return;
-        }
-        if (hyGeminiLastAnalysis) {
-          const a = hyGeminiLastAnalysis;
-          panel.innerHTML = `<span style="color:var(--hy-green);">Modo: ${a.modo || '—'}</span> · ` +
-            `Delay: ${a.delayThreshold || '—'} · Cluster: ${a.clusterMin || '—'}` +
-            (a.observacao ? `<br><span style="color:var(--hy-dim);font-size:9px;">${a.observacao}</span>` : '');
-        } else {
-          panel.innerHTML = '<span style="color:var(--hy-gold);">Aguardando 1ª análise...</span>';
-        }
-      }
-
-      async function hyGeminiAnalyze() {
-        if (!hyGeminiEnabled || !hyRobotActive) return;
-        const apiKey = hyGeminiGetKey();
-        if (!apiKey) return;
-
-        const last60 = hyBuffer.slice(-60);
-        if (last60.length < 20) {
-          hyLog('🤖 Gemini: poucos dados ainda, pulando análise.', 'info');
-          return;
-        }
-
-        const mode = hyGetMode();
-        const threshold = parseInt(document.getElementById('hyDelayThreshold')?.value) || 40;
-        const clusterMin = parseInt(document.getElementById('hyClusterMin')?.value) || 7;
-        const highCount = last60.slice(-10).filter(d => HY_HIGH.includes(d)).length;
-        const lowCount = last60.slice(-10).filter(d => HY_LOW.includes(d)).length;
-        let maxDelay = 0, maxDelayDigit = -1;
-        for (let d = 0; d <= 9; d++) {
-          if (hyDelay[d] > maxDelay) { maxDelay = hyDelay[d]; maxDelayDigit = d; }
-        }
-
-        const prompt = `Você é um analista de dígitos para trading de opções binárias.
-Analise os dados abaixo e retorne APENAS um JSON (sem markdown, sem texto extra):
-
-Últimos 60 dígitos (mais recente por último): [${last60.join(',')}]
-
-Métricas da sessão:
-- Modo atual: ${mode}
-- delayThreshold atual: ${threshold}
-- clusterMin atual: ${clusterMin}
-- Wins: ${hySessionWins}, Losses: ${hySessionLosses}, P&L: $${hySessionPnl.toFixed(2)}
-- Maior atraso agora: dígito ${maxDelayDigit} com ${maxDelay} ticks
-- Cluster últimos 10: alto=${highCount}, baixo=${lowCount}
-- Total de dígitos processados: ${hyTotalDigits}
-
-Retorne JSON exato neste formato:
-{"modo":"conservador ou agressivo","delayThreshold":20-80,"clusterMin":5-10,"observacao":"texto curto explicando o ajuste"}
-
-Regras:
-- Se a sessão está lucrativa, seja mais conservador
-- Se há muitas losses seguidas, ajuste os parâmetros para filtrar sinais fracos
-- delayThreshold maior = menos sinais mas mais precisos
-- clusterMin maior = menos sinais mas clusters mais fortes
-- Responda SOMENTE o JSON, nada mais`;
-
-        try {
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
-            })
-          });
-
-          if (!resp.ok) {
-            const errText = await resp.text();
-            hyLog(`🤖 Gemini erro HTTP ${resp.status}: ${errText.slice(0, 80)}`, 'error');
-            return;
-          }
-
-          const data = await resp.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          const jsonMatch = text.match(/\{[\s\S]*?\}/);
-          if (!jsonMatch) {
-            hyLog('🤖 Gemini: resposta sem JSON válido.', 'error');
-            return;
-          }
-
-          const result = JSON.parse(jsonMatch[0]);
-          hyGeminiAnalysisCount++;
-
-          // Valida e aplica limites
-          const newMode = (result.modo === 'agressivo' || result.modo === 'conservador') ? result.modo : null;
-          const newDelay = Math.min(80, Math.max(20, parseInt(result.delayThreshold) || threshold));
-          const newCluster = Math.min(10, Math.max(5, parseInt(result.clusterMin) || clusterMin));
-
-          // Aplica ajustes nos inputs (robô lê deles a cada tick)
-          const delayEl = document.getElementById('hyDelayThreshold');
-          const clusterEl = document.getElementById('hyClusterMin');
-          if (delayEl) delayEl.value = newDelay;
-          if (clusterEl) clusterEl.value = newCluster;
-
-          // Aplica modo se mudou
-          if (newMode && newMode !== hyGetMode()) {
-            const modeBtn = document.getElementById(newMode === 'agressivo' ? 'hyModeAgressivo' : 'hyModeConservador');
-            if (modeBtn) {
-              document.querySelectorAll('#hyModeConservador, #hyModeAgressivo').forEach(b => b.classList.remove('active'));
-              modeBtn.classList.add('active');
-              const desc = document.getElementById('hyModeDesc');
-              if (desc) {
-                desc.textContent = newMode === 'conservador'
-                  ? 'UNDER 6 / OVER 3 — ~60% win, ~50% payout'
-                  : 'UNDER 5 / OVER 4 — ~50% win, ~90% payout';
-              }
-              hyUpdateFactorDisplay();
-              hyUpdateMartPreview();
-            }
-          }
-
-          hyGeminiLastAnalysis = {
-            modo: newMode || mode,
-            delayThreshold: newDelay,
-            clusterMin: newCluster,
-            observacao: (result.observacao || '').slice(0, 120),
-            timestamp: Date.now()
-          };
-
-          hyGeminiUpdatePanel();
-
-          const obs = result.observacao ? ` — ${result.observacao}` : '';
-          hyLog(`🤖 Gemini #${hyGeminiAnalysisCount}: modo=${hyGeminiLastAnalysis.modo} delay=${newDelay} cluster=${newCluster}${obs}`, 'success');
-
-        } catch (err) {
-          hyLog(`🤖 Gemini falha: ${err.message}`, 'error');
-        }
-      }
-
-      function hyGeminiStart() {
-        if (hyGeminiInterval) clearInterval(hyGeminiInterval);
-        if (!hyGeminiEnabled || !hyGeminiGetKey()) return;
-        hyGeminiLastAnalysis = null;
-        hyGeminiAnalysisCount = 0;
-        hyGeminiUpdatePanel();
-        // Primeira análise após 30s (acumular dados)
-        setTimeout(() => {
-          if (hyRobotActive && hyGeminiEnabled) hyGeminiAnalyze();
-        }, 30000);
-        hyGeminiInterval = setInterval(() => {
-          if (hyRobotActive && hyGeminiEnabled) hyGeminiAnalyze();
-        }, HY_GEMINI_INTERVAL_MS);
-      }
-
-      function hyGeminiStop() {
-        if (hyGeminiInterval) { clearInterval(hyGeminiInterval); hyGeminiInterval = null; }
-        hyGeminiUpdatePanel();
-      }
-
       function hyGetAusenteSignal(maxDelayDigit, maxDelay) {
         const mode = hyGetMode();
         if (maxDelayDigit >= 7) {
@@ -9382,7 +9195,7 @@ Regras:
           hyActiveSignal = hyGetAusenteSignal(maxDelayDigit, maxDelay);
           hyMartLevel = 0;
           hyLog(`🔍 SINAL: Dígito ${maxDelayDigit} ausente há ${maxDelay} ticks → ${hyActiveSignal.label}`, 'warning');
-          hyEnterTrade(hyActiveSignal);
+          hyValidateAndEnter(hyActiveSignal);
           return;
         }
 
@@ -9401,7 +9214,7 @@ Regras:
           };
           hyMartLevel = 0;
           hyLog(`🔍 SINAL: Cluster ALTO ${highCount}/10 → UNDER ${clBarrier}`, 'warning');
-          hyEnterTrade(hyActiveSignal);
+          hyValidateAndEnter(hyActiveSignal);
           return;
         }
         if (lowCount >= clusterMin) {
@@ -9414,7 +9227,7 @@ Regras:
           };
           hyMartLevel = 0;
           hyLog(`🔍 SINAL: Cluster BAIXO ${lowCount}/10 → OVER ${clBarrier}`, 'warning');
-          hyEnterTrade(hyActiveSignal);
+          hyValidateAndEnter(hyActiveSignal);
           return;
         }
 
@@ -9737,6 +9550,292 @@ Regras:
       }
 
       // ══════════════════════════════════════════
+      // GEMINI AI — VALIDAÇÃO + SUPERVISOR
+      // ══════════════════════════════════════════
+
+      // ── Save/Load API Key ──
+      function hyGeminiSaveKey() {
+        const key = document.getElementById('hyGeminiKey')?.value?.trim();
+        if (!key) return;
+        store('hy_gemini_key', key);
+        hyLog('🤖 Gemini API key salva.', 'success');
+      }
+
+      function hyGeminiLoadKey() {
+        const key = load('hy_gemini_key', '');
+        if (key) {
+          const el = document.getElementById('hyGeminiKey');
+          if (el) el.value = key;
+        }
+        // Load saved mode and confidence
+        const mode = load('hy_gemini_mode', 'off');
+        const conf = load('hy_gemini_conf', '60');
+        const modeEl = document.getElementById('hyGeminiMode');
+        const confEl = document.getElementById('hyGeminiConf');
+        if (modeEl) modeEl.value = mode;
+        if (confEl) confEl.value = conf;
+        return key;
+      }
+
+      // Persist mode/conf changes
+      document.addEventListener('change', (e) => {
+        if (e.target.id === 'hyGeminiMode') store('hy_gemini_mode', e.target.value);
+        if (e.target.id === 'hyGeminiConf') store('hy_gemini_conf', e.target.value);
+      });
+
+      // ── Status badge ──
+      function hyGeminiUpdateStatus(state) {
+        const el = document.getElementById('hyGeminiStatus');
+        const cardStatus = document.getElementById('hyGeminiCardStatus');
+        const badge = document.getElementById('hyGeminiBadge');
+        const states = {
+          off:       { color: 'var(--hy-dim)',   text: 'DESATIVADA', badge: 'OFF', badgeClass: 'badge-idle' },
+          waiting:   { color: '#EAB308',         text: 'AGUARDANDO...', badge: 'WAIT', badgeClass: 'badge-idle' },
+          analyzing: { color: '#3B82F6',         text: 'ANALISANDO...', badge: 'AI', badgeClass: 'badge-signal' },
+          active:    { color: 'var(--hy-green)', text: 'ATIVA', badge: 'ON', badgeClass: 'badge-signal' }
+        };
+        const s = states[state] || states.off;
+        if (el) { el.style.color = s.color; el.textContent = s.text; }
+        if (cardStatus) { cardStatus.style.color = s.color; cardStatus.textContent = s.text; }
+        if (badge) { badge.textContent = s.badge; badge.className = `hy-signal-badge ${s.badgeClass}`; }
+      }
+
+      // ── Update Gemini card stats ──
+      function hyGeminiUpdateCard() {
+        const detail = document.getElementById('hyGeminiCardDetail');
+        const total = hyGeminiApproved + hyGeminiRejected;
+        if (detail) detail.textContent = `Calls: ${total} | Aprovados: ${hyGeminiApproved} | Rejeitados: ${hyGeminiRejected}`;
+      }
+
+      // ── Core API call with retry + backoff ──
+      async function hyGeminiCall(prompt, retries = 3) {
+        const key = load('hy_gemini_key', '');
+        if (!key) return null;
+
+        // Rate limit check (15 RPM max, leave margin)
+        const now = Date.now();
+        hyGeminiCallTimestamps = hyGeminiCallTimestamps.filter(t => now - t < 60000);
+        if (hyGeminiCallTimestamps.length >= 14) {
+          hyLog('🤖 Gemini: rate limit próximo, aguardando...', 'warning');
+          return null;
+        }
+
+        for (let attempt = 0; attempt < retries; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), HY_GEMINI_TIMEOUT);
+
+            const resp = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/${HY_GEMINI_MODEL}:generateContent?key=${key}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }],
+                  generationConfig: { temperature: 0.1, maxOutputTokens: 200, responseMimeType: 'application/json' }
+                })
+              }
+            );
+            clearTimeout(timeoutId);
+
+            if (resp.status === 429) {
+              const wait = Math.pow(2, attempt + 1) * 1000;
+              hyLog(`🤖 Gemini: 429 quota, retry em ${wait / 1000}s (${attempt + 1}/${retries})`, 'warning');
+              await new Promise(r => setTimeout(r, wait));
+              continue;
+            }
+
+            if (!resp.ok) {
+              const errText = await resp.text().catch(() => '');
+              hyLog(`🤖 Gemini erro HTTP ${resp.status}: ${errText.slice(0, 100)}`, 'error');
+              return null;
+            }
+
+            hyGeminiCallTimestamps.push(Date.now());
+            const data = await resp.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!text) { hyLog('🤖 Gemini: resposta vazia', 'error'); return null; }
+            return JSON.parse(text);
+
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              hyLog('🤖 Gemini: timeout (8s)', 'warning');
+              return null;
+            }
+            if (attempt === retries - 1) {
+              hyLog(`🤖 Gemini erro: ${e.message}`, 'error');
+              return null;
+            }
+          }
+        }
+        return null;
+      }
+
+      // ── Signal Validation ──
+      function hyGeminiBuildValidationPrompt(signal) {
+        const last50 = hyBuffer.slice(-50);
+        const freq = {};
+        for (let d = 0; d <= 9; d++) freq[d] = last50.filter(x => x === d).length;
+        return `Analise este sinal de trading de dígitos e retorne APENAS JSON.
+
+Sinal: ${signal.contractType} barreira ${signal.barrier} (estratégia: ${signal.strategy})
+Últimos 50 dígitos: [${last50.join(',')}]
+Frequência 50t: ${JSON.stringify(freq)}
+Delays: ${JSON.stringify(hyDelay)}
+Sessão: ${hySessionWins}W/${hySessionLosses}L P&L:$${hySessionPnl.toFixed(2)}
+Gale: ${hyMartLevel}
+
+Retorne: {"action":"ENTER"|"SKIP","confidence":0-100,"reason":"max 20 palavras"}
+
+Regras:
+- ENTER se padrão estatístico suporta o sinal
+- SKIP se padrão contradiz ou dados insuficientes
+- Se gale>=2: aceitar com confidence>=50 (recuperação urgente)
+- Avalie frequência do dígito-alvo nos últimos 50 ticks`;
+      }
+
+      async function hyGeminiValidateSignal(signal) {
+        const mode = document.getElementById('hyGeminiMode')?.value;
+        if (mode !== 'validate' && mode !== 'both') return true;
+
+        hyGeminiUpdateStatus('analyzing');
+        const prompt = hyGeminiBuildValidationPrompt(signal);
+        hyLog('🤖 Gemini: validando sinal...', 'info');
+
+        const result = await hyGeminiCall(prompt);
+        if (!result) {
+          hyLog('🤖 Gemini: sem resposta, prosseguindo com sinal local', 'warning');
+          hyGeminiUpdateStatus('active');
+          return true;
+        }
+
+        const conf = parseInt(result.confidence) || 0;
+        const minConf = parseInt(document.getElementById('hyGeminiConf')?.value) || 60;
+        const action = (result.action || '').toUpperCase();
+
+        const el = document.getElementById('hyGeminiLastAnalysis');
+        if (el) el.textContent = `${action} (${conf}%) — ${result.reason || ''}`;
+
+        hyGeminiUpdateStatus('active');
+
+        if (action === 'ENTER' && conf >= minConf) {
+          hyGeminiApproved++;
+          hyGeminiUpdateCard();
+          hyLog(`🤖 Gemini: ✅ ENTER (${conf}%) — ${result.reason || ''}`, 'success');
+          return true;
+        } else {
+          hyGeminiRejected++;
+          hyGeminiUpdateCard();
+          hyLog(`🤖 Gemini: ❌ SKIP (${conf}%) — ${result.reason || ''}`, 'warning');
+          return false;
+        }
+      }
+
+      // ── Validate & Enter wrapper ──
+      async function hyValidateAndEnter(signal) {
+        if (hyMartLevel > 0) {
+          hyEnterTrade(signal);
+          return;
+        }
+        const approved = await hyGeminiValidateSignal(signal);
+        if (approved) {
+          hyEnterTrade(signal);
+        } else {
+          hyActiveSignal = null;
+          hyMartLevel = 0;
+        }
+      }
+
+      // ── Supervisor: ajusta parâmetros a cada 90s ──
+      function hyGeminiBuildSupervisorPrompt() {
+        const last60 = hyBuffer.slice(-60);
+        const freq = {};
+        for (let d = 0; d <= 9; d++) freq[d] = last60.filter(x => x === d).length;
+        const winRate = hySessionWins + hySessionLosses > 0
+          ? ((hySessionWins / (hySessionWins + hySessionLosses)) * 100).toFixed(1)
+          : '0';
+        return `Você é um supervisor de trading de opções binárias (dígitos).
+Analise os dados e retorne APENAS JSON válido.
+
+Últimos 60 dígitos: [${last60.join(',')}]
+Frequência: ${JSON.stringify(freq)}
+Delays atuais: ${JSON.stringify(hyDelay)}
+Sessão: ${hySessionWins}W/${hySessionLosses}L (${winRate}%) P&L: $${hySessionPnl.toFixed(2)}
+Modo atual: ${hyGetMode()}
+Mercado: ${hyMarket}
+Gale atual: nível ${hyMartLevel}
+
+Retorne JSON:
+{"modo":"conservador"|"agressivo","delayThreshold":20-80,"clusterMin":5-10,"observacao":"max 30 palavras"}
+
+Regras:
+- Se win rate < 50% ou P&L negativo: modo conservador, delayThreshold alto (50-70), clusterMin alto (8-9)
+- Se win rate > 60% e P&L positivo: pode ser agressivo, thresholds mais baixos
+- Se gale > 2: conservador imediato, thresholds altos
+- Observe padrões na frequência e delays para calibrar thresholds`;
+      }
+
+      function hyGeminiApplyDecision(decision) {
+        const modo = ['conservador', 'agressivo'].includes(decision.modo) ? decision.modo : null;
+        const delay = parseInt(decision.delayThreshold);
+        const cluster = parseInt(decision.clusterMin);
+
+        if (modo && modo !== hyGetMode()) {
+          const btn = document.getElementById(modo === 'agressivo' ? 'hyModeAgressivo' : 'hyModeConservador');
+          if (btn) hySetMode(modo, btn);
+          hyLog(`🤖 Gemini → modo ${modo}`, 'warning');
+        }
+
+        if (delay >= 20 && delay <= 80) {
+          const el = document.getElementById('hyDelayThreshold');
+          if (el) el.value = delay;
+          hyLog(`🤖 Gemini → delay threshold: ${delay}`, 'info');
+        }
+        if (cluster >= 5 && cluster <= 10) {
+          const el = document.getElementById('hyClusterMin');
+          if (el) el.value = cluster;
+          hyLog(`🤖 Gemini → cluster mínimo: ${cluster}`, 'info');
+        }
+
+        if (decision.observacao) {
+          hyLog(`🤖 ${decision.observacao}`, 'info');
+        }
+
+        hyGeminiUpdateStatus('active');
+        hyGeminiLastCall = Date.now();
+      }
+
+      async function hyGeminiAnalyze() {
+        const key = load('hy_gemini_key', '');
+        const mode = document.getElementById('hyGeminiMode')?.value;
+        if (!key || (mode !== 'supervisor' && mode !== 'both')) return;
+        if (!hyRobotActive) return;
+        if (hyBuffer.length < 30) {
+          hyLog('🤖 Gemini: aguardando mais dados (mín 30 ticks)', 'info');
+          return;
+        }
+
+        hyGeminiUpdateStatus('analyzing');
+        const prompt = hyGeminiBuildSupervisorPrompt();
+        hyLog('🤖 Gemini: analisando mercado...', 'info');
+
+        const result = await hyGeminiCall(prompt);
+        if (!result) {
+          hyGeminiUpdateStatus('active');
+          return;
+        }
+
+        hyGeminiApplyDecision(result);
+
+        const el = document.getElementById('hyGeminiLastAnalysis');
+        if (el) el.textContent = `SUP: ${result.modo || '—'} | D:${result.delayThreshold || '—'} C:${result.clusterMin || '—'} — ${result.observacao || ''}`;
+      }
+
+      // Load key on page init
+      setTimeout(hyGeminiLoadKey, 500);
+
+      // ══════════════════════════════════════════
       // TOGGLE / START / STOP
       // ══════════════════════════════════════════
       function hyToggleRobot() {
@@ -9767,7 +9866,7 @@ Regras:
         document.getElementById('hyStatusTxt').textContent = 'MONITORANDO...';
 
         // Bloqueia inputs
-        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin'].forEach(id => {
+        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin', 'hyGeminiKey', 'hyGeminiMode', 'hyGeminiConf'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.disabled = true; el.style.opacity = '0.5'; }
         });
@@ -9780,10 +9879,23 @@ Regras:
         const maxG = parseInt(document.getElementById('hyMaxGales')?.value || 3);
         const factor = hyGetFactor();
         hyLog(`🤖 Robô Híbrido iniciado | $${entrada} | Fator: ${factor.toFixed(2)}× (dinâmico) | SG: $${sg} | SL: $${sl} | Gales: ${maxG}`, 'success');
-        // Inicia Gemini (Camada 2)
-        hyGeminiStart();
         // Busca payouts atualizados
         setTimeout(() => hyFetchPayouts(), 600);
+
+        // Inicia supervisor Gemini
+        const geminiMode = document.getElementById('hyGeminiMode')?.value;
+        if ((geminiMode === 'supervisor' || geminiMode === 'both') && load('hy_gemini_key', '')) {
+          if (hyGeminiTimer) clearInterval(hyGeminiTimer);
+          hyGeminiTimer = setInterval(hyGeminiAnalyze, HY_GEMINI_INTERVAL);
+          setTimeout(hyGeminiAnalyze, 30000);
+          hyLog('🤖 Supervisor IA ativado (Gemini 2.5 Flash-Lite, 90s)', 'success');
+        }
+        if (geminiMode !== 'off' && load('hy_gemini_key', '')) {
+          hyGeminiApproved = 0;
+          hyGeminiRejected = 0;
+          hyGeminiUpdateCard();
+          hyGeminiUpdateStatus('waiting');
+        }
 
         if (hyWs && hyWs.readyState === 1) {
           hyWs.send(JSON.stringify({ authorize: derivAccount.token }));
@@ -9814,11 +9926,14 @@ Regras:
         hyTradeActive = false;
         hyTradeActiveTs = 0;
         hySetToggleBtn(false);
-        hyGeminiStop();
         document.getElementById('hyStatusTxt').textContent = 'PARADO';
 
+        // Para supervisor Gemini
+        if (hyGeminiTimer) { clearInterval(hyGeminiTimer); hyGeminiTimer = null; }
+        hyGeminiUpdateStatus('off');
+
         // Desbloqueia inputs
-        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin'].forEach(id => {
+        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin', 'hyGeminiKey', 'hyGeminiMode', 'hyGeminiConf'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.disabled = false; el.style.opacity = '1'; }
         });
@@ -9945,6 +10060,37 @@ Regras:
           <button id="hyToggleBtn" onclick="hyToggleRobot()" class="fq-start-btn" style="cursor:pointer;">▶ INICIAR ROBÔ</button>
         </div>
 
+        <!-- Gemini AI Config -->
+        <div class="fq-panel">
+          <div class="fq-label" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>IA Gemini</span>
+            <span id="hyGeminiStatus" style="font-size:9px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">DESATIVADA</span>
+          </div>
+          <div class="fq-input-group">
+            <div class="fq-input-label">API KEY</div>
+            <div style="display:flex;gap:4px;">
+              <input type="password" id="hyGeminiKey" class="fq-input" placeholder="AIza..." style="flex:1;font-size:10px;">
+              <button onclick="hyGeminiSaveKey()" style="font-size:9px;background:var(--hy-surface2);border:1px solid var(--hy-border);color:var(--hy-text);padding:4px 10px;border-radius:6px;cursor:pointer;font-family:'JetBrains Mono',monospace;letter-spacing:1px;transition:opacity .2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">SALVAR</button>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+            <div class="fq-input-group">
+              <div class="fq-input-label">MODO IA</div>
+              <select id="hyGeminiMode" class="fq-input" style="font-size:10px;cursor:pointer;">
+                <option value="off">Desligado</option>
+                <option value="validate">Validar Sinais</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="both">Ambos</option>
+              </select>
+            </div>
+            <div class="fq-input-group">
+              <div class="fq-input-label">CONFIANÇA MÍN</div>
+              <input type="number" id="hyGeminiConf" value="60" min="30" max="95" step="5" class="fq-input">
+            </div>
+          </div>
+          <div id="hyGeminiLastAnalysis" style="font-size:9px;color:var(--hy-dim);margin-top:6px;min-height:16px;font-family:'JetBrains Mono',monospace;"></div>
+        </div>
+
         <!-- Session stats -->
         <div class="fq-panel">
           <div class="fq-label">Sessão</div>
@@ -9969,40 +10115,6 @@ Regras:
               <div class="fq-stat-label">ÚLTIMO SINAL</div>
               <div style="font-size:11px;font-weight:700;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;" id="hyLastSignal">—</div>
             </div>
-          </div>
-        </div>
-
-        <!-- Gemini (Camada 2) -->
-        <div class="fq-panel">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div class="fq-label" style="margin-bottom:0;">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--hy-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:4px;"><path d="M12 2a7 7 0 0 1 7 7c0 2.4-1.2 4.5-3 5.7V17a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2v-2.3C6.2 13.5 5 11.4 5 9a7 7 0 0 1 7-7z"/><line x1="10" y1="22" x2="14" y2="22"/></svg>
-              GEMINI IA
-            </div>
-            <span id="hyGeminiBadge" style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;background:rgba(34,197,94,.15);color:var(--hy-green);font-family:'JetBrains Mono',monospace;">ON</span>
-          </div>
-          <div class="fq-input-group" style="margin-bottom:8px;">
-            <div class="fq-input-label">API KEY (GOOGLE AI)</div>
-            <div style="display:flex;gap:6px;">
-              <input type="password" id="hyGeminiKeyInput" class="fq-input" placeholder="Cole sua API key aqui" style="flex:1;font-size:10px;">
-              <button onclick="hyGeminiSetKey(document.getElementById('hyGeminiKeyInput').value);hyLog('🤖 Gemini API key salva.','success');hyGeminiUpdatePanel();" style="font-size:9px;background:var(--hy-surface2);border:1px solid var(--hy-border);color:var(--hy-gold);padding:4px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">SALVAR</button>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-            <label style="position:relative;width:36px;height:20px;display:inline-block;cursor:pointer;">
-              <input type="checkbox" id="hyGeminiToggle" checked onchange="hyGeminiToggle(this.checked)" style="opacity:0;width:0;height:0;">
-              <span style="position:absolute;inset:0;background:var(--hy-surface2);border:1px solid var(--hy-border);border-radius:10px;transition:.2s;">
-                <span style="position:absolute;left:2px;top:2px;width:14px;height:14px;background:var(--hy-dim);border-radius:50%;transition:.2s;"></span>
-              </span>
-              <style>
-                #hyGeminiToggle:checked + span { background:rgba(34,197,94,.2);border-color:var(--hy-green); }
-                #hyGeminiToggle:checked + span > span { transform:translateX(16px);background:var(--hy-green); }
-              </style>
-            </label>
-            <span style="font-size:10px;color:var(--hy-dim);font-family:'JetBrains Mono',monospace;">Ajuste adaptativo a cada 90s</span>
-          </div>
-          <div id="hyGeminiStatus" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--hy-dim);padding:6px 8px;background:var(--hy-surface);border:1px solid var(--hy-border);border-radius:6px;min-height:28px;">
-            <span style="color:var(--hy-gold);">Aguardando 1ª análise...</span>
           </div>
         </div>
 
@@ -10074,6 +10186,13 @@ Regras:
             <div class="hy-strat-status" id="hyClusterStatus" style="color:var(--hy-dim);">MONITORANDO</div>
             <div class="hy-strat-detail" id="hyClusterDetail">Alto: 0/10 | Baixo: 0/10</div>
             <span class="hy-signal-badge badge-idle" id="hyClusterBadge">IDLE</span>
+          </div>
+          <!-- IA Gemini Card -->
+          <div class="hy-strat-card" id="hyCardGemini" style="grid-column:1/-1;">
+            <div class="hy-strat-name" style="color:var(--hy-blue);">3️⃣ IA GEMINI</div>
+            <div class="hy-strat-status" id="hyGeminiCardStatus" style="color:var(--hy-dim);">DESATIVADA</div>
+            <div class="hy-strat-detail" id="hyGeminiCardDetail">Calls: 0 | Aprovados: 0 | Rejeitados: 0</div>
+            <span class="hy-signal-badge badge-idle" id="hyGeminiBadge">OFF</span>
           </div>
         </div>
 
