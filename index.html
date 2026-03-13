@@ -8673,8 +8673,9 @@
       }
 
       function hyGetFactor(signal) {
+        const manual = parseFloat(document.getElementById('hyFactor')?.value);
+        if (manual && manual >= 1.1) return manual;
         const payout = hyGetPayout(signal);
-        // Fórmula: fator = (1/payout + 1) × margem
         return (1 / payout + 1) * HY_MARGIN;
       }
 
@@ -8734,6 +8735,8 @@
       function hyUpdateFactorDisplay() {
         const el = document.getElementById('hyFactorInfo');
         if (!el) return;
+        const isManual = parseFloat(document.getElementById('hyFactor')?.value) >= 1.1;
+        const manualTag = isManual ? ' <span style="color:var(--hy-gold);">(manual)</span>' : '';
         const mode = hyGetMode();
         if (mode === 'conservador') {
           const fOver3 = hyGetFactor({ contractType: 'DIGITOVER', barrier: '3' });
@@ -8742,7 +8745,9 @@
           const pUnder6 = hyGetPayout({ contractType: 'DIGITUNDER', barrier: '6' });
           const liveO = hyPayoutCache['over3'] != null;
           const liveU = hyPayoutCache['under6'] != null;
-          el.innerHTML = `OVER 3: ${(pOver3*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fOver3.toFixed(2)}×</span>${liveO ? ' ✓' : ''} · UNDER 6: ${(pUnder6*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fUnder6.toFixed(2)}×</span>${liveU ? ' ✓' : ''}`;
+          el.innerHTML = isManual
+            ? `Fator: <span style="color:var(--hy-green);">${fOver3.toFixed(2)}×</span>${manualTag} · OVER 3: ${(pOver3*100).toFixed(0)}% · UNDER 6: ${(pUnder6*100).toFixed(0)}%`
+            : `OVER 3: ${(pOver3*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fOver3.toFixed(2)}×</span>${liveO ? ' ✓' : ''} · UNDER 6: ${(pUnder6*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fUnder6.toFixed(2)}×</span>${liveU ? ' ✓' : ''}`;
         } else {
           const fOver4 = hyGetFactor({ contractType: 'DIGITOVER', barrier: '4' });
           const fUnder5 = hyGetFactor({ contractType: 'DIGITUNDER', barrier: '5' });
@@ -8750,7 +8755,9 @@
           const pUnder5 = hyGetPayout({ contractType: 'DIGITUNDER', barrier: '5' });
           const liveO = hyPayoutCache['over4'] != null;
           const liveU = hyPayoutCache['under5'] != null;
-          el.innerHTML = `OVER 4: ${(pOver4*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fOver4.toFixed(2)}×</span>${liveO ? ' ✓' : ''} · UNDER 5: ${(pUnder5*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fUnder5.toFixed(2)}×</span>${liveU ? ' ✓' : ''}`;
+          el.innerHTML = isManual
+            ? `Fator: <span style="color:var(--hy-green);">${fOver4.toFixed(2)}×</span>${manualTag} · OVER 4: ${(pOver4*100).toFixed(0)}% · UNDER 5: ${(pUnder5*100).toFixed(0)}%`
+            : `OVER 4: ${(pOver4*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fOver4.toFixed(2)}×</span>${liveO ? ' ✓' : ''} · UNDER 5: ${(pUnder5*100).toFixed(0)}% → <span style="color:var(--hy-green);">${fUnder5.toFixed(2)}×</span>${liveU ? ' ✓' : ''}`;
         }
       }
 
@@ -8782,7 +8789,12 @@
           </div>`;
         }
         html += '</div>';
-        html += `<div style="font-size:9px;color:var(--hy-dim);margin-top:6px;font-family:'JetBrains Mono',monospace;">Exposição: $${acc.toFixed(2)} · Fator: ${factor.toFixed(2)}× · Payout: ${(payout*100).toFixed(0)}%</div>`;
+        const isManual = parseFloat(document.getElementById('hyFactor')?.value) >= 1.1;
+        const breakEvenFactor = (1 / payout + 1);
+        html += `<div style="font-size:9px;color:var(--hy-dim);margin-top:6px;font-family:'JetBrains Mono',monospace;">Exposição: $${acc.toFixed(2)} · Fator: ${factor.toFixed(2)}×${isManual ? ' (manual)' : ''} · Payout: ${(payout*100).toFixed(0)}%</div>`;
+        if (isManual && factor < breakEvenFactor) {
+          html += `<div style="font-size:9px;color:var(--hy-red);margin-top:4px;font-family:'JetBrains Mono',monospace;">⚠ Fator abaixo do break-even (mín: ${breakEvenFactor.toFixed(2)}×) — gales não recuperam</div>`;
+        }
         el.innerHTML = html;
       }
 
@@ -8852,11 +8864,11 @@
         hyUpdateFactorDisplay();
         hyUpdateMartPreview();
         // Atualiza preview ao mudar entrada ou max gales
-        ['hyEntry', 'hyMaxGales'].forEach(id => {
+        ['hyEntry', 'hyMaxGales', 'hyFactor'].forEach(id => {
           const el = document.getElementById(id);
           if (el && !el.dataset.hyBound) {
             el.dataset.hyBound = '1';
-            el.addEventListener('input', () => { hyUpdateMartPreview(); });
+            el.addEventListener('input', () => { hyUpdateMartPreview(); hyUpdateFactorDisplay(); });
           }
         });
         if (hyWs && hyWs.readyState <= 1) return;
@@ -9866,7 +9878,7 @@ Regras:
         document.getElementById('hyStatusTxt').textContent = 'MONITORANDO...';
 
         // Bloqueia inputs
-        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin', 'hyGeminiKey', 'hyGeminiMode', 'hyGeminiConf'].forEach(id => {
+        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin', 'hyFactor', 'hyGeminiKey', 'hyGeminiMode', 'hyGeminiConf'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.disabled = true; el.style.opacity = '0.5'; }
         });
@@ -9933,7 +9945,7 @@ Regras:
         hyGeminiUpdateStatus('off');
 
         // Desbloqueia inputs
-        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin', 'hyGeminiKey', 'hyGeminiMode', 'hyGeminiConf'].forEach(id => {
+        ['hyEntry', 'hySG', 'hySL', 'hyMaxGales', 'hyDelayThreshold', 'hyClusterMin', 'hyFactor', 'hyGeminiKey', 'hyGeminiMode', 'hyGeminiConf'].forEach(id => {
           const el = document.getElementById(id);
           if (el) { el.disabled = false; el.style.opacity = '1'; }
         });
@@ -10040,7 +10052,7 @@ Regras:
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
             <div class="fq-input-group">
               <div class="fq-input-label">MAX GALES</div>
-              <input type="number" id="hyMaxGales" value="3" step="1" min="1" max="5" class="fq-input">
+              <input type="number" id="hyMaxGales" value="3" step="1" min="1" max="7" class="fq-input">
             </div>
             <div class="fq-input-group">
               <div class="fq-input-label">ATRASO MIN</div>
@@ -10053,8 +10065,8 @@ Regras:
               <input type="number" id="hyClusterMin" value="7" step="1" min="5" max="10" class="fq-input">
             </div>
             <div class="fq-input-group">
-              <div class="fq-input-label">BUFFER</div>
-              <input type="number" id="hyBufferSize" value="200" step="50" min="50" max="500" class="fq-input" disabled style="opacity:.5;">
+              <div class="fq-input-label">FATOR ×</div>
+              <input type="number" id="hyFactor" value="" step="0.1" min="1.1" max="5.0" class="fq-input" placeholder="auto" style="font-size:11px;">
             </div>
           </div>
           <button id="hyToggleBtn" onclick="hyToggleRobot()" class="fq-start-btn" style="cursor:pointer;">▶ INICIAR ROBÔ</button>
