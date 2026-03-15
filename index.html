@@ -4872,7 +4872,7 @@
 
       // Persistir conexão Deriv no sessionStorage (por uid) para auto-reconexão na sessão
       if (alphaUser?.uid) {
-        _saveDrvConn(alphaUser.uid, {
+        await _saveDrvConn(alphaUser.uid, {
           loginid: acc.loginid,
           token: acc.token,
           appId: DERIV_APP_ID,
