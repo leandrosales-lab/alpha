@@ -9607,23 +9607,31 @@
       // ── Save/Load API Key ──
       let _geminiKeyCache = '';
 
-      window.hyGeminiSaveKey = async function() {
+      window.hyGeminiSaveKey = async function(btn) {
+        console.log('[hyGeminiSaveKey] chamado');
+        const _btn = btn || document.querySelector('button[onclick*="hyGeminiSaveKey"]');
+        const _setBtn = (txt, color) => { if (_btn) { _btn.textContent = txt; _btn.style.color = color || ''; } };
         const key = document.getElementById('hyGeminiKey')?.value?.trim();
-        if (!key) { hyLog('⚠ Digite a API key antes de salvar.', 'warning'); return; }
-        if (!window._sb) { hyLog('⚠ Supabase não inicializado.', 'warning'); return; }
+        if (!key) { _setBtn('SEM KEY', '#EAB308'); setTimeout(() => _setBtn('SALVAR'), 2000); return; }
+        if (!window._sb) { _setBtn('ERRO SB', '#EF4444'); setTimeout(() => _setBtn('SALVAR'), 2000); return; }
+        _setBtn('...', '#94A3B8');
         try {
           const { data: { user } } = await window._sb.auth.getUser();
-          if (!user) { hyLog('⚠ Faça login antes de salvar a API key.', 'warning'); return; }
+          console.log('[hyGeminiSaveKey] user:', user?.id);
+          if (!user) { _setBtn('SEM LOGIN', '#EAB308'); setTimeout(() => _setBtn('SALVAR'), 2000); return; }
           const { error } = await window._sb.from('user_tokens').upsert(
             { user_id: user.id, gemini_key: key, updated_at: new Date().toISOString() },
             { onConflict: 'user_id' }
           );
           if (error) throw error;
           _geminiKeyCache = key;
+          _setBtn('SALVO ✓', '#22C55E');
           hyLog('🤖 Gemini API key salva.', 'success');
+          setTimeout(() => _setBtn('SALVAR'), 3000);
         } catch (e) {
-          hyLog('❌ Erro ao salvar key: ' + (e.message || e), 'error');
-          console.warn('hyGeminiSaveKey failed', e);
+          console.error('[hyGeminiSaveKey] erro:', e);
+          _setBtn('ERRO', '#EF4444');
+          setTimeout(() => _setBtn('SALVAR'), 3000);
         }
       }
 
