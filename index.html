@@ -4724,6 +4724,9 @@
       updateProfileDropdown();
       startPresence();
 
+      // Carregar configs Gemini do Supabase após login
+      setTimeout(hyGeminiLoadKey, 800);
+
       // Restaurar tela salva no F5, ou ir ao dashboard por padrão
       const _activeScreen = document.querySelector('.screen.active');
       if (!_activeScreen || _activeScreen.id === 'screenLogin') {
