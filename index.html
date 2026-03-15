@@ -9600,7 +9600,7 @@
       // ── Save/Load API Key ──
       let _geminiKeyCache = '';
 
-      async function hyGeminiSaveKey() {
+      window.hyGeminiSaveKey = async function() {
         const key = document.getElementById('hyGeminiKey')?.value?.trim();
         if (!key || !window._sb || !window._alphaUser?.uid) return;
         try {
