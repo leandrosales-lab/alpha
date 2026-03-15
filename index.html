@@ -4700,14 +4700,14 @@
     // ────────────────────────────────────────────────────────────────────────────
 
     // Called by Supabase onAuthStateChange when user logs in
-    window._onAlphaLogin = function (user) {
+    window._onAlphaLogin = async function (user) {
       currentUser = { user: user.name, isAdmin: user.is_admin || false };
       const btnAdmin = document.getElementById('btnAdminNav');
       if (btnAdmin) btnAdmin.style.display = user.is_admin ? 'inline-block' : 'none';
 
       // Tentar restaurar conexão Deriv salva do sessionStorage
       if (!derivAccount && user.uid) {
-        const conn = _loadDrvConn(user.uid);
+        const conn = await _loadDrvConn(user.uid);
         if (conn) {
           derivAccount = {
             loginid: conn.loginid,
@@ -5657,9 +5657,38 @@
     function $el(id) { return _dom[id] || document.getElementById(id); }
 
     // ── Helpers para token Deriv em localStorage ────────────────────────────
-    function _saveDrvConn(uid, data) { try { localStorage.setItem('drv_conn_' + uid, JSON.stringify(data)); } catch (e) { } }
-    function _loadDrvConn(uid) { try { const v = localStorage.getItem('drv_conn_' + uid); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
-    function _removeDrvConn(uid) { try { localStorage.removeItem('drv_conn_' + uid); } catch (e) { } }
+    async function _saveDrvConn(uid, data) {
+      if (!window._sb) return;
+      try {
+        await window._sb.from('user_tokens').upsert({
+          user_id: uid, deriv_token: data.token, deriv_loginid: data.loginid,
+          deriv_app_id: String(data.appId), deriv_acc_type: data.accType,
+          deriv_is_virtual: !!data.isVirtual, deriv_currency: data.currency,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'user_id' });
+      } catch (e) { console.warn('_saveDrvConn failed', e); }
+    }
+    async function _loadDrvConn(uid) {
+      if (!window._sb) return null;
+      try {
+        const { data } = await window._sb.from('user_tokens')
+          .select('deriv_token,deriv_loginid,deriv_app_id,deriv_acc_type,deriv_is_virtual,deriv_currency')
+          .eq('user_id', uid).single();
+        if (!data?.deriv_token) return null;
+        return { token: data.deriv_token, loginid: data.deriv_loginid, appId: data.deriv_app_id,
+          accType: data.deriv_acc_type, isVirtual: data.deriv_is_virtual, currency: data.deriv_currency };
+      } catch (e) { return null; }
+    }
+    async function _removeDrvConn(uid) {
+      if (!window._sb) return;
+      try {
+        await window._sb.from('user_tokens').update({
+          deriv_token: null, deriv_loginid: null, deriv_app_id: null,
+          deriv_acc_type: null, deriv_is_virtual: null, deriv_currency: null,
+          updated_at: new Date().toISOString()
+        }).eq('user_id', uid);
+      } catch (e) { console.warn('_removeDrvConn failed', e); }
+    }
 
     // ── WebSocket auto-reconnect ──────────────────────────────────────────────
     let _wsReconnectTimer = null;
@@ -9566,33 +9595,56 @@
       // ══════════════════════════════════════════
 
       // ── Save/Load API Key ──
-      function hyGeminiSaveKey() {
+      let _geminiKeyCache = '';
+
+      async function hyGeminiSaveKey() {
         const key = document.getElementById('hyGeminiKey')?.value?.trim();
-        if (!key) return;
-        store('hy_gemini_key', key);
-        hyLog('🤖 Gemini API key salva.', 'success');
+        if (!key || !window._sb || !window._alphaUser?.uid) return;
+        try {
+          await window._sb.from('user_tokens').upsert(
+            { user_id: window._alphaUser.uid, gemini_key: key, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' }
+          );
+          _geminiKeyCache = key;
+          hyLog('🤖 Gemini API key salva.', 'success');
+        } catch (e) { console.warn('hyGeminiSaveKey failed', e); }
       }
 
-      function hyGeminiLoadKey() {
-        const key = load('hy_gemini_key', '');
-        if (key) {
+      async function hyGeminiLoadKey() {
+        if (!window._sb || !window._alphaUser?.uid) return '';
+        try {
+          const { data } = await window._sb.from('user_tokens')
+            .select('gemini_key,gemini_mode,gemini_conf')
+            .eq('user_id', window._alphaUser.uid).single();
+          const key = data?.gemini_key || '';
+          const mode = data?.gemini_mode || 'off';
+          const conf = data?.gemini_conf || '60';
+          _geminiKeyCache = key;
           const el = document.getElementById('hyGeminiKey');
-          if (el) el.value = key;
-        }
-        // Load saved mode and confidence
-        const mode = load('hy_gemini_mode', 'off');
-        const conf = load('hy_gemini_conf', '60');
-        const modeEl = document.getElementById('hyGeminiMode');
-        const confEl = document.getElementById('hyGeminiConf');
-        if (modeEl) modeEl.value = mode;
-        if (confEl) confEl.value = conf;
-        return key;
+          if (el && key) el.value = key;
+          const modeEl = document.getElementById('hyGeminiMode');
+          const confEl = document.getElementById('hyGeminiConf');
+          if (modeEl) modeEl.value = mode;
+          if (confEl) confEl.value = conf;
+          return key;
+        } catch (e) { return ''; }
       }
 
       // Persist mode/conf changes
-      document.addEventListener('change', (e) => {
-        if (e.target.id === 'hyGeminiMode') store('hy_gemini_mode', e.target.value);
-        if (e.target.id === 'hyGeminiConf') store('hy_gemini_conf', e.target.value);
+      document.addEventListener('change', async (e) => {
+        if (!window._sb || !window._alphaUser?.uid) return;
+        if (e.target.id === 'hyGeminiMode') {
+          window._sb.from('user_tokens').upsert(
+            { user_id: window._alphaUser.uid, gemini_mode: e.target.value, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' }
+          ).catch(() => {});
+        }
+        if (e.target.id === 'hyGeminiConf') {
+          window._sb.from('user_tokens').upsert(
+            { user_id: window._alphaUser.uid, gemini_conf: e.target.value, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' }
+          ).catch(() => {});
+        }
       });
 
       // ── Status badge ──
@@ -9621,7 +9673,7 @@
 
       // ── Core API call with retry + backoff ──
       async function hyGeminiCall(prompt, retries = 3) {
-        const key = load('hy_gemini_key', '');
+        const key = _geminiKeyCache;
         if (!key) return null;
 
         // Rate limit check (15 RPM max, leave margin)
@@ -9819,7 +9871,7 @@ Regras:
       }
 
       async function hyGeminiAnalyze() {
-        const key = load('hy_gemini_key', '');
+        const key = _geminiKeyCache;
         const mode = document.getElementById('hyGeminiMode')?.value;
         if (!key || (mode !== 'supervisor' && mode !== 'both')) return;
         if (!hyRobotActive) return;
@@ -9896,13 +9948,13 @@ Regras:
 
         // Inicia supervisor Gemini
         const geminiMode = document.getElementById('hyGeminiMode')?.value;
-        if ((geminiMode === 'supervisor' || geminiMode === 'both') && load('hy_gemini_key', '')) {
+        if ((geminiMode === 'supervisor' || geminiMode === 'both') && _geminiKeyCache) {
           if (hyGeminiTimer) clearInterval(hyGeminiTimer);
           hyGeminiTimer = setInterval(hyGeminiAnalyze, HY_GEMINI_INTERVAL);
           setTimeout(hyGeminiAnalyze, 30000);
           hyLog('🤖 Supervisor IA ativado (Gemini 2.5 Flash-Lite, 90s)', 'success');
         }
-        if (geminiMode !== 'off' && load('hy_gemini_key', '')) {
+        if (geminiMode !== 'off' && _geminiKeyCache) {
           hyGeminiApproved = 0;
           hyGeminiRejected = 0;
           hyGeminiUpdateCard();
