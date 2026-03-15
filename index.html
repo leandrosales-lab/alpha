@@ -5663,11 +5663,7 @@
     async function _saveDrvConn(uid, data) {
       if (!window._sb) return;
       try {
-        let userId = uid;
-        if (!userId) {
-          const { data: { user } } = await window._sb.auth.getUser();
-          userId = user?.id;
-        }
+        let userId = uid || window._alphaUser?.uid || (await window._sb.auth.getSession()).data?.session?.user?.id;
         if (!userId) { console.warn('_saveDrvConn: usuário não autenticado'); return; }
         const { error } = await window._sb.from('user_tokens').upsert({
           user_id: userId, deriv_token: data.token, deriv_loginid: data.loginid,
@@ -9616,11 +9612,11 @@
         if (!window._sb) { _setBtn('ERRO SB', '#EF4444'); setTimeout(() => _setBtn('SALVAR'), 2000); return; }
         _setBtn('...', '#94A3B8');
         try {
-          const { data: { user } } = await window._sb.auth.getUser();
-          console.log('[hyGeminiSaveKey] user:', user?.id);
-          if (!user) { _setBtn('SEM LOGIN', '#EAB308'); setTimeout(() => _setBtn('SALVAR'), 2000); return; }
+          const userId = window._alphaUser?.uid || (await window._sb.auth.getSession()).data?.session?.user?.id;
+          console.log('[hyGeminiSaveKey] userId:', userId);
+          if (!userId) { _setBtn('SEM LOGIN', '#EAB308'); setTimeout(() => _setBtn('SALVAR'), 2000); return; }
           const { error } = await window._sb.from('user_tokens').upsert(
-            { user_id: user.id, gemini_key: key, updated_at: new Date().toISOString() },
+            { user_id: userId, gemini_key: key, updated_at: new Date().toISOString() },
             { onConflict: 'user_id' }
           );
           if (error) throw error;
